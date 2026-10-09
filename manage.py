@@ -8,10 +8,18 @@ BASE_DIR = Path(__file__).resolve().parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
+inner_dir = BASE_DIR / "cafe_smart"
+if inner_dir.exists() and str(inner_dir) not in sys.path:
+    sys.path.insert(0, str(inner_dir))
 
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'cafe_smart.settings')
+    try:
+        import cafe_smart.settings
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'cafe_smart.settings')
+    except ImportError:
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')
+
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
