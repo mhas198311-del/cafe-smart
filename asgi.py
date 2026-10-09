@@ -13,6 +13,9 @@ if sub_cafe.exists() and (sub_cafe / "manage.py").exists() and str(sub_cafe) not
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'cafe_smart.settings')
 
+import django
+django.setup()
+
 from django.core.asgi import get_asgi_application
 django_asgi_app = get_asgi_application()
 
