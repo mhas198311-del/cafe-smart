@@ -1,6 +1,17 @@
+import os
+import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
+
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+# Dynamically locate and add all Django app paths (menu, accounts, marketing) to sys.path
+for app_file in BASE_DIR.glob('**/apps.py'):
+    parent_path = str(app_file.parent.parent)
+    if parent_path not in sys.path:
+        sys.path.insert(0, parent_path)
 
 SECRET_KEY = 'django-insecure-es4ls-#vraj1j031@lt8#n-s#z_$cc^*pz0w-db2)7_ywcmhb!'
 DEBUG = True
