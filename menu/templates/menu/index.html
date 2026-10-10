@@ -1,0 +1,760 @@
+{% extends 'base.html' %}
+
+{% block title %}White Bird Cafe - Digital Menu{% endblock %}
+
+{% block extra_css %}
+/* Language visibility utilities */
+html[lang="en"] .lang-ar { display: none !important; }
+html[lang="ar"] .lang-en { display: none !important; }
+
+.menu-hero {
+    text-align: center;
+    padding: 60px 24px;
+    background: linear-gradient(rgba(18, 12, 8, 0.8), rgba(18, 12, 8, 0.95)), 
+                url('https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?q=80&w=1478&auto=format&fit=crop') center/cover;
+    border-radius: 24px;
+    margin-bottom: 40px;
+    border: 1px solid var(--border-light);
+    position: relative;
+    overflow: hidden;
+}
+
+.menu-hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 60%);
+    animation: rotate-bg 20s linear infinite;
+}
+
+@keyframes rotate-bg {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.menu-hero h2 {
+    font-size: 38px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #ffffff 0%, #d4af37 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    position: relative;
+    z-index: 1;
+}
+
+.menu-hero p {
+    font-size: 16px;
+    color: var(--text-muted);
+    max-width: 600px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+}
+
+/* Tab Navigation */
+.menu-tabs-nav {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.tab-nav-btn {
+    padding: 12px 28px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-light);
+    color: var(--text-muted);
+    font-family: var(--font-head);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tab-nav-btn:hover {
+    color: #ffffff;
+    border-color: var(--border-gold);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tab-nav-btn.active {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+    color: #120c08;
+    border-color: var(--primary);
+    box-shadow: 0 5px 20px rgba(212, 175, 55, 0.25);
+    transform: translateY(-2px);
+}
+
+/* Search Bar */
+.search-bar {
+    max-width: 500px;
+    margin: 0 auto 24px;
+    position: relative;
+    z-index: 10;
+}
+
+.search-input {
+    width: 100%;
+    padding: 16px 24px 16px 56px;
+    border-radius: 99px;
+    background: rgba(31, 20, 14, 0.85);
+    border: 1px solid var(--border-light);
+    color: #ffffff;
+    font-size: 16px;
+    font-family: var(--font-body);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    backdrop-filter: blur(8px);
+    transition: all 0.3s ease;
+}
+
+[dir="rtl"] .search-input {
+    padding: 16px 56px 16px 24px;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 10px 30px rgba(212, 175, 55, 0.15);
+}
+
+.search-bar i {
+    position: absolute;
+    left: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--primary);
+    font-size: 18px;
+}
+
+[dir="rtl"] .search-bar i {
+    left: auto;
+    right: 24px;
+}
+
+/* Filter Tags */
+.filter-tags-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+}
+
+.filter-tag-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-light);
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.filter-tag-btn:hover {
+    color: #ffffff;
+    border-color: var(--border-gold);
+}
+
+.filter-tag-btn.active {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: var(--primary);
+    color: var(--primary);
+    box-shadow: 0 0 12px rgba(212, 175, 55, 0.15);
+}
+
+/* Accordion Sections */
+.section-wrapper {
+    margin-bottom: 24px;
+}
+
+.section-banner {
+    height: 140px;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    cursor: pointer;
+    border: 1px solid var(--border-light);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.section-banner:hover {
+    border-color: var(--border-gold);
+    box-shadow: 0 10px 30px rgba(212, 175, 55, 0.12);
+    transform: translateY(-2px);
+}
+
+.banner-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 2;
+}
+
+.banner-title {
+    font-size: 24px;
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.85);
+}
+
+.accordion-chevron {
+    font-size: 16px;
+    color: var(--primary);
+    background: rgba(18, 12, 8, 0.8);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-gold);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s;
+    z-index: 2;
+}
+
+.section-banner:hover .accordion-chevron {
+    background: var(--primary);
+    color: #120c08;
+}
+
+.section-body {
+    max-height: 5000px;
+    opacity: 1;
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, padding 0.4s ease;
+    padding: 24px 0 12px 0;
+}
+
+.section-body.collapsed {
+    max-height: 0;
+    opacity: 0;
+    padding: 0;
+    pointer-events: none;
+}
+
+.section-banner.collapsed-banner .accordion-chevron {
+    transform: rotate(-180deg);
+}
+
+.menu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+/* Item Card styling */
+.menu-item-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.item-img-container {
+    height: 180px;
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    position: relative;
+    background: #19110a;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.item-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.menu-item-card:hover .item-img {
+    transform: scale(1.08);
+}
+
+.no-image-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1f140e 0%, #120c08 100%);
+    color: rgba(212, 175, 55, 0.15);
+    font-size: 48px;
+}
+
+.item-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    z-index: 5;
+    background: rgba(18, 12, 8, 0.8);
+    backdrop-filter: blur(4px);
+    border: 1px solid var(--border-gold);
+    color: var(--primary);
+}
+
+[dir="rtl"] .item-badge {
+    right: auto;
+    left: 12px;
+}
+
+.item-badge.low-stock {
+    background: rgba(230, 153, 92, 0.85);
+    color: #ffffff;
+    border-color: #e6995c;
+}
+
+.item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.item-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.item-price {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
+    font-family: var(--font-head);
+    white-space: nowrap;
+}
+
+.item-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    flex-grow: 1;
+    margin-bottom: 16px;
+}
+
+.item-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    border-top: 1px solid rgba(255,255,255,0.03);
+    padding-top: 12px;
+}
+
+.stock-tag {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.stock-tag i { margin-right: 4px; }
+[dir="rtl"] .stock-tag i { margin-right: 0; margin-left: 4px; }
+.stock-tag.low { color: #e6995c; font-weight: 600; }
+.stock-tag.high { color: var(--success); }
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    
+    <!-- Hero Section -->
+    <div class="menu-hero glass-card">
+        <h2>
+            <span class="lang-ar">{{ global_config.hero_title_ar|default:"قائمة المشروبات والقهوة المختصة" }}</span>
+            <span class="lang-en">{{ global_config.hero_title_en|default:"Specialty Coffee & Drinks Menu" }}</span>
+        </h2>
+        <p>
+            <span class="lang-ar">{{ global_config.hero_subtitle_ar|default:"استمتع بتشكيلتنا الفاخرة من القهوة المختصة والمشروبات الساخنة والباردة المنعشة في وايت بيرد كافيه." }}</span>
+            <span class="lang-en">{{ global_config.hero_subtitle_en|default:"Indulge in our exquisite selection of specialty coffees, refreshing cold beverages, and comforting hot drinks crafted with passion at White Bird Cafe." }}</span>
+        </p>
+    </div>
+
+    {% if global_config.featured_item_is_active %}
+        <!-- Featured Item Launch Card -->
+        <div class="glass-card" style="margin-bottom: 40px; padding: 25px; border-color: rgba(212,175,55,0.3); background: linear-gradient(135deg, rgba(31, 20, 14, 0.7) 0%, rgba(20, 10, 5, 0.9) 100%);">
+            <div style="display: flex; flex-direction: row; gap: 24px; align-items: center; flex-wrap: wrap;">
+                
+                <!-- Video/Media Section -->
+                {% if global_config.featured_item_video %}
+                <div style="flex: 1; min-width: 280px; border-radius: 16px; overflow: hidden; border: 1px solid rgba(212,175,55,0.2); aspect-ratio: 16/9; background: #000; position: relative; box-shadow: 0 8px 25px rgba(0,0,0,0.5);">
+                    <video style="width:100%; height:100%; object-fit:cover;" src="{{ global_config.featured_item_video.url }}" autoplay loop muted playsinline></video>
+                </div>
+                {% endif %}
+
+                <!-- Details Section -->
+                <div style="flex: 1.2; min-width: 280px; display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="background: rgba(212,175,55,0.15); color: var(--primary); padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; border: 1px solid var(--border-gold); text-transform: uppercase;">
+                            <span class="lang-en">🆕 NEW LAUNCH</span>
+                            <span class="lang-ar">🆕 إطلاق جديد</span>
+                        </span>
+                        <span style="background: rgba(92,230,138,0.15); color: var(--success); padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; border: 1px solid rgba(92,230,138,0.3); text-transform: uppercase;">
+                            <span class="lang-en">🏷️ SPECIAL OFFER</span>
+                            <span class="lang-ar">🏷️ عرض خاص</span>
+                        </span>
+                    </div>
+
+                    <h3 style="font-size: 26px; color: #fff; font-family: 'Tajawal', var(--font-head); font-weight: 700;">{{ global_config.featured_item_name }}</h3>
+                    
+                    <p style="color: var(--text-muted); font-size: 15px; line-height: 1.6;">{{ global_config.featured_item_desc }}</p>
+
+                    <div style="display: flex; align-items: center; gap: 15px; margin-top: 10px;">
+                        {% if global_config.featured_item_special_price %}
+                            <div style="font-size: 24px; color: var(--success); font-weight: 800; font-family: var(--font-head);">
+                                {{ global_config.featured_item_special_price }} <span style="font-size: 14px; font-weight: 500;">JOD</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    {% endif %}
+
+
+    <!-- Top Visual Custom Tabs acting as Pages -->
+    <div class="menu-tabs-nav">
+        {% for tab_info in tabs_data %}
+            <button class="tab-nav-btn {% if forloop.first %}active{% endif %}" data-tab-id="{{ tab_info.tab.id }}" data-tab-image="{{ tab_info.tab.image|default_if_none:'' }}" onclick="setActiveTab('{{ tab_info.tab.id }}', this)">
+                <span class="lang-en">{{ tab_info.tab.name_en }}</span>
+                <span class="lang-ar">{{ tab_info.tab.name_ar }}</span>
+            </button>
+        {% endfor %}
+    </div>
+
+    <!-- Search Section -->
+    <div class="search-bar">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="menuSearch" class="search-input" data-tr-placeholder="search_placeholder" placeholder="Search coffee, tea, desserts..." onkeyup="runMenuFiltering()">
+    </div>
+
+    <!-- Dynamic Filter Tags -->
+    <div class="filter-tags-container">
+        <button class="filter-tag-btn active" data-filter="all" onclick="toggleFilter('all', this)">
+            <i class="fa-solid fa-border-all"></i>
+            <span class="lang-en">All</span>
+            <span class="lang-ar">الكل</span>
+        </button>
+        <button class="filter-tag-btn" data-filter="hot" onclick="toggleFilter('hot', this)">
+            <i class="fa-solid fa-fire" style="color: #ff7675;"></i>
+            <span class="lang-en">Hot</span>
+            <span class="lang-ar">ساخن</span>
+        </button>
+        <button class="filter-tag-btn" data-filter="cold" onclick="toggleFilter('cold', this)">
+            <i class="fa-solid fa-snowflake" style="color: #74b9ff;"></i>
+            <span class="lang-en">Cold</span>
+            <span class="lang-ar">بارد</span>
+        </button>
+        <button class="filter-tag-btn" data-filter="coffee" onclick="toggleFilter('coffee', this)">
+            <i class="fa-solid fa-mug-hot" style="color: #e17055;"></i>
+            <span class="lang-en">Coffee</span>
+            <span class="lang-ar">قهوة</span>
+        </button>
+        <button class="filter-tag-btn" data-filter="dairy_free" onclick="toggleFilter('dairy_free', this)">
+            <i class="fa-solid fa-ban" style="color: #a29bfe;"></i>
+            <span class="lang-en">Dairy-Free</span>
+            <span class="lang-ar">بدون حليب</span>
+        </button>
+        <button class="filter-tag-btn" data-filter="caffeine_free" onclick="toggleFilter('caffeine_free', this)">
+            <i class="fa-solid fa-bolt-slash" style="color: #ffeaa7;"></i>
+            <span class="lang-en">Caffeine-Free</span>
+            <span class="lang-ar">بدون كافيين</span>
+        </button>
+    </div>
+
+    <!-- Menu Container -->
+    <div id="menuContainer">
+        {% for tab_info in tabs_data %}
+            <!-- Tab Pane -->
+            <div class="tab-pane" id="tab-pane-{{ tab_info.tab.id }}" data-tab-id="{{ tab_info.tab.id }}" style="display: {% if forloop.first %}block{% else %}none{% endif %};">
+                
+                {% for sec_info in tab_info.sections %}
+                    <!-- Section Wrapper -->
+                    <div class="section-wrapper" id="section-wrapper-{{ tab_info.tab.id }}-{{ forloop.counter }}" data-tab-id="{{ tab_info.tab.id }}">
+                        
+                        <!-- Premium Accordion Banner Header -->
+                        <div class="section-banner" onclick="toggleSectionAccordion('{{ tab_info.tab.id }}-{{ forloop.counter }}', this)" 
+                             style="background: linear-gradient(rgba(18, 12, 8, 0.45), rgba(18, 12, 8, 0.75)), url('{{ sec_info.section.banner_image }}') center/cover;">
+                            <div class="banner-content">
+                                <h3 class="banner-title lang-en">{{ sec_info.section.name_en }}</h3>
+                                <h3 class="banner-title lang-ar">{{ sec_info.section.name_ar }}</h3>
+                            </div>
+                            <div class="accordion-chevron">
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </div>
+                        </div>
+
+                        <!-- Accordion Content (Items List) -->
+                        <div class="section-body" id="section-body-{{ tab_info.tab.id }}-{{ forloop.counter }}">
+                            <div class="menu-grid">
+                                {% for item in sec_info.items %}
+                                    <div class="menu-item-card glass-card" 
+                                         data-item-name="{{ item.display_name|lower }} {{ item.description|lower }}"
+                                         data-is-hot="{{ item.is_hot|yesno:'true,false' }}"
+                                         data-is-cold="{{ item.is_cold|yesno:'true,false' }}"
+                                         data-is-coffee="{{ item.is_coffee|yesno:'true,false' }}"
+                                         data-is-dairy-free="{{ item.is_dairy_free|yesno:'true,false' }}"
+                                         data-is-caffeine-free="{{ item.is_caffeine_free|yesno:'true,false' }}">
+                                        
+                                        <div class="item-img-container">
+                                            {% if item.image %}
+                                                <img src="{{ item.image }}" alt="{{ item.display_name }}" class="item-img" loading="lazy">
+                                            {% else %}
+                                                <div class="no-image-placeholder">
+                                                    <i class="fa-solid fa-mug-hot"></i>
+                                                </div>
+                                            {% endif %}
+                                            
+                                            {% if item.status == 'AUTOMATIC' and item.loyverse_stock <= 3 %}
+                                                <span class="item-badge low-stock" data-tr="low_stock">Low Stock</span>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <div class="item-header">
+                                            <h4 class="item-title">{{ item.display_name }}</h4>
+                                            <span class="item-price">{{ item.price|floatformat:2 }} <small style="font-size:12px; font-weight:700;"><span class="lang-ar">د.أ</span><span class="lang-en">JD</span></small></span>
+                                        </div>
+                                        
+                                        {% if item.description %}
+                                            <p class="item-desc">{{ item.description }}</p>
+                                        {% endif %}
+                                        
+                                        {% if item.show_fresh_badge or item.status == 'AUTOMATIC' and item.loyverse_stock <= 3 %}
+                                        <div class="item-footer">
+                                            <div class="stock-tag {% if item.status == 'AUTOMATIC' and item.loyverse_stock <= 3 %}low{% endif %}" 
+                                                 data-stock-type="{{ item.status }}" 
+                                                 data-stock-value="{{ item.loyverse_stock }}">
+                                                <!-- Populated dynamically by JS translator -->
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                    </div>
+                {% endfor %}
+
+            </div>
+        {% empty %}
+            <div class="glass-card" style="text-align:center; padding: 60px 24px;">
+                <i class="fa-solid fa-mug-hot" style="font-size: 48px; color: var(--primary); margin-bottom: 16px; opacity:0.4;"></i>
+                <h3 data-tr="no_items_synced">No Items Synced Yet</h3>
+                <p data-tr="no_items_synced_desc" style="color: var(--text-muted); margin-top: 8px;">We are currently syncing the live POS menu. Please check back in a moment.</p>
+            </div>
+        {% endfor %}
+
+        <!-- No Items Found Message -->
+        <div id="noItemsFound" class="glass-card" style="display:none; text-align:center; padding: 60px 24px; margin-top: 20px;">
+            <i class="fa-solid fa-magnifying-glass" style="font-size: 48px; color: var(--primary); margin-bottom: 16px; opacity:0.4;"></i>
+            <h3>
+                <span class="lang-en">No Matches Found</span>
+                <span class="lang-ar">لا توجد نتائج مطابقة</span>
+            </h3>
+            <p style="color: var(--text-muted); margin-top: 8px;">
+                <span class="lang-en">Try adjusting your search query or filter selections.</span>
+                <span class="lang-ar">حاول تعديل كلمة البحث أو خيارات الفلترة المحددة.</span>
+            </p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Keep track of filter state
+    let activeTabId = '{% if tabs_data %}{{ tabs_data.0.tab.id }}{% else %}9999{% endif %}';
+    const activeFilters = new Set();
+
+    function setActiveTab(tabId, btn) {
+        document.querySelectorAll('.tab-nav-btn').forEach(btn => btn.classList.remove('active'));
+        btn.classList.add('active');
+        activeTabId = tabId.toString();
+        
+        // Update Hero Background Image dynamically
+        const tabImage = btn.getAttribute('data-tab-image');
+        const heroEl = document.querySelector('.menu-hero');
+        if (heroEl) {
+            if (tabImage && tabImage.trim() !== '') {
+                heroEl.style.backgroundImage = `linear-gradient(rgba(18, 12, 8, 0.8), rgba(18, 12, 8, 0.95)), url('${tabImage}')`;
+            } else {
+                heroEl.style.backgroundImage = `linear-gradient(rgba(18, 12, 8, 0.8), rgba(18, 12, 8, 0.95)), url('https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?q=80&w=1478&auto=format&fit=crop')`;
+            }
+        }
+
+        // Hide all tab panes, show only the current one
+        document.querySelectorAll('.tab-pane').forEach(pane => {
+            if (pane.getAttribute('data-tab-id') === activeTabId) {
+                pane.style.display = 'block';
+            } else {
+                pane.style.display = 'none';
+            }
+        });
+
+        runMenuFiltering();
+    }
+
+    function toggleFilter(filterName, btn) {
+        if (filterName === 'all') {
+            activeFilters.clear();
+            document.querySelectorAll('.filter-tag-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        } else {
+            // Single select filter tag for clean, instant UX
+            const wasActive = activeFilters.has(filterName);
+            activeFilters.clear();
+            document.querySelectorAll('.filter-tag-btn').forEach(b => b.classList.remove('active'));
+
+            if (!wasActive) {
+                activeFilters.add(filterName);
+                btn.classList.add('active');
+
+                // Smart Tab Switch: If filtering for 'hot', switch to Hot Drinks tab; if 'cold', switch to Cold Drinks tab
+                if (filterName === 'hot') {
+                    const hotTabBtn = document.querySelector('.tab-nav-btn[data-tab-id="1"]');
+                    if (hotTabBtn && activeTabId !== '1') setActiveTab('1', hotTabBtn);
+                } else if (filterName === 'cold') {
+                    const coldTabBtn = document.querySelector('.tab-nav-btn[data-tab-id="2"]');
+                    if (coldTabBtn && activeTabId !== '2') setActiveTab('2', coldTabBtn);
+                }
+            } else {
+                document.querySelector('.filter-tag-btn[data-filter="all"]').classList.add('active');
+            }
+        }
+
+        runMenuFiltering();
+    }
+
+    function runMenuFiltering() {
+        const query = (document.getElementById('menuSearch').value || '').toLowerCase().trim();
+        const activePane = document.getElementById(`tab-pane-${activeTabId}`);
+        if (!activePane) return;
+
+        let totalVisibleItemsInTab = 0;
+
+        // Filter items within the active tab pane
+        const sectionWrappers = activePane.querySelectorAll('.section-wrapper');
+        
+        sectionWrappers.forEach(wrapper => {
+            const items = wrapper.querySelectorAll('.menu-item-card');
+            let visibleCount = 0;
+
+            items.forEach(item => {
+                // Search query match
+                const name = (item.getAttribute('data-item-name') || '').toLowerCase();
+                const matchesSearch = !query || name.includes(query);
+
+                // Filter tags match
+                let matchesFilters = true;
+                if (activeFilters.size > 0) {
+                    activeFilters.forEach(filter => {
+                        const attrKey = `data-is-${filter.replace('_', '-')}`;
+                        const attrVal = item.getAttribute(attrKey);
+                        if (attrVal !== 'true') {
+                            matchesFilters = false;
+                        }
+                    });
+                }
+
+                if (matchesSearch && matchesFilters) {
+                    item.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            // Show or hide the whole section wrapper based on visible items
+            if (visibleCount > 0) {
+                wrapper.style.display = 'block';
+                totalVisibleItemsInTab += visibleCount;
+            } else {
+                wrapper.style.display = 'none';
+            }
+        });
+
+        // Toggle No Items Found message
+        const noItemsEl = document.getElementById('noItemsFound');
+        if (noItemsEl) {
+            noItemsEl.style.display = totalVisibleItemsInTab === 0 ? 'block' : 'none';
+        }
+    }
+
+    function toggleSectionAccordion(accordionId, bannerEl) {
+        const bodyEl = document.getElementById(`section-body-${accordionId}`);
+        if (!bodyEl) return;
+        
+        const isCollapsed = bodyEl.classList.toggle('collapsed');
+        bannerEl.classList.toggle('collapsed-banner', isCollapsed);
+    }
+
+    // Dynamic stock translator listener
+    function translateStockTags(lang) {
+        document.querySelectorAll('.stock-tag').forEach(el => {
+            const type = el.getAttribute('data-stock-type');
+            const val = el.getAttribute('data-stock-value');
+            if (type === 'AUTOMATIC') {
+                if (lang === 'ar') {
+                    el.innerHTML = `<i class="fa-solid fa-cubes"></i> المخزون: متبقي ${val}`;
+                } else {
+                    el.innerHTML = `<i class="fa-solid fa-cubes"></i> Stock: ${val} left`;
+                }
+            } else {
+                if (lang === 'ar') {
+                    el.innerHTML = `<i class="fa-solid fa-circle-check" style="color: var(--success)"></i> متوفر طازجاً`;
+                } else {
+                    el.innerHTML = `<i class="fa-solid fa-circle-check" style="color: var(--success)"></i> Freshly Available`;
+                }
+            }
+        });
+    }
+
+    window.addEventListener('langChanged', (e) => {
+        translateStockTags(e.detail);
+    });
+
+    // Run initially based on global language
+    window.addEventListener('DOMContentLoaded', () => {
+        const activeLang = localStorage.getItem('cafe_lang') || 'en';
+        translateStockTags(activeLang);
+        
+        // Initialize background image of the first active tab
+        const activeBtn = document.querySelector('.tab-nav-btn.active');
+        if (activeBtn) {
+            const tabImage = activeBtn.getAttribute('data-tab-image');
+            const heroEl = document.querySelector('.menu-hero');
+            if (heroEl && tabImage && tabImage.trim() !== '') {
+                heroEl.style.backgroundImage = `linear-gradient(rgba(18, 12, 8, 0.8), rgba(18, 12, 8, 0.95)), url('${tabImage}')`;
+            }
+        }
+
+        runMenuFiltering();
+    });
+
+</script>
+{% endblock %}

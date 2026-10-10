@@ -1,0 +1,1131 @@
+{% extends 'base.html' %}
+
+{% block title %}White Bird Cafe - Staff Management Portal{% endblock %}
+
+{% block extra_css %}
+.dashboard-container {
+    max-width: 1400px;
+    margin: 20px auto 60px;
+    padding: 0 15px;
+}
+
+/* Executive Header */
+.dashboard-title-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(28, 20, 15, 0.95), rgba(16, 11, 8, 0.95));
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    margin-bottom: 25px;
+    box-shadow: 0 6px 25px rgba(0,0,0,0.4);
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.dashboard-title-box h2 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    margin: 0 0 4px;
+}
+
+.section-title {
+    font-size: 18px;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+    padding-bottom: 10px;
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* 2-Column Responsive Dashboard Layout */
+.dashboard-main-grid {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 25px;
+    align-items: start;
+}
+
+@media (max-width: 1080px) {
+    .dashboard-main-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Live Calls Box */
+.calls-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.call-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    animation: flash-border 1.5s infinite;
+}
+
+@keyframes flash-border {
+    0% { border-color: rgba(239, 68, 68, 0.2); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+    50% { border-color: rgba(239, 68, 68, 0.6); box-shadow: 0 0 12px rgba(239, 68, 68, 0.2); }
+    100% { border-color: rgba(239, 68, 68, 0.2); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.call-card.bill-request {
+    background: rgba(212, 175, 55, 0.08);
+    border-color: rgba(212, 175, 55, 0.3);
+    animation: flash-gold-border 1.5s infinite;
+}
+
+@keyframes flash-gold-border {
+    0% { border-color: rgba(212, 175, 55, 0.2); }
+    50% { border-color: rgba(212, 175, 55, 0.6); box-shadow: 0 0 12px rgba(212, 175, 55, 0.25); }
+    100% { border-color: rgba(212, 175, 55, 0.2); }
+}
+
+/* Tabs inside Menu Workspace */
+.cms-sub-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 8px;
+}
+
+.cms-sub-tab-btn {
+    padding: 10px 18px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    color: var(--text-muted);
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cms-sub-tab-btn.active {
+    background: rgba(212, 175, 55, 0.15);
+    color: var(--primary);
+    border-color: rgba(212, 175, 55, 0.4);
+}
+
+/* Items Table */
+.items-table-search {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.items-search-input {
+    flex: 1;
+    min-width: 220px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #fff;
+    font-size: 13.5px;
+}
+.items-search-input:focus { outline: none; border-color: var(--primary); }
+
+.override-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+}
+
+.override-table th {
+    padding: 12px 14px;
+    color: var(--primary);
+    font-weight: 700;
+    border-bottom: 1px solid rgba(212,175,55,0.2);
+    text-align: right;
+    background: rgba(0,0,0,0.2);
+}
+
+.override-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    text-align: right;
+    vertical-align: middle;
+}
+
+.override-table tr:hover {
+    background: rgba(255,255,255,0.02);
+}
+
+/* Filter Tag Pills */
+.filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 3px;
+}
+.filter-pill.coffee { background: rgba(225, 112, 85, 0.15); color: #e17055; border: 1px solid rgba(225, 112, 85, 0.3); }
+.filter-pill.hot    { background: rgba(255, 118, 117, 0.15); color: #ff7675; border: 1px solid rgba(255, 118, 117, 0.3); }
+.filter-pill.cold   { background: rgba(116, 185, 255, 0.15); color: #74b9ff; border: 1px solid rgba(116, 185, 255, 0.3); }
+.filter-pill.milky  { background: rgba(162, 155, 254, 0.15); color: #a29bfe; border: 1px solid rgba(162, 155, 254, 0.3); }
+
+/* Status Toggle Badge */
+.status-badge-btn {
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    border: 1px solid rgba(255,255,255,0.08);
+    transition: all 0.2s ease;
+    display: inline-block;
+}
+.status-badge-btn.available { background: rgba(34,197,94,0.12); color: #22c55e; border-color: rgba(34,197,94,0.3); }
+.status-badge-btn.out-of-stock { background: rgba(239,68,68,0.12); color: #ef4444; border-color: rgba(239,68,68,0.3); }
+
+/* Tree Structure Cards */
+.cms-structure-container {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.tab-cms-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.tab-cms-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    background: rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    user-select: none;
+}
+
+.tab-cms-body {
+    padding: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.section-cms-card {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.section-cms-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: pointer;
+}
+
+.section-cms-body {
+    padding: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.cms-item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    margin-bottom: 6px;
+}
+
+/* Modals */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    max-width: 540px;
+    width: 92%;
+    padding: 28px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.shuffler-box {
+    background: #090604;
+    border: 1px dashed var(--border-gold);
+    border-radius: 16px;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+.shuffling-pool {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--primary);
+    text-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+}
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    
+    <!-- Top Executive Header -->
+    <div class="dashboard-title-box">
+        <div>
+            <h2><i class="fa-solid fa-gauge-high" style="color:var(--primary); margin-left:8px;"></i> لوحة الإدارة والتحكم الشاملة</h2>
+            <p style="color:var(--text-muted); font-size:13.5px; margin:0;">
+                مرحباً بك، <b>{{ staff_name }}</b> | الدور: <span style="color:var(--primary); font-weight:700;">{{ staff_role }}</span>
+            </p>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap: wrap;">
+            <button onclick="stopChimes()" class="btn btn-secondary btn-sm" style="display:none;" id="btnSilenceChime">
+                <i class="fa-solid fa-volume-xmark"></i> كتم التنبيه
+            </button>
+            <a href="{% url 'accounts:staff_app' %}" class="btn btn-secondary" style="padding:9px 16px; font-size:13px;">
+                <i class="fa-solid fa-mobile-screen"></i> شاشة الموظفين 📱
+            </a>
+            {% if staff_role == 'ADMIN' %}
+                <button onclick="syncLoyverseLive()" class="btn btn-secondary" style="padding:9px 16px; font-size:13px; border-color: rgba(34, 197, 94, 0.4); color:#22c55e;" id="btnSyncLoyverse">
+                    <i class="fa-solid fa-rotate"></i> مزامنة Loyverse 🔄
+                </button>
+                <a href="{% url 'accounts:staff_settings' %}" class="btn btn-primary" style="padding:9px 18px; font-size:13px; font-weight:700;">
+                    <i class="fa-solid fa-gears"></i> إعدادات الكافيه (Cafe Settings) ⚙️
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Active Table Calls Monitor -->
+    <div class="glass-card" style="margin-bottom:25px; padding:20px;">
+        <h3 class="section-title"><i class="fa-solid fa-desktop"></i> مراقبة نداءات الطاولات المباشرة</h3>
+        <div class="calls-list" id="activeCallsList">
+            <div id="noActiveCalls" style="text-align:center; padding: 25px 10px; color: var(--text-muted);">
+                <i class="fa-solid fa-mug-saucer" style="font-size: 32px; margin-bottom: 8px; opacity:0.25;"></i>
+                <p style="margin:0; font-size:14px;">لا توجد نداءات طاولات أو طلبات فواتير نشطة حالياً ☕</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Workspace Grid -->
+    <div class="dashboard-main-grid">
+        
+        <!-- LEFT COLUMN: Menu Management Workspace -->
+        <div class="glass-card" style="padding:24px;">
+            <h3 class="section-title"><i class="fa-solid fa-utensils"></i> إدارة وتخصيص المنيو ({{ menu_items|length }} صنف)</h3>
+            
+            <!-- Sub tabs -->
+            <div class="cms-sub-tabs">
+                <button class="cms-sub-tab-btn active" id="btnCmsAll" onclick="switchCmsTab('all')">
+                    <i class="fa-solid fa-list-check"></i> كافة أصناف المنيو والفلاتر ({{ menu_items|length }})
+                </button>
+                <button class="cms-sub-tab-btn" id="btnCmsStruct" onclick="switchCmsTab('struct')">
+                    <i class="fa-solid fa-folder-tree"></i> هيكلة التبويبات والأقسام
+                </button>
+            </div>
+
+            <!-- TAB 1: All Menu Items Data Table -->
+            <div id="cmsAllItemsPanel">
+                <div class="items-table-search">
+                    <input type="text" id="dashboardItemsSearch" class="items-search-input" 
+                           placeholder="🔍 بحث سريع بالاسم أو القسم أو الفلتر..." 
+                           onkeyup="filterDashboardTable(this.value)">
+                </div>
+
+                <div style="max-height: 600px; overflow-y: auto; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+                    <table class="override-table" id="dashboardItemsTable">
+                        <thead>
+                            <tr>
+                                <th>الصنف / Item</th>
+                                <th>القسم / Group</th>
+                                <th>السعر</th>
+                                <th>الفلاتر النشطة</th>
+                                <th>التوفر</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in menu_items %}
+                            <tr id="item-row-{{ item.id }}" class="dashboard-item-row" data-name="{{ item.display_name|default:item.pos_name|lower }} {{ item.custom_section.name_ar|default:'غير منسق'|lower }}">
+                                <td>
+                                    <div style="font-weight:700; color:#fff;">{{ item.display_name|default:item.pos_name }}</div>
+                                    <div style="font-size:11px; color:var(--text-muted);">POS: {{ item.pos_name }}</div>
+                                </td>
+                                <td>
+                                    {% if item.custom_section %}
+                                        <span style="font-size:11.5px; color:var(--primary); background:rgba(212,175,55,0.1); padding:2px 8px; border-radius:4px;">
+                                            {{ item.custom_section.name_ar }}
+                                        </span>
+                                    {% else %}
+                                        <span style="font-size:11px; color:#e6995c; background:rgba(230,153,92,0.1); padding:2px 6px; border-radius:4px;">
+                                            غير منسق
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <b style="color:var(--primary);">{{ item.price }} د.أ</b>
+                                </td>
+                                <td>
+                                    <div style="display:flex; flex-wrap:wrap; gap:3px;">
+                                        {% if item.is_coffee %}<span class="filter-pill coffee">☕ قهوة</span>{% endif %}
+                                        {% if item.is_hot %}<span class="filter-pill hot">🔥 ساخن</span>{% endif %}
+                                        {% if item.is_cold %}<span class="filter-pill cold">🧊 بارد</span>{% endif %}
+                                        {% if item.is_milky %}<span class="filter-pill milky">🥛 حليب</span>{% endif %}
+                                        {% if not item.is_coffee and not item.is_hot and not item.is_cold and not item.is_milky %}
+                                            <span style="font-size:10.5px; color:var(--text-muted);">-</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span id="status-badge-{{ item.id }}" class="status-badge-btn {% if item.status == 'AVAILABLE' %}available{% else %}out-of-stock{% endif %}" onclick="toggleStockStatus('{{ item.id }}', '{{ item.status }}')">
+                                        {% if item.status == 'AVAILABLE' %}متوفر ✓{% else %}موقوف ✕{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if staff_role == 'ADMIN' %}
+                                        <div style="display:flex; gap:5px;">
+                                            <button class="btn btn-secondary btn-sm" style="padding:5px 9px; font-size:11.5px; border-color:rgba(212,175,55,0.4); color:var(--primary);" title="تعديل الفلاتر والاسم والتصنيف"
+                                                    onclick="openOverrideModal('{{ item.id }}', '{{ item.display_name|escapejs }}', '{{ item.description|default_if_none:''|escapejs }}', '{{ item.image|default_if_none:''|escapejs }}', '{{ item.status_override|default:item.status }}', '{{ item.price }}', '{{ item.order_index|default:0 }}', '{{ item.custom_section_id|default_if_none:'' }}', '{{ item.is_hot|lower }}', '{{ item.is_cold|lower }}', '{{ item.is_coffee|lower }}', '{{ item.is_milky|lower }}', '{{ item.is_dairy_free|lower }}', '{{ item.is_caffeine_free|lower }}', '{{ item.show_fresh_badge|lower }}')">
+                                                <i class="fa-solid fa-tags"></i> الفلاتر
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm" style="padding:5px 8px; font-size:11.5px;" title="تعيين القسم" onclick="openAssignGroupModal('{{ item.id }}', '{{ item.pos_name|escapejs }}')">
+                                                <i class="fa-solid fa-folder-plus"></i>
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm" style="padding:5px 7px; font-size:11.5px; border-color:var(--danger); color:var(--danger);" title="حذف الصنف نهائياً" onclick="deleteMenuItem('{{ item.id }}', '{{ item.display_name|default:item.pos_name|escapejs }}')">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    {% else %}
+                                        <span style="font-size:11px; color:var(--text-muted);">عرض</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">
+                                    لا توجد أصناف مزامنة حالياً. اضغط على زر "مزامنة Loyverse 🔄" بالأعلى لجلب كافة الأصناف.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 2: Menu Structure Configurator -->
+            <div id="cmsStructPanel" style="display:none;">
+                {% if staff_role == 'ADMIN' %}
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                        <h4 style="color:var(--primary); font-size:14px; margin:0;"><i class="fa-solid fa-folder-tree"></i> هيكلة تصنيفات وأقسام المنيو</h4>
+                        <button class="btn btn-primary btn-sm" style="padding:6px 12px; font-size:12px;" onclick="openTabModal('create')">
+                            <i class="fa-solid fa-plus"></i> إضافة تبويب جديد
+                        </button>
+                    </div>
+                {% endif %}
+
+                <div class="cms-structure-container">
+                    {% for t in tabs %}
+                        <div class="tab-cms-card" id="tab-cms-{{ t.id }}">
+                            <div class="tab-cms-header" onclick="toggleCmsAccordion('tab-body-{{ t.id }}')">
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <i class="fa-solid fa-folder" style="color:var(--primary);"></i>
+                                    <span style="font-weight:700; color:#fff;">{{ t.name_ar }} / {{ t.name_en }}</span>
+                                </div>
+                                <div style="display:flex; gap:6px;" onclick="event.stopPropagation();">
+                                    {% if staff_role == 'ADMIN' %}
+                                        <button class="btn btn-secondary btn-sm" style="padding:3px 7px; font-size:11px;" 
+                                                data-id="{{ t.id }}" 
+                                                data-name-en="{{ t.name_en }}" 
+                                                data-name-ar="{{ t.name_ar }}" 
+                                                data-image="{{ t.image|default_if_none:'' }}" 
+                                                data-order-index="{{ t.order_index }}" 
+                                                onclick="openTabModal(this)">تعديل</button>
+                                        <button class="btn btn-secondary btn-sm" style="padding:3px 7px; font-size:11px; border-color:var(--danger); color:var(--danger);" onclick="deleteTab('{{ t.id }}')">حذف</button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="tab-cms-body" id="tab-body-{{ t.id }}">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                    <h5 style="font-size:12.5px; color:var(--text-muted); margin:0;">المجموعات التابعة للتبويب:</h5>
+                                    {% if staff_role == 'ADMIN' %}
+                                        <button class="btn btn-secondary btn-sm" style="padding:4px 9px; font-size:11px;" 
+                                                data-tab-id="{{ t.id }}"
+                                                onclick="openSectionModal('create', this)">
+                                            <i class="fa-solid fa-plus"></i> إضافة مجموعة
+                                        </button>
+                                    {% endif %}
+                                </div>
+
+                                <div style="display:flex; flex-direction:column; gap:8px;">
+                                    {% for sec in sections %}
+                                        {% if sec.tab_id == t.id %}
+                                            <div class="section-cms-card" id="section-cms-{{ sec.id }}">
+                                                <div class="section-cms-header" onclick="toggleCmsAccordion('section-body-{{ sec.id }}')">
+                                                    <div style="display:flex; align-items:center; gap:8px;">
+                                                        <i class="fa-solid fa-list-ul" style="color:var(--primary); font-size:12px;"></i>
+                                                        <span style="font-weight:600; font-size:13.5px; color:#fff;">{{ sec.name_ar }} / {{ sec.name_en }}</span>
+                                                    </div>
+                                                    <div style="display:flex; gap:6px;" onclick="event.stopPropagation();">
+                                                        {% if staff_role == 'ADMIN' %}
+                                                            <button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:10.5px;" 
+                                                                    data-id="{{ sec.id }}" 
+                                                                    data-tab-id="{{ t.id }}" 
+                                                                    data-name-en="{{ sec.name_en }}" 
+                                                                    data-name-ar="{{ sec.name_ar }}" 
+                                                                    data-banner-image="{{ sec.banner_image|default_if_none:'' }}" 
+                                                                    data-order-index="{{ sec.order_index }}" 
+                                                                    onclick="openSectionModal(this)">تعديل</button>
+                                                            <button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:10.5px; border-color:var(--danger); color:var(--danger);" onclick="deleteSection('{{ sec.id }}')">حذف</button>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="section-cms-body" id="section-body-{{ sec.id }}">
+                                                    <div class="assigned-items-list" id="assigned-items-list-{{ sec.id }}" style="display:flex; flex-direction:column; gap:4px;">
+                                                        {% for item in menu_items %}
+                                                            {% if item.custom_section_id == sec.id %}
+                                                                <div class="cms-item-row" id="assigned-item-{{ item.id }}">
+                                                                    <span style="font-size:13px; color:#fff;">{{ item.display_name }}</span>
+                                                                    <div style="display:flex; gap:5px;">
+                                                                        <button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:10.5px; color:var(--primary);" onclick="openOverrideModal('{{ item.id }}', '{{ item.display_name|escapejs }}', '{{ item.description|default_if_none:''|escapejs }}', '{{ item.image|default_if_none:''|escapejs }}', '{{ item.status_override|default:item.status }}', '{{ item.price }}', '{{ item.order_index|default:0 }}', '{{ item.custom_section_id|default_if_none:'' }}', '{{ item.is_hot|lower }}', '{{ item.is_cold|lower }}', '{{ item.is_coffee|lower }}', '{{ item.is_milky|lower }}', '{{ item.is_dairy_free|lower }}', '{{ item.is_caffeine_free|lower }}')">
+                                                                            <i class="fa-solid fa-tags"></i>
+                                                                        </button>
+                                                                        <button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:10.5px; border-color:var(--danger); color:var(--danger);" onclick="removeItemFromGroup('{{ item.id }}')">
+                                                                            <i class="fa-solid fa-minus"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: Messages & Raffle -->
+        <div style="display:flex; flex-direction:column; gap:25px;">
+            
+            <!-- Customer Messages -->
+            <div class="glass-card" style="padding:22px;">
+                <h3 class="section-title"><i class="fa-solid fa-envelope"></i> رسائل واستفسارات الزوار</h3>
+                <div style="max-height: 280px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
+                    {% for msg in contact_messages %}
+                    <div style="background:rgba(255,255,255,0.02); padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.05);" id="dash-msg-{{ msg.id }}">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                            <span style="font-weight:700; color:#fff; font-size:13px;">{{ msg.name }} <span style="font-size:11px; color:var(--text-muted); font-weight:400;">({{ msg.contact }})</span></span>
+                            <span style="font-size:11px; color:var(--primary);">{{ msg.inquiry_type }}</span>
+                        </div>
+                        <p style="color:var(--text-muted); font-size:12.5px; margin:0 0 6px; line-height:1.4;">{{ msg.message|truncatechars:120 }}</p>
+                        {% if not msg.is_read %}
+                        <button class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:10.5px;" onclick="markDashMsgRead({{ msg.id }})">تأشير كمقروء ✓</button>
+                        {% else %}
+                        <span style="font-size:10.5px; color:var(--text-muted);">✓ مقروء</span>
+                        {% endif %}
+                    </div>
+                    {% empty %}
+                    <p style="color:var(--text-muted); font-size:13px; text-align:center; padding:20px 0;">لا توجد رسائل واردة حالياً.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Raffle Draws -->
+            {% if staff_role == 'ADMIN' %}
+            <div class="glass-card" style="padding:22px;">
+                <h3 class="section-title"><i class="fa-solid fa-ticket"></i> سحوبات الجوائز والولاء</h3>
+                <div class="raffle-controls" style="display:flex; gap:8px; margin-bottom:14px;">
+                    <input type="number" id="minAmountInput" class="form-input" placeholder="الحد الأدنى للمشتريات (10.00)" value="10.00" step="0.01" style="flex:1;">
+                    <button onclick="calculateTickets()" class="btn btn-secondary btn-sm" style="padding:8px 12px; font-size:12px; white-space:nowrap;">
+                        <i class="fa-solid fa-calculator"></i> احتساب التذاكر
+                    </button>
+                </div>
+                <div class="shuffler-box" id="shufflerContainer">
+                    <div class="shuffling-pool" id="shufflingPool">غرفة السحب</div>
+                </div>
+                <button onclick="drawRaffleWinner()" class="btn btn-primary" style="width:100%; padding:12px; font-size:14px; font-weight:700;">
+                    <i class="fa-solid fa-trophy"></i> إجراء السحب وإشعار الفائز بالواتساب
+                </button>
+            </div>
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- =================== MODALS =================== -->
+
+<!-- Override / Filter Modal -->
+<div class="modal-overlay" id="overrideModal">
+    <div class="modal-content glass-card">
+        <h3 style="margin-top:0; font-size:18px; color:var(--primary); border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px;">
+            <i class="fa-solid fa-tags"></i> تخصيص الصنف وتحديد الفلاتر
+        </h3>
+        <form id="overrideForm" onsubmit="saveItemOverride(event)">
+            <input type="hidden" id="overrideItemId" name="item_id">
+            
+            <div class="form-group">
+                <label class="form-label">الاسم التسويقي الظاهر (Display Name)</label>
+                <input type="text" id="overrideDisplayName" name="display_name" class="form-input" required>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div class="form-group">
+                    <label class="form-label">السعر (JOD)</label>
+                    <input type="number" id="overridePrice" name="price" class="form-input" step="0.001" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">القسم التابع له (Custom Section)</label>
+                    <select id="overrideCustomSection" name="custom_section_id" class="form-select">
+                        <option value="">-- غير منسق (بدون قسم) --</option>
+                        {% for sec in sections %}
+                            <option value="{{ sec.id }}">{{ sec.name_ar }} ({{ sec.tab.name_ar }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Dynamic Filter Tags -->
+            <div class="form-group" style="background:rgba(255,255,255,0.02); padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.06);">
+                <label class="form-label" style="font-weight:700; color:var(--primary); margin-bottom:8px;">
+                    🏷️ فلاتر الصنف السريعة (تظهر للزبائن في المنيو):
+                </label>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
+                        <input type="checkbox" id="overrideIsCoffee" name="is_coffee"> ☕ قهوة / Coffee
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
+                        <input type="checkbox" id="overrideIsHot" name="is_hot"> 🔥 مشروب ساخن / Hot
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
+                        <input type="checkbox" id="overrideIsCold" name="is_cold"> 🧊 مشروب بارد / Cold
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
+                        <input type="checkbox" id="overrideIsMilky" name="is_milky"> 🥛 يحتوي حليب / Milk
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
+                        <input type="checkbox" id="overrideIsDairyFree" name="is_dairy_free"> 🍃 خالي حليب / Dairy Free
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
+                        <input type="checkbox" id="overrideIsCaffeineFree" name="is_caffeine_free"> ⚡ خالي كافيين / Decaf
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; grid-column:span 2; margin-top:4px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.08); color:#22c55e;">
+                        <input type="checkbox" id="overrideShowFreshBadge" name="show_fresh_badge"> 🌿 إظهار وسم "متوفر طازجاً" على بطاقة الصنف (Fresh Badge)
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">رابط صورة الصنف (Image URL)</label>
+                <input type="url" id="overrideImage" name="image" class="form-input" placeholder="https://...">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">الوصف التسويقي (Description)</label>
+                <textarea id="overrideDesc" name="description" class="form-textarea" rows="2"></textarea>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:20px;">
+                <button type="button" class="btn btn-secondary btn-sm" style="border-color:var(--danger); color:var(--danger);" onclick="deleteMenuItem(document.getElementById('overrideItemId').value, document.getElementById('overrideDisplayName').value)">
+                    <i class="fa-solid fa-trash"></i> حذف الصنف بالكامل
+                </button>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('overrideModal')">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Assign Group Modal -->
+<div class="modal-overlay" id="assignGroupModal">
+    <div class="modal-content glass-card">
+        <h3 style="margin-top:0; font-size:17px; color:var(--primary);"><i class="fa-solid fa-folder-plus"></i> تعيين الصنف لمجموعة في المنيو</h3>
+        <input type="hidden" id="assignItemId">
+        <p id="assignItemNameDisplay" style="font-weight:700; color:#fff; margin-bottom:15px;"></p>
+        <div class="form-group">
+            <label class="form-label">اختر المجموعة (Section):</label>
+            <select id="assignTargetSectionSelect" class="form-select">
+                {% for sec in sections %}
+                    <option value="{{ sec.id }}">{{ sec.tab.name_ar }} ⬅ {{ sec.name_ar }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('assignGroupModal')">إلغاء</button>
+            <button type="button" class="btn btn-primary" onclick="confirmAssignGroup()">حفظ وتنسيق ✓</button>
+        </div>
+    </div>
+</div>
+
+<!-- Tab Modal -->
+<div class="modal-overlay" id="tabModal">
+    <div class="modal-content glass-card">
+        <h3 id="tabModalTitle" style="margin-top:0; font-size:17px; color:var(--primary);">إدارة التبويب</h3>
+        <form id="tabModalForm" onsubmit="saveTabModal(event)">
+            <input type="hidden" id="tabModalId" name="tab_id">
+            <div class="form-group">
+                <label class="form-label">الاسم بالعربية</label>
+                <input type="text" id="tabModalNameAr" name="name_ar" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Name (English)</label>
+                <input type="text" id="tabModalNameEn" name="name_en" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">ترتيب العرض (Order Index)</label>
+                <input type="number" id="tabModalOrder" name="order_index" class="form-input" value="0">
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('tabModal')">إلغاء</button>
+                <button type="submit" class="btn btn-primary">حفظ التبويب</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Section Modal -->
+<div class="modal-overlay" id="sectionModal">
+    <div class="modal-content glass-card">
+        <h3 id="sectionModalTitle" style="margin-top:0; font-size:17px; color:var(--primary);">إدارة المجموعة</h3>
+        <form id="sectionModalForm" onsubmit="saveSectionModal(event)">
+            <input type="hidden" id="sectionModalId" name="section_id">
+            <input type="hidden" id="sectionModalTabId" name="tab_id">
+            <div class="form-group">
+                <label class="form-label">اسم المجموعة (عربي)</label>
+                <input type="text" id="sectionModalNameAr" name="name_ar" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Group Name (English)</label>
+                <input type="text" id="sectionModalNameEn" name="name_en" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">صورة البانر (Banner Image URL)</label>
+                <input type="url" id="sectionModalBanner" name="banner_image" class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">ترتيب العرض (Order Index)</label>
+                <input type="number" id="sectionModalOrder" name="order_index" class="form-input" value="0">
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('sectionModal')">إلغاء</button>
+                <button type="submit" class="btn btn-primary">حفظ المجموعة</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Winner Modal -->
+<div class="modal-overlay" id="winnerModal">
+    <div class="modal-content glass-card" style="text-align:center;">
+        <div style="font-size:45px; margin-bottom:10px;">🏆</div>
+        <h3 style="color:var(--primary); font-size:22px; margin:0 0 10px;">مبروك للفائز بسحب الجائزة!</h3>
+        <div id="winnerCustomerDetails" style="font-size:16px; color:#fff; font-weight:700; margin-bottom:8px;"></div>
+        <div id="winnerTicketNumber" style="font-size:13px; color:var(--text-muted); margin-bottom:16px;"></div>
+        <p style="font-size:13px; color:var(--text-muted);">تم إرسال إشعار التهنئة المباشر عبر الواتساب للفائز بنجاح 📱✨</p>
+        <button class="btn btn-primary" onclick="closeModal('winnerModal')" style="margin-top:15px; width:100%;">إغلاق النافذة</button>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// =================== CMS Sub Tabs ===================
+function switchCmsTab(tabKey) {
+    document.querySelectorAll('.cms-sub-tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('cmsAllItemsPanel').style.display = 'none';
+    document.getElementById('cmsStructPanel').style.display = 'none';
+
+    if (tabKey === 'all') {
+        document.getElementById('btnCmsAll').classList.add('active');
+        document.getElementById('cmsAllItemsPanel').style.display = 'block';
+    } else {
+        document.getElementById('btnCmsStruct').classList.add('active');
+        document.getElementById('cmsStructPanel').style.display = 'block';
+    }
+}
+
+// Table live search
+function filterDashboardTable(query) {
+    const q = (query || '').toLowerCase().trim();
+    document.querySelectorAll('#dashboardItemsTable tbody tr.dashboard-item-row').forEach(row => {
+        const text = row.getAttribute('data-name') || '';
+        row.style.display = text.indexOf(q) !== -1 ? '' : 'none';
+    });
+}
+
+function toggleCmsAccordion(bodyId) {
+    const body = document.getElementById(bodyId);
+    if (body) {
+        body.style.display = (body.style.display === 'none' || body.style.display === '') ? 'block' : 'none';
+    }
+}
+
+// =================== Modal Handlers ===================
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.style.display = 'none';
+}
+
+function openOverrideModal(id, name, desc, image, status, price, orderIndex, customSecId, isHot, isCold, isCoffee, isMilky, isDairyFree, isCaffFree, showFreshBadge) {
+    document.getElementById('overrideItemId').value = id;
+    document.getElementById('overrideDisplayName').value = name || '';
+    document.getElementById('overrideDesc').value = desc || '';
+    document.getElementById('overrideImage').value = image || '';
+    document.getElementById('overridePrice').value = price || '';
+    document.getElementById('overrideCustomSection').value = customSecId || '';
+    
+    document.getElementById('overrideIsHot').checked = (isHot === 'true');
+    document.getElementById('overrideIsCold').checked = (isCold === 'true');
+    document.getElementById('overrideIsCoffee').checked = (isCoffee === 'true');
+    document.getElementById('overrideIsMilky').checked = (isMilky === 'true');
+    document.getElementById('overrideIsDairyFree').checked = (isDairyFree === 'true');
+    document.getElementById('overrideIsCaffeineFree').checked = (isCaffFree === 'true');
+    document.getElementById('overrideShowFreshBadge').checked = (showFreshBadge === 'true');
+
+    document.getElementById('overrideModal').style.display = 'flex';
+}
+
+async function saveItemOverride(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+
+    try {
+        const res = await fetch('/api/staff/menu/edit/', {
+            method: 'POST',
+            body: formData,
+            headers: {'X-CSRFToken': getCookie('csrftoken') || ''}
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast('تم حفظ التعديلات والفلاتر بنجاح! ✓', 'success');
+            closeModal('overrideModal');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showToast(data.message || 'حدث خطأ أثناء الحفظ', 'danger');
+        }
+    } catch(err) {
+        showToast('تعذر الاتصال بالسيرفر', 'danger');
+    }
+}
+
+async function deleteMenuItem(itemId, itemName) {
+    if (!itemId) return;
+    if (!confirm(`هل أنت متأكد من حذف الصنف (${itemName || ''}) نهائياً من المنيو وقاعدة البيانات؟`)) return;
+    try {
+        const formData = new FormData();
+        formData.append('item_id', itemId);
+        const res = await fetch('/api/staff/item/delete/', {
+            method: 'POST',
+            body: formData,
+            headers: {'X-CSRFToken': getCookie('csrftoken') || ''}
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast(data.message, 'success');
+            closeModal('overrideModal');
+            const row = document.getElementById(`item-row-${itemId}`);
+            if (row) row.remove();
+            setTimeout(() => window.location.reload(), 900);
+        } else {
+            showToast(data.message || 'خطأ أثناء حذف الصنف', 'danger');
+        }
+    } catch(e) {
+        showToast('تعذر الاتصال بالسيرفر لحذف الصنف', 'danger');
+    }
+}
+
+function openAssignGroupModal(id, name) {
+    document.getElementById('assignItemId').value = id;
+    document.getElementById('assignItemNameDisplay').innerText = `الصنف: ${name}`;
+    document.getElementById('assignGroupModal').style.display = 'flex';
+}
+
+async function confirmAssignGroup() {
+    const itemId = document.getElementById('assignItemId').value;
+    const sectionId = document.getElementById('assignTargetSectionSelect').value;
+
+    try {
+        const res = await fetch('/api/staff/group/items/add/', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken') || ''},
+            body: JSON.stringify({item_ids: [itemId], section_id: sectionId})
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast('تم تعيين الصنف للمجموعة بنجاح!', 'success');
+            closeModal('assignGroupModal');
+            setTimeout(() => window.location.reload(), 900);
+        } else {
+            showToast(data.message || 'خطأ في التعيين', 'danger');
+        }
+    } catch(err) {
+        showToast('تعذر الاتصال بالسيرفر', 'danger');
+    }
+}
+
+async function removeItemFromGroup(itemId) {
+    if (!confirm('هل تريد إزالة الصنف من هذه المجموعة؟')) return;
+    try {
+        const res = await fetch('/api/staff/item/remove/', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken') || ''},
+            body: JSON.stringify({item_id: itemId})
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast('تمت الإزالة بنجاح', 'success');
+            setTimeout(() => window.location.reload(), 800);
+        }
+    } catch(e) {}
+}
+
+async function toggleStockStatus(id, currentStatus) {
+    const newStatus = currentStatus === 'AVAILABLE' ? 'OUT_OF_STOCK' : 'AVAILABLE';
+    try {
+        const res = await fetch('/api/staff/menu/toggle-status/', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken') || ''},
+            body: JSON.stringify({item_id: id, status: newStatus})
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            const badge = document.getElementById(`status-badge-${id}`);
+            if (badge) {
+                if (newStatus === 'AVAILABLE') {
+                    badge.className = 'status-badge-btn available';
+                    badge.innerText = 'متوفر ✓';
+                } else {
+                    badge.className = 'status-badge-btn out-of-stock';
+                    badge.innerText = 'موقوف ✕';
+                }
+                badge.setAttribute('onclick', `toggleStockStatus('${id}', '${newStatus}')`);
+            }
+            showToast(data.message, 'success');
+        }
+    } catch(e) {}
+}
+
+async function syncLoyverseLive() {
+    const btn = document.getElementById('btnSyncLoyverse');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري المزامنة...';
+    }
+    try {
+        const res = await fetch('/api/staff/loyverse/sync/', {
+            method: 'POST',
+            headers: {'X-CSRFToken': getCookie('csrftoken') || ''}
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast(data.message, 'success');
+            setTimeout(() => window.location.reload(), 1200);
+        } else {
+            showToast(data.message, 'danger');
+        }
+    } catch(e) {
+        showToast('تعذر الاتصال بخوادم Loyverse', 'danger');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-rotate"></i> مزامنة Loyverse 🔄';
+        }
+    }
+}
+
+// Tab & Section Management
+function openTabModal(btnOrMode) {
+    if (btnOrMode === 'create') {
+        document.getElementById('tabModalTitle').innerText = 'إضافة تبويب جديد';
+        document.getElementById('tabModalId').value = '';
+        document.getElementById('tabModalNameAr').value = '';
+        document.getElementById('tabModalNameEn').value = '';
+        document.getElementById('tabModalOrder').value = '0';
+    } else {
+        document.getElementById('tabModalTitle').innerText = 'تعديل التبويب';
+        document.getElementById('tabModalId').value = btnOrMode.getAttribute('data-id');
+        document.getElementById('tabModalNameAr').value = btnOrMode.getAttribute('data-name-ar');
+        document.getElementById('tabModalNameEn').value = btnOrMode.getAttribute('data-name-en');
+        document.getElementById('tabModalOrder').value = btnOrMode.getAttribute('data-order-index') || '0';
+    }
+    document.getElementById('tabModal').style.display = 'flex';
+}
+
+async function saveTabModal(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    try {
+        const res = await fetch('/api/staff/tab/manage/', {
+            method: 'POST',
+            body: formData,
+            headers: {'X-CSRFToken': getCookie('csrftoken') || ''}
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast('تم حفظ التبويب بنجاح!', 'success');
+            closeModal('tabModal');
+            setTimeout(() => window.location.reload(), 900);
+        }
+    } catch(e) {}
+}
+
+function openSectionModal(btnOrMode, btn) {
+    if (btnOrMode === 'create') {
+        document.getElementById('sectionModalTitle').innerText = 'إضافة مجموعة جديدة';
+        document.getElementById('sectionModalId').value = '';
+        document.getElementById('sectionModalTabId').value = btn.getAttribute('data-tab-id');
+        document.getElementById('sectionModalNameAr').value = '';
+        document.getElementById('sectionModalNameEn').value = '';
+        document.getElementById('sectionModalBanner').value = '';
+        document.getElementById('sectionModalOrder').value = '0';
+    } else {
+        document.getElementById('sectionModalTitle').innerText = 'تعديل المجموعة';
+        document.getElementById('sectionModalId').value = btnOrMode.getAttribute('data-id');
+        document.getElementById('sectionModalTabId').value = btnOrMode.getAttribute('data-tab-id');
+        document.getElementById('sectionModalNameAr').value = btnOrMode.getAttribute('data-name-ar');
+        document.getElementById('sectionModalNameEn').value = btnOrMode.getAttribute('data-name-en');
+        document.getElementById('sectionModalBanner').value = btnOrMode.getAttribute('data-banner-image') || '';
+        document.getElementById('sectionModalOrder').value = btnOrMode.getAttribute('data-order-index') || '0';
+    }
+    document.getElementById('sectionModal').style.display = 'flex';
+}
+
+async function saveSectionModal(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    try {
+        const res = await fetch('/api/staff/section/manage/', {
+            method: 'POST',
+            body: formData,
+            headers: {'X-CSRFToken': getCookie('csrftoken') || ''}
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast('تم حفظ المجموعة بنجاح!', 'success');
+            closeModal('sectionModal');
+            setTimeout(() => window.location.reload(), 900);
+        }
+    } catch(e) {}
+}
+
+async function markDashMsgRead(id) {
+    try {
+        const res = await fetch('/api/staff/messages/read/', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken') || ''},
+            body: JSON.stringify({message_id: id})
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            const card = document.getElementById(`dash-msg-${id}`);
+            if (card) {
+                const btn = card.querySelector('button');
+                if (btn) btn.outerHTML = '<span style="font-size:10.5px;color:var(--text-muted);">✓ مقروء</span>';
+            }
+        }
+    } catch(e) {}
+}
+
+// Raffle Controls
+async function calculateTickets() {
+    const minAmount = document.getElementById('minAmountInput').value;
+    try {
+        const res = await fetch(`/api/staff/raffle/draw/?min_amount=${minAmount}`);
+        const data = await res.json();
+        if (data.status === 'success') {
+            document.getElementById('shufflingPool').innerText = `${data.total_tickets} تذكرة مؤهلة 🎟️`;
+        }
+    } catch(e) {}
+}
+
+async function drawRaffleWinner() {
+    const minAmount = document.getElementById('minAmountInput').value;
+    document.getElementById('shufflingPool').innerText = 'جاري السحب... 🎰';
+    try {
+        const res = await fetch('/api/staff/raffle/draw/', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken') || ''},
+            body: JSON.stringify({min_amount: minAmount})
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            document.getElementById('shufflingPool').innerText = `الفائز: ${data.winner_name} 🎉`;
+            document.getElementById('winnerCustomerDetails').innerText = `${data.winner_name} (${data.winner_phone})`;
+            document.getElementById('winnerTicketNumber').innerText = `رقم التذكرة الفائزة: ${data.winning_ticket}`;
+            document.getElementById('winnerModal').style.display = 'flex';
+        } else {
+            showToast(data.message || 'لا توجد تذاكر مؤهلة', 'danger');
+            document.getElementById('shufflingPool').innerText = 'غرفة السحب';
+        }
+    } catch(e) {
+        showToast('خطأ أثناء إجراء السحب', 'danger');
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function stopChimes() {
+    document.getElementById('btnSilenceChime').style.display = 'none';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}White Bird Cafe Smart Web{% endblock %}</title>
+    
+    <!-- Google Fonts including Tajawal for Arabic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=Tajawal:wght@400;500;700&family=Cairo:wght@400;600;700&family=Amiri:ital,wght@0,400;0,700;1,400&family=Aref+Ruqaa:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Premium FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Base Stylesheet -->
+    <style>
+        :root {
+            --primary: #d4af37; /* Gold */
+            --primary-rgb: 212, 175, 55;
+            --primary-hover: #b89324;
+            --bg-dark: #120c08; /* Deep espresso dark */
+            --surface-dark: #1f140e; /* Espresso brown card */
+            --surface-card: rgba(31, 20, 14, 0.65);
+            --text-light: #fdfaf7; /* Cream white */
+            --text-muted: #c4b5a9; /* Warm taupe */
+            --border-light: rgba(212, 175, 55, 0.15);
+            --border-gold: rgba(212, 175, 55, 0.4);
+            --danger: #e65c5c;
+            --success: #5ce68a;
+            --font-head: 'Outfit', sans-serif;
+            --font-body: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            font-family: var(--font-body);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(212, 175, 55, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(212, 175, 55, 0.03) 0%, transparent 40%);
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-head);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: #ffffff;
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        a:hover {
+            color: var(--primary-hover);
+        }
+
+        /* RTL Styles override */
+        [dir="rtl"] {
+            font-family: 'Tajawal', sans-serif;
+        }
+        [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6 {
+            font-family: 'Tajawal', sans-serif;
+            letter-spacing: 0;
+        }
+
+        /* Glassmorphism Common Utilities */
+        .glass-card {
+            background: var(--surface-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: var(--border-gold);
+            box-shadow: 0 8px 32px 0 rgba(212, 175, 55, 0.08);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-family: var(--font-head);
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            gap: 8px;
+        }
+
+        [dir="rtl"] .btn {
+            font-family: 'Tajawal', sans-serif;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+            color: #120c08;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.35);
+            color: #000000;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-light);
+            border: 1px solid var(--border-light);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        /* Top Nav Bar */
+        header {
+            background: rgba(18, 12, 8, 0.85);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-light);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: var(--font-head);
+            font-size: 22px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .logo span {
+            color: var(--primary);
+        }
+
+        .logo i {
+            color: var(--primary);
+            font-size: 24px;
+            filter: drop-shadow(0 2px 5px rgba(212, 175, 55, 0.3));
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .nav-link {
+            color: var(--text-muted);
+            font-family: var(--font-head);
+            font-weight: 500;
+            font-size: 15px;
+            position: relative;
+            padding: 4px 0;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary);
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        .nav-link:hover::after, .nav-link.active::after {
+            width: 100%;
+        }
+
+
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        /* Anti-Screenshot Mobile Styling */
+        @media print {
+            body {
+                display: none !important;
+            }
+        }
+        
+        .screenshot-protected {
+            position: relative;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        /* Footer */
+        footer {
+            background-color: #0b0705;
+            border-top: 1px solid var(--border-light);
+            padding: 30px 24px;
+            text-align: center;
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 80px;
+        }
+        
+        footer span {
+            color: var(--primary);
+        }
+
+        /* Alert notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .toast {
+            background: rgba(31, 20, 14, 0.9);
+            border-left: 4px solid var(--primary);
+            backdrop-filter: blur(10px);
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        [dir="rtl"] .toast {
+            border-left: none;
+            border-right: 4px solid var(--primary);
+            transform: translateX(-120%);
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.success { border-left-color: var(--success); }
+        .toast.danger { border-left-color: var(--danger); }
+        
+        [dir="rtl"] .toast.success { border-right-color: var(--success); }
+        [dir="rtl"] .toast.danger { border-right-color: var(--danger); }
+        
+        {% block extra_css %}{% endblock %}
+    </style>
+
+    <!-- Isolated Mobile Hamburger & Navigation Drawer Overlay Styles -->
+    <style>
+        .menu-toggle-btn {
+            display: none;
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 10001; /* Above mobile overlay */
+            transition: all 0.3s ease;
+            padding: 5px;
+        }
+
+        .mobile-nav-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(18, 12, 8, 0.98);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 25px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+
+        .mobile-nav-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .mobile-drawer-close-btn {
+            position: absolute;
+            top: 22px;
+            right: 24px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border-gold);
+            color: #ffffff;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10002;
+        }
+
+        [dir="rtl"] .mobile-drawer-close-btn {
+            right: auto;
+            left: 24px;
+        }
+
+        .mobile-drawer-close-btn:hover {
+            background: rgba(212, 175, 55, 0.25);
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: scale(1.1);
+        }
+
+        .mobile-nav-link {
+            font-family: var(--font-head);
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+
+        .mobile-nav-link:hover, .mobile-nav-link.active {
+            color: var(--primary);
+            transform: scale(1.05);
+        }
+
+        @media (max-width: 820px) {
+            nav {
+                display: none !important;
+            }
+            .menu-toggle-btn {
+                display: block !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header / Navbar -->
+    <header>
+        <a href="/" class="logo" style="display:flex; align-items:center; gap:10px; text-decoration:none;">
+            <img src="/static/images/logo.jpg" alt="White Bird Cafe Logo" style="height: 38px; width: 38px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--primary);">
+            <span style="font-family: 'Tajawal', var(--font-head); font-weight: 700; color: #fff; font-size: 19px;">{{ global_config.cafe_name|default:"White Bird Cafe" }}</span>
+        </a>
+        <nav>
+            <a href="/menu/" class="nav-link {% if '/menu/' in request.path %}active{% endif %}" data-tr="nav_menu">Menu</a>
+            <a href="/loyalty/" class="nav-link {% if '/loyalty/' in request.path %}active{% endif %}" data-tr="nav_crm">CRM Card</a>
+            <a href="/contact/" class="nav-link {% if '/contact/' in request.path %}active{% endif %}" data-tr="nav_contact">Contact</a>
+            {% if request.session.staff_user_id %}
+                <a href="/staff/dashboard/" class="nav-link {% if '/staff/dashboard/' in request.path %}active{% endif %}" data-tr="nav_staff_portal">Staff Portal</a>
+                <a href="/staff/logout/" class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;" data-tr="nav_logout">Logout</a>
+            {% else %}
+                <a href="/staff/login/" class="nav-link {% if '/staff/login/' in request.path %}active{% endif %}" data-tr="nav_staff_login">Staff Login</a>
+            {% endif %}
+            
+            <!-- Language toggle button -->
+            <button id="langToggleBtn" class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;" onclick="toggleLanguage()">
+                <i class="fa-solid fa-globe" style="margin-right: 4px;"></i> <span id="langToggleText">العربية</span>
+            </button>
+        </nav>
+
+        <!-- Mobile Hamburger Toggle Button -->
+        <button class="menu-toggle-btn" id="mobileMenuBtn" onclick="toggleMobileMenu()">
+            <i class="fa-solid fa-bars" id="menuBtnIcon"></i>
+        </button>
+    </header>
+
+    <!-- Mobile Drawer Overlay Navigation -->
+    <div class="mobile-nav-overlay" id="mobileNavDrawer" onclick="handleDrawerBackdropClick(event)">
+        <!-- Prominent Close Button -->
+        <button class="mobile-drawer-close-btn" onclick="closeMobileMenu()" aria-label="Close menu">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <a href="/menu/" class="mobile-nav-link {% if '/menu/' in request.path %}active{% endif %}" onclick="closeMobileMenu()" data-tr="nav_menu">القائمة</a>
+        <a href="/loyalty/" class="mobile-nav-link {% if '/loyalty/' in request.path %}active{% endif %}" onclick="closeMobileMenu()" data-tr="nav_crm">نادي العملاء</a>
+        <a href="/contact/" class="mobile-nav-link {% if '/contact/' in request.path %}active{% endif %}" onclick="closeMobileMenu()" data-tr="nav_contact">اتصل بنا</a>
+        {% if request.session.staff_user_id %}
+            <a href="/staff/dashboard/" class="mobile-nav-link {% if '/staff/dashboard/' in request.path %}active{% endif %}" onclick="closeMobileMenu()" data-tr="nav_staff_portal">لوحة الموظفين</a>
+            <a href="/staff/logout/" class="btn btn-secondary" onclick="closeMobileMenu()" style="padding: 10px 20px; font-size: 15px; margin-top:6px;" data-tr="nav_logout">خروج</a>
+        {% else %}
+            <a href="/staff/login/" class="mobile-nav-link {% if '/staff/login/' in request.path %}active{% endif %}" onclick="closeMobileMenu()" data-tr="nav_staff_login">دخول الموظفين</a>
+        {% endif %}
+        
+        <!-- Language toggle in mobile drawer -->
+        <button id="langToggleBtnMobile" class="btn btn-secondary" style="padding: 10px 22px; font-size: 15px; margin-top: 10px;" onclick="toggleLanguage()">
+            <i class="fa-solid fa-globe" style="margin-right: 6px;"></i> <span id="langToggleTextMobile">العربية</span>
+        </button>
+
+        <!-- Extra Bottom Close Button -->
+        <button type="button" class="btn btn-secondary" onclick="closeMobileMenu()" style="padding: 7px 18px; font-size: 13px; margin-top: 6px; border-color: rgba(255,255,255,0.15); opacity: 0.85;">
+            <i class="fa-solid fa-xmark" style="margin-right: 4px;"></i> <span data-tr="close_menu">إغلاق القائمة</span>
+        </button>
+    </div>
+
+
+    <!-- Main Content Container -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        {% if global_config %}
+            <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 15px; font-size: 20px;">
+                {% if global_config.instagram_url %}
+                    <a href="{{ global_config.instagram_url }}" target="_blank" style="color: var(--text-muted); transition: color 0.3s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">
+                        <i class="fa-brands fa-instagram"></i>
+                    </a>
+                {% endif %}
+                {% if global_config.facebook_url %}
+                    <a href="{{ global_config.facebook_url }}" target="_blank" style="color: var(--text-muted); transition: color 0.3s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">
+                        <i class="fa-brands fa-facebook"></i>
+                    </a>
+                {% endif %}
+                {% if global_config.tiktok_url %}
+                    <a href="{{ global_config.tiktok_url }}" target="_blank" style="color: var(--text-muted); transition: color 0.3s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">
+                        <i class="fa-brands fa-tiktok"></i>
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+        <p>&copy; 2026 <span data-tr="footer_text">White Bird Cafe. Premium Smart Table Services & CRM System.</span></p>
+    </footer>
+
+    <!-- Toast Alerts -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // Global translation dictionary
+        window.cafeTranslations = {
+            en: {
+                "nav_menu": "Menu",
+                "nav_crm": "Customers Club",
+                "nav_contact": "Contact Us",
+                "nav_staff_portal": "Staff Portal",
+                "nav_staff_login": "Staff Login",
+                "nav_logout": "Logout",
+                "close_menu": "Close Menu",
+                "footer_text": "White Bird Cafe. Premium Smart Table Services & CRM System.",
+                
+                // Menu page
+                "menu_title": "Specialty Coffee & Drinks Menu",
+                "menu_subtitle": "Indulge in our exquisite selection of specialty coffees, refreshing cold beverages, and comforting hot drinks crafted with passion at White Bird Cafe.",
+                "search_placeholder": "Search specialty coffee, cold & hot drinks...",
+                "all_items": "All Items",
+                "low_stock": "Low Stock",
+                "fresh_available": "Freshly Available",
+                "left_stock": "left",
+                "stock_label": "Stock:",
+                "no_items_synced": "No Items Synced Yet",
+                "no_items_synced_desc": "We are currently syncing the live POS menu. Please check back in a moment.",
+                
+                // Loyalty Portal
+                "crm_title": "White Bird Cafe Club",
+                "login_tab": "Customer Login",
+                "register_tab": "Register Loyalty",
+                "label_phone": "Phone Number (E.164, e.g. +962791234567)",
+                "label_password": "Password",
+                "label_name": "Full Name",
+                "label_birthdate": "Birth Date (Requires Age 18+)",
+                "label_create_password": "Create Password",
+                "btn_login": "Login",
+                "btn_register": "Request WhatsApp OTP",
+                "otp_title": "WhatsApp Verification",
+                "otp_desc": "We've sent a 6-digit OTP code to",
+                "otp_placeholder": "Enter 6-digit code",
+                "btn_cancel": "Cancel",
+                "btn_verify": "Verify & Register",
+                "loyalty_card_id": "Loyverse ID:",
+                "loyalty_card_expiry": "Code expires in",
+                "tickets_title": "Your Raffle Tickets",
+                "no_tickets": "No raffle tickets issued yet.",
+                "no_tickets_desc": "Make transactions at our cafe to auto-populate tickets!",
+                "btn_logout": "Log Out",
+                
+                // Table Service page
+                "table_title": "Table",
+                "table_subtitle": "Smart Table Service Panel",
+                "btn_call_waiter": "Call Waiter",
+                "desc_call_waiter": "Request general floor assistance or ordering help",
+                "btn_request_bill": "Request Bill",
+                "desc_request_bill": "Receive your printed receipt and pay at the table",
+                "status_connecting": "Connecting Service...",
+                "status_connected": "Smart Service Connected",
+                "status_disconnected": "Disconnected (Reconnecting...)",
+                "calling_waiter": "Calling Waiter...",
+                "calling_waiter_desc": "Staff notified. We are assigning a waiter.",
+                "btn_cancel_call": "Cancel Call",
+                "bill_requested": "Bill Requested...",
+                "bill_requested_desc": "Staff are printing your receipt.",
+                "btn_cancel_request": "Cancel Request",
+                
+                // Staff Login
+                "staff_login_title": "Staff Portal",
+                "staff_login_subtitle": "Enter your employee credentials to access dashboard",
+                "staff_username": "Username",
+                "staff_password": "Password",
+                "btn_staff_login": "Login to Dashboard",
+                "testing_credentials": "Testing Credentials:",
+                
+                // Staff Dashboard
+                "staff_dash_title": "Staff Dashboard",
+                "staff_dash_welcome": "Welcome back,",
+                "btn_silence": "Silence Alert",
+                "live_calls_monitor": "Live Table Calls Monitor",
+                "no_calls": "No active waiter calls or bill requests.",
+                "no_calls_desc": "Table service requests will appear here in real-time with alert sounds.",
+                "menu_overrides": "Menu Overrides",
+                "pos_name": "POS Name",
+                "display_name": "Display Name",
+                "category": "Category",
+                "status": "Status",
+                "actions": "Actions",
+                "btn_edit": "Edit",
+                "promo_draws": "Promotional Raffle Draws",
+                "min_amount_placeholder": "Min transaction amount (e.g. 10.00)",
+                "btn_calc_tickets": "Calculate Tickets",
+                "btn_draw_winner": "Draw Winner & Notify via WhatsApp",
+                "edit_override_title": "Edit MenuItem Override",
+                "lbl_display_override": "Display Override Name",
+                "lbl_marketing_desc": "Marketing Description",
+                "lbl_image_url": "Image URL",
+                "lbl_status_override": "Status Override",
+                "lbl_price": "Price ($)",
+                "lbl_sort_index": "Display Sorting Index",
+                "btn_save": "Save Changes",
+                "winner_title": "We Have a Winner!",
+                "winner_whatsapp_desc": "WhatsApp notification has been triggered automatically.",
+                "lbl_winner_name": "Winner Name",
+                "lbl_ticket_code": "Ticket Code",
+                "btn_close_winner": "Close Celebration"
+            },
+            ar: {
+                "nav_menu": "القائمة",
+                "nav_crm": "نادي العملاء",
+                "nav_contact": "اتصل بنا",
+                "nav_staff_portal": "لوحة الموظفين",
+                "nav_staff_login": "دخول الموظفين",
+                "nav_logout": "خروج",
+                "close_menu": "إغلاق القائمة",
+                "footer_text": "وايت بيرد كافيه. نظام خدمات الطاولة الذكي والولاء الفاخر.",
+                
+                // Menu page
+                "menu_title": "قائمة المشروبات والقهوة المختصة",
+                "menu_subtitle": "استمتع بتشكيلتنا الفاخرة من القهوة المختصة والمشروبات الساخنة والباردة المنعشة المحضرة بكل حب وعناية في وايت بيرد كافيه.",
+                "search_placeholder": "ابحث عن القهوة المختصة، المشروبات الباردة والساخنة...",
+                "all_items": "كل الأصناف",
+                "low_stock": "كمية محدودة",
+                "fresh_available": "متوفر طازجاً",
+                "left_stock": "متبقي",
+                "stock_label": "المخزون:",
+                "no_items_synced": "لم يتم مزامنة أصناف بعد",
+                "no_items_synced_desc": "نحن نقوم بمزامنة المنيو المباشر من الكاشير حالياً، يرجى التحقق بعد قليل.",
+                
+                // Loyalty Portal
+                "crm_title": "نادي وايت بيرد كافيه",
+                "login_tab": "تسجيل الدخول",
+                "register_tab": "إنشاء حساب ولاء",
+                "label_phone": "رقم الهاتف (بصيغة E.164، مثل +962791234567)",
+                "label_password": "كلمة المرور",
+                "label_name": "الاسم الكامل",
+                "label_birthdate": "تاريخ الميلاد (يجب أن يكون العمر 18+)",
+                "label_create_password": "إنشاء كلمة مرور",
+                "btn_login": "تسجيل الدخول",
+                "btn_register": "طلب كود التحقق OTP",
+                "otp_title": "التحقق عبر الواتساب",
+                "otp_desc": "لقد أرسلنا كود تحقق OTP مكون من 6 أرقام إلى",
+                "otp_placeholder": "أدخل كود الـ 6 أرقام",
+                "btn_cancel": "إلغاء",
+                "btn_verify": "التحقق والتسجيل",
+                "loyalty_card_id": "معرف لو يفرز:",
+                "loyalty_card_expiry": "ينتهي الرمز خلال",
+                "tickets_title": "تذاكر السحب الخاصة بك",
+                "no_tickets": "لم يتم إصدار تذاكر سحب بعد.",
+                "no_tickets_desc": "قم بإجراء المعاملات في المقهى الخاص بنا لإصدار تذاكر سحب تلقائياً!",
+                "btn_logout": "تسجيل الخروج",
+                
+                // Table Service page
+                "table_title": "طاولة",
+                "table_subtitle": "لوحة خدمات الطاولة الذكية",
+                "btn_call_waiter": "نداء النادل",
+                "desc_call_waiter": "طلب مساعدة عامة أو مساعدة في تسجيل الطلب",
+                "btn_request_bill": "طلب الفاتورة",
+                "desc_request_bill": "استلم فاتورتك المطبوعة وادفع عند الطاولة",
+                "status_connecting": "جاري الاتصال بالخدمة...",
+                "status_connected": "الخدمة الذكية متصلة",
+                "status_disconnected": "انقطع الاتصال (جاري إعادة الاتصال...)",
+                "calling_waiter": "جاري نداء النادل...",
+                "calling_waiter_desc": "تم إشعار الموظفين. جاري تعيين نادل لطاولتك.",
+                "btn_cancel_call": "إلغاء النداء",
+                "bill_requested": "تم طلب الفاتورة...",
+                "bill_requested_desc": "يقوم الموظفون بطباعة فاتورتك حالياً.",
+                "btn_cancel_request": "إلغاء الطلب",
+                
+                // Staff Login
+                "staff_login_title": "بوابة الموظفين",
+                "staff_login_subtitle": "أدخل بيانات الموظف للوصول إلى لوحة التحكم",
+                "staff_username": "اسم المستخدم",
+                "staff_password": "كلمة المرور",
+                "btn_staff_login": "الدخول للوحة التحكم",
+                "testing_credentials": "بيانات الدخول للتجربة:",
+                
+                // Staff Dashboard
+                "staff_dash_title": "لوحة تحكم الموظفين",
+                "staff_dash_welcome": "مرحباً بك مجدداً،",
+                "btn_silence": "إسكات التنبيه",
+                "live_calls_monitor": "شاشة نداءات الطاولات المباشرة",
+                "no_calls": "لا توجد نداءات نادل أو طلبات فواتير نشطة حالياً.",
+                "no_calls_desc": "طلبات الخدمة ستظهر هنا فورياً في الوقت الفعلي مع تنبيهات صوتية.",
+                "menu_overrides": "تعديلات المنيو",
+                "pos_name": "الاسم في الكاشير",
+                "display_name": "اسم العرض",
+                "category": "القسم",
+                "status": "الحالة",
+                "actions": "الإجراءات",
+                "btn_edit": "تعديل",
+                "promo_draws": "سحوبات الجوائز الترويجية",
+                "min_amount_placeholder": "الحد الأدنى لقيمة الفاتورة (مثلاً 10.00)",
+                "btn_calc_tickets": "احتساب التذاكر",
+                "btn_draw_winner": "سحب الفائز وإرسال رسالة واتساب",
+                "edit_override_title": "تعديل صنف المنيو",
+                "lbl_display_override": "اسم العرض البديل",
+                "lbl_marketing_desc": "الوصف التسويقي للصنف",
+                "lbl_image_url": "رابط الصورة",
+                "lbl_status_override": "حالة التوفر",
+                "lbl_price": "السعر ($)",
+                "lbl_sort_index": "ترتيب العرض",
+                "btn_save": "حفظ التغييرات",
+                "winner_title": "لدينا فائز!",
+                "winner_whatsapp_desc": "تم إرسال إشعار الفوز عبر الواتساب تلقائياً.",
+                "lbl_winner_name": "اسم الفائز",
+                "lbl_ticket_code": "رمز التذكرة",
+                "btn_close_winner": "إغلاق الاحتفال"
+            }
+        };
+
+        let currentLang = localStorage.getItem('cafe_lang') || 'en';
+
+        function applyLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('cafe_lang', lang);
+            
+            const btnText = lang === 'ar' ? 'English' : 'العربية';
+            const toggleTextEl = document.getElementById('langToggleText');
+            if (toggleTextEl) toggleTextEl.innerText = btnText;
+            
+            const toggleTextMobileEl = document.getElementById('langToggleTextMobile');
+            if (toggleTextMobileEl) toggleTextMobileEl.innerText = btnText;
+
+            // Set Document Direction
+            if (lang === 'ar') {
+                document.documentElement.dir = 'rtl';
+                document.documentElement.lang = 'ar';
+            } else {
+                document.documentElement.dir = 'ltr';
+                document.documentElement.lang = 'en';
+            }
+
+            // Translate all elements with data-tr attribute
+            document.querySelectorAll('[data-tr]').forEach(el => {
+                const key = el.getAttribute('data-tr');
+                if (window.cafeTranslations[lang] && window.cafeTranslations[lang][key]) {
+                    el.innerText = window.cafeTranslations[lang][key];
+                }
+            });
+
+            // Translate placeholders
+            document.querySelectorAll('[data-tr-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-tr-placeholder');
+                if (window.cafeTranslations[lang] && window.cafeTranslations[lang][key]) {
+                    el.placeholder = window.cafeTranslations[lang][key];
+                }
+            });
+            
+            // Fire custom event so pages can adapt
+            window.dispatchEvent(new CustomEvent('langChanged', { detail: lang }));
+        }
+
+        function toggleLanguage() {
+            const nextLang = currentLang === 'en' ? 'ar' : 'en';
+            applyLanguage(nextLang);
+        }
+
+        // Hamburger Menu Toggle Handlers
+        function toggleMobileMenu() {
+            const drawer = document.getElementById('mobileNavDrawer');
+            const icon = document.getElementById('menuBtnIcon');
+            if (drawer.classList.contains('active')) {
+                drawer.classList.remove('active');
+                icon.className = 'fa-solid fa-bars';
+                document.body.style.overflow = 'auto';
+            } else {
+                drawer.classList.add('active');
+                icon.className = 'fa-solid fa-xmark';
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeMobileMenu() {
+            const drawer = document.getElementById('mobileNavDrawer');
+            const icon = document.getElementById('menuBtnIcon');
+            if (drawer) drawer.classList.remove('active');
+            if (icon) icon.className = 'fa-solid fa-bars';
+            document.body.style.overflow = 'auto';
+        }
+
+        function handleDrawerBackdropClick(event) {
+            if (event.target.id === 'mobileNavDrawer') {
+                closeMobileMenu();
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeMobileMenu();
+            }
+        });
+
+        // Initialize language on load
+        window.addEventListener('DOMContentLoaded', () => {
+            applyLanguage(currentLang);
+        });
+
+
+        // Global alert utility
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast glass-card ${type}`;
+            
+            let icon = 'fa-info-circle';
+            if (type === 'success') icon = 'fa-check-circle';
+            if (type === 'danger') icon = 'fa-exclamation-triangle';
+            
+            toast.innerHTML = `
+                <i class="fa-solid ${icon}" style="color: var(--${type === 'info' ? 'primary' : type})"></i>
+                <div style="flex-grow:1;">${message}</div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 50);
+            
+            // Remove after 4 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 400);
+            }, 4000);
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

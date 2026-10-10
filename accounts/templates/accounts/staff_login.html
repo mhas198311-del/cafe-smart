@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+
+{% block title %}White Bird Cafe - Staff Portal Login{% endblock %}
+
+{% block extra_css %}
+.login-container {
+    max-width: 450px;
+    margin: 60px auto;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-header h2 {
+    font-size: 30px;
+    font-weight: 700;
+}
+
+.login-header h2 span {
+    color: var(--primary);
+}
+
+.login-header p {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 6px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: rgba(18, 12, 8, 0.5);
+    border: 1px solid var(--border-light);
+    color: #ffffff;
+    font-family: var(--font-body);
+    font-size: 15px;
+    transition: all 0.3s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.1);
+}
+{% endblock %}
+
+{% block content %}
+<div class="container login-container">
+    <div class="login-header">
+        <h2><span data-tr="staff_login_title">Staff Portal</span></h2>
+        <p data-tr="staff_login_subtitle">Enter your employee credentials to access dashboard</p>
+    </div>
+
+    <div class="glass-card">
+        <form id="staffLoginForm" onsubmit="handleStaffLogin(event)">
+            <div class="form-group">
+                <label class="form-label" data-tr="staff_username">اسم المستخدم / Username</label>
+                <input type="text" name="username" class="form-input" placeholder="أدخل اسم المستخدم" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-tr="staff_password">كلمة المرور / Password</label>
+                <input type="password" name="password" class="form-input" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%; margin-top:10px;">
+                <i class="fa-solid fa-right-to-bracket"></i> <span data-tr="btn_staff_login">الدخول إلى النظام</span>
+            </button>
+        </form>
+
+        <div style="margin-top: 22px; text-align: center;">
+            <a href="{% url 'accounts:staff_download_apk' %}" class="btn btn-secondary" style="width: 100%; font-size: 13px; padding: 10px; gap: 8px; justify-content: center;">
+                <i class="fa-brands fa-android" style="color: #22c55e; font-size: 16px;"></i>
+                <span class="lang-ar">📥 تحميل تطبيق الموظفين (APK)</span>
+                <span class="lang-en">📥 Download Staff App (APK)</span>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function handleStaffLogin(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        try {
+            const res = await fetch('/api/staff/login/', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                const activeLang = localStorage.getItem('cafe_lang') || 'en';
+                const msg = activeLang === 'ar' ? 'تم تسجيل الدخول بنجاح!' : data.message;
+                showToast(msg, 'success');
+                setTimeout(() => window.location.href = data.redirect, 1000);
+            } else {
+                showToast(data.message, 'danger');
+            }
+        } catch (err) {
+            showToast('Network error logging in', 'danger');
+        }
+    }
+</script>
+{% endblock %}

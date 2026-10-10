@@ -1,0 +1,468 @@
+{% extends 'base.html' %}
+
+{% block title %}White Bird Cafe | Table {{ table_number }}{% endblock %}
+
+{% block extra_css %}
+/* Table Service Layout Styles */
+.table-service-wrapper {
+    max-width: 500px;
+    margin: 0 auto;
+    text-align: center;
+    padding-bottom: 50px;
+    font-family: 'Tajawal', sans-serif;
+}
+
+.table-header-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 6px;
+}
+
+.table-header-title span {
+    color: var(--primary);
+}
+
+.table-service-card {
+    background: rgba(30, 25, 23, 0.5);
+    border: 1px solid rgba(195, 158, 103, 0.2);
+    border-radius: 24px;
+    padding: 30px 20px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+    margin-bottom: 30px;
+}
+
+/* 60s Session Timer */
+.session-timer-box {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 25px;
+}
+
+.session-timer-circle {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    border: 4px solid rgba(195, 158, 103, 0.15);
+    border-top-color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--primary);
+    position: relative;
+    animation: spin-timer-border 1s linear infinite;
+}
+
+.session-timer-number {
+    position: absolute;
+    animation: none;
+    font-family: 'Outfit', sans-serif;
+}
+
+@keyframes spin-timer-border {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.session-timer-circle * {
+    transform: rotate(0deg); /* keep text straight */
+}
+
+/* Service Button Stack */
+.service-button-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.service-action-btn {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: right;
+    position: relative;
+    overflow: hidden;
+    gap: 20px;
+    width: 100%;
+}
+
+.service-action-btn:hover {
+    transform: translateY(-3px);
+}
+
+.btn-icon-wrapper {
+    width: 55px;
+    height: 55px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+/* Specialized color systems */
+.service-action-btn.call-waiter:hover {
+    border-color: #f39c12;
+    box-shadow: 0 8px 20px rgba(243, 156, 18, 0.15);
+}
+.service-action-btn.call-waiter .btn-icon-wrapper {
+    background: rgba(243, 156, 18, 0.1);
+    border: 1px solid rgba(243, 156, 18, 0.2);
+    color: #f39c12;
+}
+.service-action-btn.call-waiter:hover .btn-icon-wrapper {
+    background: #f39c12;
+    color: #12100f;
+}
+
+.service-action-btn.request-bill:hover {
+    border-color: #2ecc71;
+    box-shadow: 0 8px 20px rgba(26, 188, 156, 0.15);
+}
+.service-action-btn.request-bill .btn-icon-wrapper {
+    background: rgba(46, 204, 113, 0.1);
+    border: 1px solid rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+}
+.service-action-btn.request-bill:hover .btn-icon-wrapper {
+    background: #2ecc71;
+    color: #12100f;
+}
+
+.service-action-btn.hookah-service {
+    border-color: rgba(155, 89, 182, 0.2);
+}
+.service-action-btn.hookah-service:hover {
+    border-color: #9b59b6;
+    box-shadow: 0 8px 20px rgba(155, 89, 182, 0.15);
+}
+.service-action-btn.hookah-service .btn-icon-wrapper {
+    background: rgba(155, 89, 182, 0.1);
+    border: 1px solid rgba(155, 89, 182, 0.2);
+    color: #9b59b6;
+}
+.service-action-btn.hookah-service:hover .btn-icon-wrapper {
+    background: #9b59b6;
+    color: #12100f;
+}
+
+.btn-details h4 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.btn-details p {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Success State Override */
+.service-action-btn.success {
+    background: rgba(46, 204, 113, 0.15) !important;
+    border-color: #2ecc71 !important;
+    color: #2ecc71 !important;
+    pointer-events: none;
+}
+.service-action-btn.success .btn-icon-wrapper {
+    background: #2ecc71 !important;
+    color: #12100f !important;
+}
+
+/* Hookah drawer in page */
+.page-hookah-drawer {
+    display: none;
+    margin-top: 10px;
+    padding: 15px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 12px;
+    border: 1px dashed rgba(155, 89, 182, 0.3);
+    gap: 12px;
+}
+
+.page-hookah-option-btn {
+    flex: 1;
+    padding: 12px;
+    background: rgba(155, 89, 182, 0.08);
+    border: 1px solid rgba(155, 89, 182, 0.2);
+    border-radius: 10px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.page-hookah-option-btn:hover {
+    background: rgba(155, 89, 182, 0.25);
+    border-color: #9b59b6;
+}
+
+.status-indicator-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 6px 14px;
+    border-radius: 99px;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 15px auto 0;
+    width: fit-content;
+}
+
+.status-indicator-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: var(--danger);
+}
+
+.status-indicator-dot.online {
+    background-color: #2ecc71;
+    box-shadow: 0 0 8px #2ecc71;
+    animation: pulse-dot 1.5s infinite;
+}
+
+@keyframes pulse-dot {
+    0% { transform: scale(0.9); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.7; }
+    100% { transform: scale(0.9); opacity: 1; }
+}
+{% endblock %}
+
+{% block content %}
+<div class="container table-service-wrapper">
+    
+    <div style="margin-bottom:25px;">
+        <h2 class="table-header-title" id="pageTitleText">طاولة رقم <span>{{ table_number }}</span></h2>
+        <p style="font-size:14px; color:var(--text-muted);" data-tr="table_subtitle">خدمات الخدمة الذكية للطاولة</p>
+    </div>
+
+    <div class="table-service-card">
+        
+        <!-- COUNTDOWN TIMER CONTAINER -->
+        <div class="session-timer-box">
+            <div class="session-timer-circle">
+                <span class="session-timer-number" id="countdownSecsPage">60</span>
+            </div>
+        </div>
+
+        <div class="service-button-stack">
+            
+            <!-- Call Waiter Button -->
+            <button class="service-action-btn call-waiter" id="btnCallWaiter" onclick="triggerServiceCall('call_waiter', this)">
+                <div class="btn-icon-wrapper">
+                    <i class="fa-solid fa-bell"></i>
+                </div>
+                <div class="btn-details">
+                    <h4 data-tr="btn_call_waiter">نداء الويتر</h4>
+                    <p data-tr="desc_call_waiter">طلب المساعدة العامة أو المساعدة في الطلبات</p>
+                </div>
+            </button>
+
+            <!-- Request Bill Button -->
+            <button class="service-action-btn request-bill" id="btnRequestBill" onclick="triggerServiceCall('request_bill', this)">
+                <div class="btn-icon-wrapper">
+                    <i class="fa-solid fa-receipt"></i>
+                </div>
+                <div class="btn-details">
+                    <h4 data-tr="btn_request_bill">طلب الحساب</h4>
+                    <p data-tr="desc_request_bill">طلب الفاتورة النهائية والدفع عند الطاولة</p>
+                </div>
+            </button>
+
+            <!-- Hookah Service Button -->
+            <button class="service-action-btn hookah-service" onclick="toggleHookahOptions(this)">
+                <div class="btn-icon-wrapper">
+                    <i class="fa-solid fa-wind"></i>
+                </div>
+                <div class="btn-details">
+                    <h4 data-tr="btn_hookah">خدمة الأراجيل</h4>
+                    <p data-tr="desc_hookah">طلب فحم إضافي أو تغيير رأس الأرجيلة</p>
+                </div>
+            </button>
+
+            <!-- Hookah Options Drawer -->
+            <div class="page-hookah-drawer" id="pageHookahDrawer">
+                <button class="page-hookah-option-btn" onclick="triggerServiceCall('request_hookah', this, 'طلب فحم')">طلب فحم 🪵</button>
+                <button class="page-hookah-option-btn" onclick="triggerServiceCall('request_hookah', this, 'تغيير رأس')">تغيير رأس 🔄</button>
+            </div>
+
+        </div>
+
+        <!-- Connection status -->
+        <div class="status-indicator-bar">
+            <div class="status-indicator-dot" id="statusDotPage"></div>
+            <span id="statusTextPage" data-tr="status_connecting">جاري الاتصال بالنظام...</span>
+        </div>
+
+    </div>
+
+    <!-- Bottom Shortcuts -->
+    <div style="display:flex; justify-content:center; gap:20px; margin-top:20px;">
+        <a href="/" class="btn btn-secondary">
+            <i class="fa-solid fa-book-open" style="margin-left:4px;"></i> <span data-tr="nav_menu">تصفح المنيو</span>
+        </a>
+        <a href="/loyalty/" class="btn btn-secondary">
+            <i class="fa-solid fa-id-card" style="margin-left:4px;"></i> <span data-tr="nav_crm">نادي الولاء</span>
+        </a>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const tableServiceTranslations = {
+        en: {
+            "table_subtitle": "Smart Table Service Panel",
+            "btn_call_waiter": "Call Waiter",
+            "desc_call_waiter": "Request general floor assistance or ordering help",
+            "btn_request_bill": "Request Bill",
+            "desc_request_bill": "Receive your printed receipt and pay at the table",
+            "btn_hookah": "Hookah Service",
+            "desc_hookah": "Request fresh hot coals or change hookah head",
+            "status_connecting": "Connecting service...",
+            "nav_menu": "Browse Menu",
+            "nav_crm": "Loyalty Club"
+        },
+        ar: {
+            "table_subtitle": "خدمات الخدمة الذكية للطاولة",
+            "btn_call_waiter": "نداء الويتر",
+            "desc_call_waiter": "طلب المساعدة العامة أو المساعدة في الطلبات",
+            "btn_request_bill": "طلب الحساب",
+            "desc_request_bill": "طلب الفاتورة النهائية والدفع عند الطاولة",
+            "btn_hookah": "خدمة الأراجيل",
+            "desc_hookah": "طلب فحم إضافي أو تغيير رأس الأرجيلة",
+            "status_connecting": "جاري الاتصال بالنظام...",
+            "nav_menu": "تصفح المنيو",
+            "nav_crm": "نادي الولاء"
+        }
+    };
+
+    Object.assign(window.cafeTranslations.en, tableServiceTranslations.en);
+    Object.assign(window.cafeTranslations.ar, tableServiceTranslations.ar);
+
+    const activeLang = localStorage.getItem('cafe_lang') || 'en';
+    applyLanguage(activeLang);
+
+    // Update page title translation
+    if (activeLang === 'en') {
+        document.getElementById('pageTitleText').innerHTML = `Table <span>{{ table_number }}</span>`;
+    }
+
+    let socket = null;
+    let timerInterval = null;
+    const tableNum = '{{ table_number }}';
+    const auth = '{{ auth_token }}';
+
+    function updateStatus(status) {
+        const dot = document.getElementById('statusDotPage');
+        const txt = document.getElementById('statusTextPage');
+        const isAr = localStorage.getItem('cafe_lang') === 'ar';
+        
+        if (status === 'connected') {
+            dot.className = 'status-indicator-dot online';
+            txt.innerText = isAr ? 'الخدمة متصلة بنجاح' : 'Service Connected Successfully';
+        } else if (status === 'connecting') {
+            dot.className = 'status-indicator-dot';
+            txt.innerText = isAr ? 'جاري الاتصال بالنظام...' : 'Connecting service...';
+        } else {
+            dot.className = 'status-indicator-dot';
+            txt.innerText = isAr ? 'انقطع الاتصال (جاري المحاولة...)' : 'Disconnected (Reconnecting...)';
+        }
+    }
+
+    function initWebSocket() {
+        const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+        socket = new WebSocket(`${wsScheme}://${window.location.host}/ws/table/?role=table&table=${tableNum}&auth=${auth}`);
+
+        socket.onopen = () => {
+            updateStatus('connected');
+        };
+
+        socket.onclose = () => {
+            updateStatus('disconnected');
+            setTimeout(initWebSocket, 3000);
+        };
+
+        socket.onerror = (err) => {
+            console.error('Socket error: ', err);
+        };
+
+        socket.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            if (data.event === 'call_accepted') {
+                showToast(localStorage.getItem('cafe_lang') === 'ar' ? 'تمت تلبية النداء من الموظفين!' : 'Staff accepted your call!', 'success');
+                // Reset success state
+                document.querySelectorAll('.service-action-btn').forEach(btn => {
+                    btn.classList.remove('success');
+                });
+            }
+        };
+    }
+
+    // Start 60-second countdown on direct URL load
+    window.addEventListener('DOMContentLoaded', () => {
+        initWebSocket();
+        
+        let secondsLeft = 60;
+        const countdownEl = document.getElementById('countdownSecsPage');
+        timerInterval = setInterval(() => {
+            secondsLeft--;
+            countdownEl.innerText = secondsLeft;
+            if (secondsLeft <= 0) {
+                clearInterval(timerInterval);
+                if (socket) socket.close();
+                window.location.href = "/";
+            }
+        }, 1000);
+    });
+
+    function toggleHookahOptions(btn) {
+        const drawer = document.getElementById('pageHookahDrawer');
+        if (drawer.style.display === 'flex') {
+            drawer.style.display = 'none';
+        } else {
+            drawer.style.display = 'flex';
+            drawer.style.flexDirection = 'row';
+            drawer.style.gap = '15px';
+        }
+    }
+
+    function triggerServiceCall(type, btnEl, extraDetails = '') {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            showToast(localStorage.getItem('cafe_lang') === 'ar' ? 'خطأ بالاتصال بالشبكة' : 'Network connection error.', 'danger');
+            return;
+        }
+
+        socket.send(JSON.stringify({
+            'type': type,
+            'details': extraDetails
+        }));
+
+        if (btnEl.tagName === 'BUTTON') {
+            btnEl.classList.add('success');
+            const spanTitle = btnEl.querySelector('.btn-details h4') || btnEl;
+            const originalText = spanTitle.innerText;
+            spanTitle.innerText = localStorage.getItem('cafe_lang') === 'ar' ? 'تم الإرسال...' : 'Sent...';
+            setTimeout(() => {
+                spanTitle.innerText = originalText;
+                btnEl.classList.remove('success');
+            }, 6000);
+        }
+
+        showToast(localStorage.getItem('cafe_lang') === 'ar' ? 'تم إرسال تنبيه فوري للموظفين!' : 'Notification sent to staff dashboard!', 'success');
+    }
+</script>
+{% endblock %}

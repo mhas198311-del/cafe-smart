@@ -1,0 +1,1228 @@
+{% extends 'base.html' %}
+
+{% block title %}White Bird Cafe | Loyalty Club{% endblock %}
+
+{% block extra_css %}
+@import url('https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap');
+
+@keyframes laserSweep {
+    0% { top: 0%; opacity: 0.8; }
+    50% { top: 100%; opacity: 1; }
+    100% { top: 0%; opacity: 0.8; }
+}
+
+/* Premium Loyalty Styling */
+.loyalty-page-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+    padding-bottom: 80px;
+    font-family: 'Tajawal', sans-serif;
+}
+
+/* User Greeting Header */
+.loyalty-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 25px;
+    padding: 20px;
+    background: rgba(30, 25, 23, 0.4);
+    border-radius: 18px;
+    border: 1px solid rgba(195, 158, 103, 0.15);
+}
+
+.tier-badge-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.tier-badge {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    box-shadow: 0 0 15px rgba(195, 158, 103, 0.2);
+    position: relative;
+}
+
+.tier-badge.gold {
+    background: linear-gradient(135deg, #ffd700 0%, #b8860b 100%);
+    color: #fff;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.tier-badge.silver {
+    background: linear-gradient(135deg, #d3d3d3 0%, #708090 100%);
+    color: #fff;
+    box-shadow: 0 0 20px rgba(211, 211, 211, 0.3);
+}
+
+.tier-badge.bronze {
+    background: linear-gradient(135deg, #cd7f32 0%, #8b4513 100%);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(205, 127, 50, 0.3);
+}
+
+/* Tier Progress Bar */
+.tier-progress-card {
+    background: rgba(26, 22, 21, 0.6);
+    border: 1px solid rgba(195, 158, 103, 0.15);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.tier-progress-bar-outer {
+    height: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 12px 0;
+}
+
+.tier-progress-bar-inner {
+    height: 100%;
+    border-radius: 10px;
+    background: linear-gradient(90deg, #cd7f32 0%, #ffd700 100%);
+    transition: width 1s ease-in-out;
+}
+
+/* Stats Card Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-box {
+    background: rgba(30, 25, 23, 0.5);
+    border: 1px solid rgba(195, 158, 103, 0.2);
+    border-radius: 20px;
+    padding: 25px;
+    text-align: center;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
+
+.stat-box h3 {
+    font-size: 15px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+}
+
+.stat-subtitle {
+    font-size: 13px;
+    color: var(--primary);
+    margin-top: 4px;
+}
+
+/* Birthday Reward Card */
+.birthday-card {
+    background: linear-gradient(135deg, rgba(231, 76, 60, 0.15) 0%, rgba(142, 68, 173, 0.15) 100%);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    border-radius: 20px;
+    padding: 25px;
+    text-align: center;
+    margin-bottom: 30px;
+    animation: pulse-border 2s infinite alternate;
+}
+
+@keyframes pulse-border {
+    0% { border-color: rgba(231, 76, 60, 0.3); }
+    100% { border-color: rgba(142, 68, 173, 0.6); }
+}
+
+/* Horizontal sliding catalog styles */
+.catalog-title-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.catalog-scroll {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    overflow-x: auto;
+    padding-bottom: 15px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) rgba(255, 255, 255, 0.05);
+}
+
+.catalog-scroll::-webkit-scrollbar {
+    height: 6px;
+}
+
+.catalog-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--primary);
+    border-radius: 10px;
+}
+
+.catalog-item-card {
+    flex: 0 0 240px;
+    background: rgba(30, 25, 23, 0.6);
+    border: 1px solid rgba(195, 158, 103, 0.15);
+    border-radius: 18px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.3s ease;
+}
+
+.catalog-item-card.locked {
+    opacity: 0.6;
+}
+
+.catalog-item-image {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 12px;
+    margin-bottom: 12px;
+}
+
+.catalog-item-cost {
+    font-size: 13px;
+    color: var(--primary);
+    font-weight: 700;
+    margin-top: 5px;
+    font-family: 'Outfit', sans-serif;
+}
+
+/* Floating Action Button (FAB) for QR */
+.qr-fab {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ffd700 0%, #c39e67 100%);
+    border: none;
+    box-shadow: 0 8px 25px rgba(195, 158, 103, 0.4);
+    color: #12100f;
+    font-size: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1000;
+    transition: all 0.3s ease;
+    animation: pulse-fab 2s infinite;
+}
+
+@keyframes pulse-fab {
+    0% { box-shadow: 0 8px 25px rgba(195, 158, 103, 0.4); }
+    50% { box-shadow: 0 8px 30px rgba(195, 158, 103, 0.7); }
+    100% { box-shadow: 0 8px 25px rgba(195, 158, 103, 0.4); }
+}
+
+.qr-fab:hover {
+    transform: scale(1.08);
+}
+
+/* QR Code Modal Drawer overlay */
+.qr-drawer-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.92);
+    backdrop-filter: blur(10px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+}
+
+.qr-drawer-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.qr-drawer-card {
+    background: linear-gradient(135deg, #1f1a18 0%, #0d0b0a 100%);
+    border: 1px solid rgba(195, 158, 103, 0.35);
+    border-radius: 28px;
+    padding: 35px;
+    text-align: center;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 20px 45px rgba(0,0,0,0.8);
+    position: relative;
+    transform: scale(0.9);
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.qr-drawer-overlay.active .qr-drawer-card {
+    transform: scale(1);
+}
+
+.qr-container-box {
+    background: #ffffff;
+    padding: 16px;
+    border-radius: 20px;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+
+/* unified Timeline visits list */
+.timeline-list {
+    position: relative;
+    padding-left: 20px;
+    margin-top: 20px;
+}
+
+[dir="rtl"] .timeline-list {
+    padding-left: 0;
+    padding-right: 20px;
+}
+
+.timeline-list::before {
+    content: '';
+    position: absolute;
+    top: 5px;
+    bottom: 5px;
+    left: 0;
+    width: 2px;
+    background: rgba(195, 158, 103, 0.2);
+}
+
+[dir="rtl"] .timeline-list::before {
+    left: auto;
+    right: 0;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+}
+
+.timeline-item::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: -24px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid #12100f;
+}
+
+[dir="rtl"] .timeline-item::after {
+    left: auto;
+    right: -24px;
+}
+
+.timeline-date {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'Outfit', sans-serif;
+}
+
+.timeline-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    margin-top: 3px;
+}
+
+.timeline-points {
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Outfit', sans-serif;
+}
+
+.timeline-points.earned { color: #2ecc71; }
+.timeline-points.redeemed { color: #e74c3c; }
+
+/* Promo Draw Card */
+.promo-draw-card {
+    background: rgba(30, 25, 23, 0.4);
+    border: 1px solid rgba(195, 158, 103, 0.15);
+    border-radius: 20px;
+    padding: 25px;
+    margin-bottom: 30px;
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    align-items: center;
+}
+
+.promo-draw-img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid rgba(195, 158, 103, 0.2);
+}
+
+@media (max-width: 600px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    .promo-draw-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    .promo-draw-img {
+        width: 100%;
+        height: 160px;
+    }
+}
+
+/* Authentication Forms & Inputs Styles */
+.tab-buttons {
+    display: flex;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 25px;
+    gap: 5px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 14px 10px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 2px solid transparent;
+    text-align: center;
+}
+
+.tab-btn.active {
+    color: var(--primary);
+    border-bottom: 2px solid var(--primary);
+}
+
+.form-group {
+    margin-bottom: 20px;
+    text-align: right;
+}
+
+[dir="ltr"] .form-group {
+    text-align: left;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #e5e5e5;
+    font-weight: 500;
+}
+
+.form-input {
+    width: 100%;
+    padding: 13px 16px;
+    border-radius: 12px;
+    background: rgba(18, 12, 8, 0.6);
+    border: 1px solid rgba(195, 158, 103, 0.25);
+    color: #ffffff;
+    font-size: 15px;
+    transition: all 0.3s ease;
+    font-family: 'Tajawal', sans-serif;
+    box-sizing: border-box;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 12px rgba(195, 158, 103, 0.2);
+    background: rgba(18, 12, 8, 0.8);
+}
+
+.form-input[type="date"] {
+    color-scheme: dark;
+}
+
+/* Full-Screen Verification Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    max-width: 420px;
+    width: 90%;
+    padding: 30px;
+    text-align: center;
+    background: linear-gradient(135deg, #1f1a18 0%, #0d0b0a 100%);
+    border: 1px solid rgba(195, 158, 103, 0.3);
+    border-radius: 24px;
+    box-shadow: 0 20px 45px rgba(0,0,0,0.8);
+}
+
+.otp-icon {
+    font-size: 45px;
+    color: var(--primary);
+    margin-bottom: 15px;
+    animation: pulse 2s infinite;
+}
+{% endblock %}
+
+{% block content %}
+<div class="container loyalty-page-wrapper">
+
+    {% if customer %}
+        <!-- GREETING & TIER HEADER -->
+        <div class="loyalty-header">
+            <div>
+                <h2 style="font-size: 22px; color:#fff; font-weight:700;">أهلاً بك، {{ customer.full_name }} 👋</h2>
+                <p style="font-size: 13px; color: var(--text-muted); margin-top:4px;">مستواك الحالي في النادي:</p>
+            </div>
+            <div class="tier-badge-container">
+                <div class="tier-badge {% if tier == 'Gold' %}gold{% elif tier == 'Silver' %}silver{% else %}bronze{% endif %}">
+                    {% if tier == 'Gold' %}🥇{% elif tier == 'Silver' %}🥈{% else %}🥉{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- TIER PROGRESS CARD -->
+        <div class="tier-progress-card">
+            <div style="display:flex; justify-content:space-between; font-size:14px;">
+                <span>
+                    <span class="lang-ar">المستوى الحالي: <strong class="text-primary">{% if tier == 'Gold' %}الذهبي{% elif tier == 'Silver' %}الفضي{% else %}البرونزي{% endif %}</strong></span>
+                    <span class="lang-en">Current Tier: <strong class="text-primary">{{ tier }}</strong></span>
+                </span>
+                {% if needed > 0 %}
+                    <span style="color:var(--text-muted)">
+                        <span class="lang-ar">يتبقى <strong>{{ needed|floatformat:0 }}</strong> نقطة للترقية إلى <strong>{% if next_tier == 'Silver' %}الفضي{% else %}الذهبي{% endif %}</strong></span>
+                        <span class="lang-en"><strong>{{ needed|floatformat:0 }}</strong> points needed to reach <strong>{{ next_tier }}</strong></span>
+                    </span>
+                {% else %}
+                    <span class="text-success">
+                        <span class="lang-ar">لقد وصلت للحد الأقصى للمستوى الذهبي! 🎉</span>
+                        <span class="lang-en">You have reached the maximum Gold Tier! 🎉</span>
+                    </span>
+                {% endif %}
+            </div>
+            <div class="tier-progress-bar-outer">
+                <div class="tier-progress-bar-inner" style="width: {{ progress }}%;"></div>
+            </div>
+            <div style="font-size:11.5px; color:var(--text-muted); margin-top:8px; display:flex; justify-content:space-between;">
+                <span class="lang-ar">مجموع النقاط التي جمعتها آخر 12 شهر: <strong>{{ total_earned_12m }}</strong></span>
+                <span class="lang-en">Total points collected last 12 months: <strong>{{ total_earned_12m }}</strong></span>
+            </div>
+        </div>
+
+        <!-- STATS CARD GRID -->
+        <div class="stats-grid">
+            <!-- Points Balance Card -->
+            <div class="stat-box">
+                <h3 data-tr="stat_points_title">رصيد النقاط</h3>
+                <div class="stat-value">{{ customer.points_balance }}</div>
+                <div class="stat-subtitle" id="pointsValText"></div>
+            </div>
+
+            <!-- Active Raffle Tickets Card -->
+            <div class="stat-box">
+                <h3 data-tr="stat_tickets_title">تذاكر السحب</h3>
+                <div class="stat-value">{{ tickets.count }}</div>
+                <div class="stat-subtitle" data-tr="stat_tickets_sub">تذكرة سحب نشطة هذا الشهر</div>
+            </div>
+        </div>
+
+        <!-- BIRTHDAY CARDSurprise (Only shown if birthday) -->
+        {% if is_birthday %}
+        <div class="birthday-card">
+            <div style="font-size:40px; margin-bottom:10px;">🎂🎈</div>
+            <h2 style="font-size:20px; font-weight:700; color:#fff;">عيد ميلاد سعيد! 🎉</h2>
+            <p style="font-size:14px; color:#ecd0a5; margin:10px 0 20px;">
+                {% if tier == 'Gold' %}{{ config.birthday_msg_gold }}{% elif tier == 'Silver' %}{{ config.birthday_msg_silver }}{% else %}{{ config.birthday_msg_bronze }}{% endif %}
+            </p>
+            <button class="btn btn-primary" onclick="claimBirthdayReward()">تفعيل هدية عيد الميلاد 🎁</button>
+        </div>
+        {% endif %}
+
+        <!-- PROMOTIONAL DRAW CARD -->
+        <div class="promo-draw-card">
+            {% if config.raffle_prize_image %}
+                <img src="{{ config.raffle_prize_image.url }}" class="promo-draw-img" alt="Prize">
+            {% else %}
+                <i class="fa-solid fa-gift text-primary" style="font-size: 50px; padding: 20px;"></i>
+            {% endif %}
+            <div style="flex:1;">
+                <h3 style="font-size:18px; font-weight:700; color:#fff; margin-bottom:6px;">سحب الجائزة الكبرى لشهر {% now "F" %} 🏆</h3>
+                <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">{{ config.raffle_prize_name }} - {{ config.raffle_prize_desc|default:"سحب شهري حماسي لعملاء الكافيه الفعالين." }}</p>
+                <div style="font-size: 14px; font-weight:600; color:var(--primary);" id="raffleTimer">العداد التنازلي: -- : -- : -- : --</div>
+            </div>
+        </div>
+
+
+
+        <!-- UNUSED CLAIMED VOUCHERS -->
+        {% if vouchers %}
+        <div style="margin-top:40px;">
+            <h3 style="font-size:18px; font-weight:700; color:#fff; margin-bottom:15px;">الكوبونات الجاهزة للاستلام في الكافيه</h3>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                {% for voucher in vouchers %}
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(195,158,103,0.1); border:1px solid rgba(195,158,103,0.3); padding:16px 20px; border-radius:14px;">
+                        <div>
+                            <div style="font-size:16px; font-weight:700; color:#fff;">{{ voucher.reward_details }}</div>
+                            <div style="font-size:12px; color:var(--text-muted); margin-top:4px; font-family:'Outfit';">كود الكوبون: {{ voucher.voucher_code }}</div>
+                        </div>
+                        <button class="btn btn-primary btn-sm" onclick="showVoucherCodeQR('{{ voucher.voucher_code }}', '{{ voucher.reward_details }}')">إظهار الكود (QR)</button>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- TIMELINE VISITS & REDEMPTIONS -->
+        <div style="margin-top:40px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="font-size:18px; font-weight:700; color:#fff;">سجل نشاطات وزيارات العميل</h3>
+                <a href="{% url 'accounts:customer_logout' %}" class="btn btn-secondary btn-sm">تسجيل الخروج</a>
+            </div>
+            
+            <div class="timeline-list">
+                <!-- If tickets are linked -->
+                {% for ticket in tickets %}
+                    <div class="timeline-item">
+                        <div class="timeline-date">{{ ticket.created_at|date:"M d, Y h:i A" }}</div>
+                        <div class="timeline-title">زيارة الكافيه - تم ربط الفاتورة بنجاح</div>
+                        <div class="timeline-points earned">+ {% widthratio ticket.receipt_amount 5 5 %} نقطة</div>
+                    </div>
+                {% empty %}
+                    <div style="text-align:center; padding:25px; color:var(--text-muted);">لا يوجد فواتير مربوطة بعد. مسح كود العميل عند الدفع يضيف فواتيرك هنا.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Floating QR Card Action Button (FAB) -->
+        <button class="qr-fab" onclick="openQrModal()">
+            <i class="fa-solid fa-qrcode"></i>
+        </button>
+
+    {% else %}
+        <!-- CUSTOMER NOT LOGGED IN -->
+        <div class="glass-card" style="margin-top:40px; padding:35px 25px;">
+            <div class="tab-buttons">
+                <button class="tab-btn active" data-tr="login_tab" onclick="switchAuthTab('login', this)">تسجيل الدخول</button>
+                <button class="tab-btn" data-tr="register_tab" onclick="switchAuthTab('register', this)">إنشاء حساب الولاء</button>
+            </div>
+
+            <!-- Login Form -->
+            <div id="loginFormSection">
+                <form id="loginForm" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label class="form-label">
+                            <span class="lang-ar">رقم الهاتف</span>
+                            <span class="lang-en">Phone Number</span>
+                        </label>
+                        <input type="tel" name="phone_number" class="form-input" placeholder="+962791234567" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" data-tr="label_password">كلمة المرور</label>
+                        <input type="password" name="password" class="form-input" placeholder="••••••••" required>
+                        <div style="text-align: left; margin-top: 5px;">
+                            <a href="#" onclick="openForgotPasswordModal(event)" style="font-size: 12px; color: var(--primary); text-decoration: none;">
+                                <span class="lang-ar">نسيت كلمة المرور؟</span>
+                                <span class="lang-en">Forgot Password?</span>
+                            </a>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%; margin-top:15px; padding:12px;">
+                        <i class="fa-solid fa-right-to-bracket"></i> <span data-tr="btn_login">تسجيل الدخول</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerFormSection" style="display:none;">
+                <form id="registerForm" onsubmit="handleRegisterRequest(event)">
+                    <div class="form-group">
+                        <label class="form-label" data-tr="label_name">الاسم الكامل</label>
+                        <input type="text" name="full_name" class="form-input" placeholder="مثال: أحمد سالم" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">
+                            <span class="lang-ar">رقم الهاتف</span>
+                            <span class="lang-en">Phone Number</span>
+                        </label>
+                        <input type="tel" name="phone_number" id="regPhone" class="form-input" placeholder="+962791234567" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" data-tr="label_birthdate">تاريخ الميلاد (يتطلب عمر 18+)</label>
+                        <input type="date" name="birth_date" id="regBirthDate" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" data-tr="label_create_password">إنشاء كلمة المرور</label>
+                        <input type="password" name="password" class="form-input" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%; margin-top:15px; padding:12px;">
+                        <i class="fa-solid fa-user-plus"></i> <span data-tr="btn_register">طلب كود التحقق بالواتساب (OTP)</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+
+<!-- QR CODE DRAWER MODAL OVERLAY -->
+<div class="qr-drawer-overlay" id="qrDrawerModal">
+    <div class="qr-drawer-card screenshot-protected" id="loyaltyCard">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(195,158,103,0.15); padding-bottom:15px; margin-bottom:20px;">
+            <div style="font-size:18px; font-weight:700; color:#fff;"><i class="fa-solid fa-mug-hot"></i> بطاقة ولاء {{ global_config.cafe_name|default:"White Bird Cafe" }}</div>
+            <button onclick="closeQrModal()" style="background:none; border:none; color:var(--text-muted); font-size:22px; cursor:pointer;">&times;</button>
+        </div>
+
+        <!-- Barcode container (shown for loyalty card) -->
+        <div id="barcodeSecuritySection" style="display:none;">
+            <!-- Barcode container with security hold -->
+            <div class="barcode-security-container" id="barcodeSecurityContainer" style="position:relative; width: 100%; max-width: 320px; background:#fff; padding: 25px 15px; border-radius:12px; margin: 0 auto 10px; box-shadow:0 8px 25px rgba(0,0,0,0.6); text-align:center; user-select:none; -webkit-user-select:none; overflow:hidden; touch-action:none;">
+                
+                <!-- Instructions (Shown by default) -->
+                <div id="barcodeInstruction" style="font-size:14px; color:#555; font-weight:600; padding:30px 10px;">
+                    <span class="lang-ar">👇 اضغط بإصبع واحد واستمر بالضغط لعرض الباركود</span>
+                    <span class="lang-en">👇 Press and HOLD with one finger to show barcode</span>
+                </div>
+
+                <!-- Barcode Wrapper (hidden/blurred by default) -->
+                <div id="barcodeWrapper" style="display:none; position:relative; overflow:hidden; background:#fff; padding: 10px; border-radius: 8px;">
+                    
+                    <!-- High-frequency Flicker Canvas -->
+                    <canvas id="flickerCanvas" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; mix-blend-mode: multiply;"></canvas>
+
+                    <!-- Moving Laser Line -->
+                    <div class="laser-line" style="position: absolute; left: 0; width: 100%; height: 3px; background: #ff3838; box-shadow: 0 0 8px #ff3838; z-index: 10; animation: laserSweep 0.8s infinite linear; pointer-events: none;"></div>
+                    
+                    <!-- Barcode Text rendered using Libre Barcode 39 -->
+                    <div style="font-family: 'Libre Barcode 39', cursive; font-size: 85px; color: #000; line-height: 1; user-select:none; margin: 0 auto; display:inline-block; letter-spacing: 1px;">
+                        *{{ customer.barcode }}*
+                    </div>
+                    
+                    <!-- Plain text barcode value under it -->
+                    <div style="font-family: monospace; font-size: 14px; color: #333; margin-top: 5px; font-weight: bold; letter-spacing: 2px;">
+                        {{ customer.barcode }}
+                    </div>
+                </div>
+            </div>
+
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:15px; text-align:center;">
+                <span class="lang-ar">يمنع المسح من لقطات الشاشة (عرض حي فقط)</span>
+                <span class="lang-en">Screenshots blocked (Live view only)</span>
+            </div>
+        </div>
+
+        <!-- QR container (shown for voucher QR code) -->
+        <div id="qrVoucherSection" style="display:none;">
+            <div class="qr-container-box" id="qrContainer" style="margin: 0 auto 20px;">
+                <!-- QR code generated here -->
+            </div>
+
+            <div style="width:100%; height:6px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden; margin-bottom:10px;">
+                <div id="countdownBar" style="width:100%; height:100%; background:var(--primary); transition: width 1s linear;"></div>
+            </div>
+            <div id="countdownText" style="font-size:12px; color:var(--text-muted); margin-bottom:15px; text-align:center;">ينتهي الرمز خلال 60 ثانية</div>
+        </div>
+
+        <div style="text-align:center; border-top: 1px solid rgba(255,255,255,0.05); padding-top:15px; margin-top:15px;">
+            <div style="font-size:20px; font-weight:700; color:#fff;" id="customerNameText">{{ customer.full_name }}</div>
+            <div style="font-size:13px; color:var(--text-muted); margin-top:4px;" id="customerPhoneText">{{ customer.phone_number }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- OTP Verification Modal -->
+<div class="modal-overlay" id="otpModal">
+    <div class="modal-content glass-card">
+        <i class="fa-solid fa-comment-sms otp-icon"></i>
+        <h3>التحقق من رقم الهاتف</h3>
+        <p style="color:var(--text-muted); font-size:14px; margin: 8px 0 20px;">
+            لقد أرسلنا كود تحقق مكون من 6 أرقام للرقم <span id="otpTargetPhone" style="color:var(--primary); font-weight:600;"></span> عبر الواتساب.
+        </p>
+        <form id="otpVerifyForm" onsubmit="handleOtpVerify(event)">
+            <div class="form-group">
+                <input type="text" name="otp" class="form-input" placeholder="كود التحقق" maxlength="6" style="text-align:center; font-size:20px; letter-spacing:4px; font-weight:700;" required>
+            </div>
+            <div style="display:flex; gap:12px; margin-top:20px;">
+                <button type="button" class="btn btn-secondary" onclick="closeOtpModal()">إلغاء</button>
+                <button type="submit" class="btn btn-primary" style="flex:2;">تأكيد وتسجيل</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Forgot Password Modal -->
+<div class="modal-overlay" id="forgotPasswordModal">
+    <div class="modal-content glass-card">
+        <i class="fa-solid fa-key" style="font-size: 32px; color: var(--primary); margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto; text-align: center;"></i>
+        <h3 style="text-align: center;">
+            <span class="lang-ar">استرجاع كلمة المرور</span>
+            <span class="lang-en">Recover Password</span>
+        </h3>
+        
+        <!-- Step 1: Request OTP -->
+        <div id="forgotStep1">
+            <p style="color:var(--text-muted); font-size:14px; margin: 8px 0 20px; text-align: center;">
+                <span class="lang-ar">أدخل رقم هاتفك المسجل لإرسال رمز التحقق بالواتساب.</span>
+                <span class="lang-en">Enter your registered phone number to receive a verification OTP via WhatsApp.</span>
+            </p>
+            
+            <form id="forgotRequestForm" onsubmit="handleForgotRequest(event)">
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="lang-ar">رقم الهاتف</span>
+                        <span class="lang-en">Phone Number</span>
+                    </label>
+                    <input type="tel" name="phone_number" id="forgotPhoneInput" class="form-input" placeholder="+962791234567" required>
+                </div>
+                <div style="display:flex; gap:12px; margin-top:20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeForgotPasswordModal()">
+                        <span class="lang-ar">إلغاء</span>
+                        <span class="lang-en">Cancel</span>
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="flex:2;">
+                        <span class="lang-ar">طلب الرمز 📲</span>
+                        <span class="lang-en">Request Code 📲</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Step 2: Verify OTP & Enter New Password -->
+        <div id="forgotStep2" style="display: none;">
+            <p style="color:var(--text-muted); font-size:14px; margin: 8px 0 20px; text-align: center;">
+                <span class="lang-ar">لقد أرسلنا كود التحقق بالواتساب للرقم <strong id="forgotTargetPhone" style="color:var(--primary);"></strong></span>
+                <span class="lang-en">We sent a verification code to <strong id="forgotTargetPhoneEn" style="color:var(--primary);"></strong></span>
+            </p>
+            
+            <form id="forgotResetForm" onsubmit="handleForgotReset(event)">
+                <div class="form-group">
+                    <input type="text" name="otp" class="form-input" placeholder="كود التحقق" maxlength="6" style="text-align:center; font-size:20px; letter-spacing:4px; font-weight:700;" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <span class="lang-ar">كلمة المرور الجديدة</span>
+                        <span class="lang-en">New Password</span>
+                    </label>
+                    <input type="password" name="new_password" class="form-input" placeholder="••••••••" required>
+                </div>
+                <div style="display:flex; gap:12px; margin-top:20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeForgotPasswordModal()">
+                        <span class="lang-ar">إلغاء</span>
+                        <span class="lang-en">Cancel</span>
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="flex:2;">
+                        <span class="lang-ar">تعيين كلمة المرور 🔐</span>
+                        <span class="lang-en">Reset Password 🔐</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+    function switchAuthTab(tab, btn) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (tab === 'login') {
+            document.getElementById('loginFormSection').style.display = 'block';
+            document.getElementById('registerFormSection').style.display = 'none';
+        } else {
+            document.getElementById('loginFormSection').style.display = 'none';
+            document.getElementById('registerFormSection').style.display = 'block';
+        }
+    }
+
+    function getAge(dateString) {
+        const today = new Date();
+        const birthDate = new Date(dateString);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age;
+    }
+
+    async function handleLogin(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        try {
+            const res = await fetch('/api/customer/login/', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.status === 'success') {
+                showToast(localStorage.getItem('cafe_lang') === 'ar' ? 'تم تسجيل الدخول بنجاح!' : 'Logged in successfully!', 'success');
+                setTimeout(() => window.location.href = data.redirect, 1000);
+            } else {
+                showToast(data.message, 'danger');
+            }
+        } catch (err) {
+            showToast('خطأ في الاتصال بالخادم', 'danger');
+        }
+    }
+
+    async function handleRegisterRequest(e) {
+        e.preventDefault();
+        const birthDateVal = document.getElementById('regBirthDate').value;
+        const age = getAge(birthDateVal);
+        if (age < 18) {
+            showToast(localStorage.getItem('cafe_lang') === 'ar' ? 'يجب أن يكون عمرك 18 سنة أو أكثر للتسجيل' : 'Must be 18 years or older to register.', 'danger');
+            return;
+        }
+        const formData = new FormData(e.target);
+        try {
+            const res = await fetch('/api/customer/register/', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.status === 'success') {
+                document.getElementById('otpTargetPhone').innerText = document.getElementById('regPhone').value;
+                document.getElementById('otpModal').style.display = 'flex';
+                showToast('تم إرسال كود التحقق بالواتساب!', 'success');
+            } else {
+                showToast(data.message, 'danger');
+            }
+        } catch (err) {
+            showToast('خطأ في الاتصال بالخادم', 'danger');
+        }
+    }
+
+    function closeOtpModal() {
+        document.getElementById('otpModal').style.display = 'none';
+    }
+
+    async function handleOtpVerify(e) {
+        e.preventDefault();
+        const otp = e.target.otp.value;
+        const phone = document.getElementById('regPhone').value;
+        const formData = new FormData();
+        formData.append('otp', otp);
+        formData.append('phone_number', phone);
+        try {
+            const res = await fetch('/api/customer/register/verify/', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.status === 'success') {
+                showToast('تم التسجيل وتفعيل الحساب بنجاح!', 'success');
+                setTimeout(() => window.location.href = data.redirect, 1000);
+            } else {
+                showToast(data.message, 'danger');
+            }
+        } catch (err) {
+            showToast('خطأ في الاتصال بالخادم', 'danger');
+        }
+    }
+
+    {% if customer %}
+    let qrTimerInterval = null;
+
+    function translatePointsVal() {
+        const textEl = document.getElementById('pointsValText');
+        if (textEl) {
+            textEl.innerText = localStorage.getItem('cafe_lang') === 'ar' ? 'نقاط ولاء نشطة ومتاحة للاستخدام' : 'Active loyalty points available';
+        }
+    }
+
+    function openQrModal() {
+        document.getElementById('barcodeSecuritySection').style.display = 'block';
+        document.getElementById('qrVoucherSection').style.display = 'none';
+        document.getElementById('qrDrawerModal').classList.add('active');
+        
+        // Boost screen brightness natively if supported
+        if (navigator.brightness) {
+            navigator.brightness.set(1.0).catch(() => {});
+        }
+    }
+
+    function closeQrModal() {
+        document.getElementById('qrDrawerModal').classList.remove('active');
+        clearInterval(qrTimerInterval);
+        hideBarcode();
+    }
+
+    function showVoucherCodeQR(code, reward) {
+        document.getElementById('barcodeSecuritySection').style.display = 'none';
+        document.getElementById('qrVoucherSection').style.display = 'block';
+        
+        const qrContainer = document.getElementById('qrContainer');
+        qrContainer.innerHTML = '';
+        new QRCode(qrContainer, {
+            text: code,
+            width: 170,
+            height: 170,
+            colorDark : "#12100f",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.M
+        });
+        document.getElementById('countdownBar').style.width = '100%';
+        document.getElementById('countdownText').innerText = localStorage.getItem('cafe_lang') === 'ar' ? 'أظهر هذا الكود للويتر لمسحه والاستلام' : 'Show this QR to floor waiter to claim';
+        document.getElementById('customerNameText').innerText = reward;
+        document.getElementById('customerPhoneText').innerText = code;
+        document.getElementById('qrDrawerModal').classList.add('active');
+    }
+
+    // Secure Barcode Touch-and-Hold Listeners
+    const securityContainer = document.getElementById('barcodeSecurityContainer');
+    const barcodeWrapper = document.getElementById('barcodeWrapper');
+    const barcodeInstruction = document.getElementById('barcodeInstruction');
+    const canvas = document.getElementById('flickerCanvas');
+    
+    let ctx = null;
+    let phase = 0;
+    const stripeWidth = 3; // Stripe width in pixels
+
+    if (canvas) {
+        ctx = canvas.getContext('2d');
+    }
+
+    function showBarcode() {
+        if (barcodeWrapper) {
+            barcodeWrapper.style.display = 'block';
+            if (canvas && ctx) {
+                // Instantly match canvas dimensions to the wrapper box
+                canvas.width = barcodeWrapper.offsetWidth;
+                canvas.height = barcodeWrapper.offsetHeight;
+            }
+        }
+        if (barcodeInstruction) barcodeInstruction.style.display = 'none';
+    }
+
+    function hideBarcode() {
+        if (barcodeWrapper) barcodeWrapper.style.display = 'none';
+        if (barcodeInstruction) barcodeInstruction.style.display = 'block';
+    }
+
+    // High frequency alternate draw loop
+    function drawFlicker() {
+        if (barcodeWrapper && barcodeWrapper.style.display === 'block' && canvas && ctx) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000000';
+            
+            // Draw alternating stripes to corrupt screenshots
+            for (let x = phase; x < canvas.width; x += stripeWidth * 2) {
+                ctx.fillRect(x, 0, stripeWidth, canvas.height);
+            }
+            
+            phase = phase === 0 ? stripeWidth : 0;
+        }
+        requestAnimationFrame(drawFlicker);
+    }
+    requestAnimationFrame(drawFlicker);
+
+    if (securityContainer) {
+        // Pointer/Touch start: check for single touch
+        securityContainer.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                showBarcode();
+            } else {
+                hideBarcode(); // Hide immediately on multi-touch
+            }
+        }, { passive: false });
+
+        // Touch move: check if still single touch
+        securityContainer.addEventListener('touchmove', function(e) {
+            if (e.touches.length !== 1) {
+                hideBarcode();
+            }
+        });
+
+        // Touch end / cancel
+        securityContainer.addEventListener('touchend', function(e) {
+            hideBarcode();
+        });
+        securityContainer.addEventListener('touchcancel', function(e) {
+            hideBarcode();
+        });
+
+        // Mouse fallbacks for desktop testing
+        securityContainer.addEventListener('mousedown', function(e) {
+            showBarcode();
+        });
+        securityContainer.addEventListener('mouseup', function(e) {
+            hideBarcode();
+        });
+        securityContainer.addEventListener('mouseleave', function(e) {
+            hideBarcode();
+        });
+
+        // Hide on volume or other mechanical button presses (if keydown triggers)
+        window.addEventListener('keydown', function(e) {
+            if (e.key.includes('Volume') || e.key === 'VolumeUp' || e.key === 'VolumeDown') {
+                hideBarcode();
+            }
+        });
+
+        // Hide on page blur (screenshots, lock screens, multitasking)
+        window.addEventListener('blur', function() {
+            hideBarcode();
+        });
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                hideBarcode();
+            }
+        });
+    }
+
+
+
+    async function claimBirthdayReward() {
+        const tierName = '{{ tier }}';
+        let giftName = "هدية عيد ميلاد برونزية";
+        if (tierName === 'Gold') giftName = "هدية عيد ميلاد ذهبية (مشروب + حلى مجاني)";
+        else if (tierName === 'Silver') giftName = "هدية عيد ميلاد فضية (مشروب مجاني)";
+
+        const formData = new FormData();
+        formData.append('points_cost', 0);
+        formData.append('reward_details', giftName);
+
+        try {
+            const res = await fetch('/api/customer/redeem-voucher/', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.status === 'success') {
+                showToast('كل عام وأنت بخير! تم توليد كوبون عيد ميلادك 🎂', 'success');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showToast(data.message, 'danger');
+            }
+        } catch (err) {
+            showToast('خطأ في الشبكة', 'danger');
+        }
+    }
+
+    // Raffle draw countdown timer
+    const raffleEnd = '{{ config.raffle_end_date|date:"Y-m-d H:i:s" }}';
+    if (raffleEnd) {
+        const dest = new Date(raffleEnd.replace(/-/g, "/")).getTime();
+        const timerInterval = setInterval(() => {
+            const now = new Date().getTime();
+            const diff = dest - now;
+            if (diff <= 0) {
+                clearInterval(timerInterval);
+                document.getElementById('raffleTimer').innerText = localStorage.getItem('cafe_lang') === 'ar' ? 'السحب جارٍ حالياً!' : 'Draw is in progress!';
+                return;
+            }
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const secs = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            const isAr = localStorage.getItem('cafe_lang') === 'ar';
+            document.getElementById('raffleTimer').innerText = isAr ? 
+                `ينتهي السحب خلال: ${days} يوم ، ${hours} ساعة ، ${mins} دقيقة ، ${secs} ثانية` : 
+                `Draw ends in: ${days}d ${hours}h ${mins}m ${secs}s`;
+        }, 1000);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        translatePointsVal();
+        window.addEventListener('langChanged', translatePointsVal);
+
+        const card = document.getElementById('loyaltyCard');
+        if (card) {
+            card.addEventListener('contextmenu', e => e.preventDefault());
+            window.addEventListener('blur', () => {
+                card.style.opacity = '0.05';
+                card.style.filter = 'blur(10px)';
+            });
+            window.addEventListener('focus', () => {
+                card.style.opacity = '1';
+                card.style.filter = 'none';
+            });
+        }
+    });
+    {% endif %}
+
+    // Forgot Password JS Handlers
+    function openForgotPasswordModal(e) {
+        if (e) e.preventDefault();
+        document.getElementById('forgotPhoneInput').value = '';
+        document.getElementById('forgotRequestForm').reset();
+        document.getElementById('forgotResetForm').reset();
+        document.getElementById('forgotStep1').style.display = 'block';
+        document.getElementById('forgotStep2').style.display = 'none';
+        document.getElementById('forgotPasswordModal').style.display = 'flex';
+    }
+
+    function closeForgotPasswordModal() {
+        document.getElementById('forgotPasswordModal').style.display = 'none';
+    }
+
+    async function handleForgotRequest(e) {
+        e.preventDefault();
+        const phone = document.getElementById('forgotPhoneInput').value;
+        const formData = new FormData(e.target);
+        
+        try {
+            const res = await fetch('/api/customer/forgot-password/', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.status === 'success') {
+                document.getElementById('forgotTargetPhone').innerText = phone;
+                document.getElementById('forgotTargetPhoneEn').innerText = phone;
+                document.getElementById('forgotStep1').style.display = 'none';
+                document.getElementById('forgotStep2').style.display = 'block';
+                showToast(localStorage.getItem('cafe_lang') === 'ar' ? 'تم إرسال كود التحقق بالواتساب!' : 'OTP verification code sent via WhatsApp!', 'success');
+            } else {
+                showToast(data.message, 'danger');
+            }
+        } catch (err) {
+            showToast('خطأ في الاتصال بالخادم', 'danger');
+        }
+    }
+
+    async function handleForgotReset(e) {
+        e.preventDefault();
+        const phone = document.getElementById('forgotPhoneInput').value;
+        const formData = new FormData(e.target);
+        formData.append('phone_number', phone);
+        
+        try {
+            const res = await fetch('/api/customer/reset-password/', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.status === 'success') {
+                showToast(localStorage.getItem('cafe_lang') === 'ar' ? 'تم تعيين كلمة المرور بنجاح! يرجى تسجيل الدخول.' : 'Password reset successfully! Please login.', 'success');
+                closeForgotPasswordModal();
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showToast(data.message, 'danger');
+            }
+        } catch (err) {
+            showToast('خطأ في الاتصال بالخادم', 'danger');
+        }
+    }
+</script>
+{% endblock %}

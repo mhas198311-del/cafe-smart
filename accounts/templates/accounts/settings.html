@@ -1,0 +1,934 @@
+{% extends 'base.html' %}
+
+{% block title %}White Bird Cafe - الإعدادات الشاملة (Cafe Settings){% endblock %}
+
+{% block extra_css %}
+.settings-container {
+    max-width: 1280px;
+    margin: 25px auto 80px;
+    padding: 0 20px;
+}
+
+.settings-header-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 22px 28px;
+    margin-bottom: 25px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(30, 22, 16, 0.95), rgba(18, 12, 8, 0.95));
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.settings-tabs-nav {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 25px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.settings-tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 18px;
+    border-radius: 12px 12px 0 0;
+    border: 1px solid transparent;
+    border-bottom: none;
+    background: rgba(255,255,255,0.02);
+    color: var(--text-muted);
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.settings-tab-btn:hover {
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+}
+
+.settings-tab-btn.active {
+    background: rgba(30, 22, 16, 0.95);
+    color: var(--primary);
+    border-color: rgba(212, 175, 55, 0.4);
+    border-bottom: 2px solid var(--primary);
+    box-shadow: 0 -4px 15px rgba(212, 175, 55, 0.15);
+}
+
+.settings-panel {
+    background: rgba(24, 18, 14, 0.85);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 18px;
+    padding: 30px;
+    box-shadow: 0 10px 35px rgba(0,0,0,0.4);
+    backdrop-filter: blur(16px);
+}
+
+.settings-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.settings-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+}
+
+.settings-section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding-bottom: 10px;
+}
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+.form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #e0e0e0;
+    margin-bottom: 6px;
+}
+
+.form-input, .form-textarea, .form-select {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #fff;
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+}
+
+.form-input:focus, .form-textarea:focus, .form-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 10px rgba(212,175,55,0.25);
+}
+
+.file-preview-card {
+    background: rgba(0,0,0,0.3);
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.08);
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12.5px;
+}
+
+.staff-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+}
+
+.staff-table th, .staff-table td {
+    padding: 12px 14px;
+    text-align: right;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.staff-table th {
+    color: var(--primary);
+    font-weight: 700;
+    background: rgba(0,0,0,0.25);
+}
+
+.staff-table tr:hover {
+    background: rgba(255,255,255,0.02);
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    max-width: 480px;
+    width: 92%;
+    padding: 26px;
+}
+
+.whatsapp-log-box {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 15px;
+    max-height: 280px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+@media (max-width: 900px) {
+    .settings-grid-2, .settings-grid-3 { grid-template-columns: 1fr; }
+}
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    
+    <!-- Top Executive Header -->
+    <div class="settings-header-card glass-card">
+        <div>
+            <h2 style="font-size:22px; font-weight:800; color:#fff; margin:0 0 4px 0;">
+                <i class="fa-solid fa-gears" style="color:var(--primary);"></i> إعدادات الكافيه وإدارة النظام الشاملة
+            </h2>
+            <p style="color:var(--text-muted); font-size:13.5px; margin:0;">
+                إدارة بيانات الفرع، طاقم العمل والصلاحيات، وسائط الفيديو والمنيو، بوابة الواتساب، والولاء.
+            </p>
+        </div>
+        <div style="display:flex; gap:12px; align-items:center;">
+            <a href="{% url 'accounts:staff_dashboard' %}" class="btn btn-secondary" style="padding:10px 18px; font-size:13px;">
+                <i class="fa-solid fa-arrow-right"></i> العودة للوحة التحكم
+            </a>
+            <button type="submit" form="cafeFullSettingsForm" class="btn btn-primary" style="padding:10px 22px; font-size:14px; font-weight:700;">
+                <i class="fa-solid fa-floppy-disk"></i> حفظ كافة الإعدادات
+            </button>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="settings-tabs-nav">
+        <button type="button" class="settings-tab-btn active" onclick="switchSettingsTab('general', this)">
+            <i class="fa-solid fa-store"></i> بيانات الفرع والواي فاي
+        </button>
+        <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('branding', this)">
+            <i class="fa-solid fa-film"></i> وسائط الموقع وفيديو الإطلاق
+        </button>
+        <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('staff', this)">
+            <i class="fa-solid fa-users-gear"></i> إدارة طاقم العمل والموظفين
+        </button>
+        <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('loyverse', this)">
+            <i class="fa-solid fa-cash-register"></i> ربط كاشير Loyverse POS
+        </button>
+        <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('whatsapp', this)">
+            <i class="fa-brands fa-whatsapp"></i> بوابة الواتساب والمحاكاة
+        </button>
+        <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('loyalty', this)">
+            <i class="fa-solid fa-gift"></i> نادي الولاء وسحوبات الجوائز
+        </button>
+        <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('featured', this)">
+            <i class="fa-solid fa-sparkles"></i> الصنف المميز والعرض الخاص
+        </button>
+    </div>
+
+    <!-- Form Body -->
+    <form id="cafeFullSettingsForm" onsubmit="saveFullCafeSettings(event)" enctype="multipart/form-data">
+        
+        <!-- PANEL 1: General Info & Guest WiFi -->
+        <div class="settings-panel" id="panel-general">
+            <div class="settings-section-title">
+                <i class="fa-solid fa-store"></i> بيانات وهوية الكافيه وشبكة الواي فاي للزوار
+            </div>
+            
+            <div class="settings-grid-3">
+                <div class="form-group">
+                    <label class="form-label">اسم الكافيه (Cafe Name)</label>
+                    <input type="text" name="cafe_name" class="form-input" value="{{ config.cafe_name }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">رقم هاتف الاتصال</label>
+                    <input type="text" name="phone_number" class="form-input" value="{{ config.phone_number }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">رقم الواتساب الرسمي (بدون +)</label>
+                    <input type="text" name="whatsapp_number" class="form-input" value="{{ config.whatsapp_number }}" placeholder="962791234567">
+                </div>
+            </div>
+
+            <!-- Guest WiFi Info -->
+            <div style="background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.25); border-radius:14px; padding:18px; margin-bottom:20px;">
+                <h4 style="color:var(--primary); font-size:14px; margin:0 0 12px; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-wifi"></i> بيانات شبكة الواي فاي للزبائن (Guest WiFi Info)
+                </h4>
+                <div class="settings-grid-2">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label class="form-label">اسم شبكة الواي فاي (WiFi Network Name / SSID)</label>
+                        <input type="text" name="wifi_ssid" class="form-input" value="{{ config.wifi_ssid|default_if_none:'WhiteBird_Guest' }}">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label class="form-label">كلمة مرور الواي فاي (WiFi Password)</label>
+                        <input type="text" name="wifi_password" class="form-input" value="{{ config.wifi_password|default_if_none:'whitebird2026' }}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-grid-2">
+                <div class="form-group">
+                    <label class="form-label">ساعات العمل (عربي)</label>
+                    <input type="text" name="opening_hours_ar" class="form-input" value="{{ config.opening_hours_ar }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Opening Hours (EN)</label>
+                    <input type="text" name="opening_hours_en" class="form-input" value="{{ config.opening_hours_en }}">
+                </div>
+            </div>
+
+            <div class="settings-grid-2">
+                <div class="form-group">
+                    <label class="form-label">العنوان والموقع (عربي)</label>
+                    <input type="text" name="location_desc_ar" class="form-input" value="{{ config.location_desc_ar }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Location (English)</label>
+                    <input type="text" name="location_desc_en" class="form-input" value="{{ config.location_desc_en }}">
+                </div>
+            </div>
+
+            <div class="settings-grid-3">
+                <div class="form-group">
+                    <label class="form-label"><i class="fa-brands fa-instagram" style="color:#e1306c;"></i> انستغرام</label>
+                    <input type="url" name="instagram_url" class="form-input" value="{{ config.instagram_url|default_if_none:'' }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><i class="fa-brands fa-facebook" style="color:#1877f2;"></i> فيسبوك</label>
+                    <input type="url" name="facebook_url" class="form-input" value="{{ config.facebook_url|default_if_none:'' }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><i class="fa-brands fa-tiktok"></i> تيك توك</label>
+                    <input type="url" name="tiktok_url" class="form-input" value="{{ config.tiktok_url|default_if_none:'' }}">
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL 2: Media, Promo Video, Cover & Hero Titles -->
+        <div class="settings-panel" id="panel-branding" style="display:none;">
+            <div class="settings-section-title">
+                <i class="fa-solid fa-film"></i> وسائط الموقع وفيديو الإطلاق وغلاف المنيو والنصوص الافتتاحية
+            </div>
+
+            <!-- Hero Titles -->
+            <div class="settings-grid-2">
+                <div class="form-group">
+                    <label class="form-label">العنوان الرئيسي الافتتاحي (عربي)</label>
+                    <input type="text" name="hero_title_ar" class="form-input" value="{{ config.hero_title_ar|default:'وايت بيرد كافيه' }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Hero Title (English)</label>
+                    <input type="text" name="hero_title_en" class="form-input" value="{{ config.hero_title_en|default:'White Bird Cafe' }}">
+                </div>
+            </div>
+
+            <div class="settings-grid-2">
+                <div class="form-group">
+                    <label class="form-label">الوصف والعبارة الترويجية الافتتاحية (عربي)</label>
+                    <textarea name="hero_subtitle_ar" class="form-textarea" rows="2">{{ config.hero_subtitle_ar|default:'تجربة استثنائية من القهوة المختصة والمشروبات الساخنة والباردة' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Hero Subtitle (English)</label>
+                    <textarea name="hero_subtitle_en" class="form-textarea" rows="2">{{ config.hero_subtitle_en|default:'An exceptional specialty coffee & drinks experience' }}</textarea>
+                </div>
+            </div>
+
+            <!-- Video & Cover Files -->
+            <div class="settings-grid-2">
+                <div class="form-group">
+                    <label class="form-label">🎬 فيديو الإطلاق السينمائي للشاشات العريضة (Desktop Promo Video)</label>
+                    <input type="file" name="promo_video_desktop" class="form-input" accept="video/*">
+                    {% if config.promo_video_desktop %}
+                    <div class="file-preview-card">
+                        <span style="color:#22c55e;">✓ ملف الفيديو مرفوع ومفعل</span>
+                        <label style="color:var(--danger); cursor:pointer; font-size:11.5px;">
+                            <input type="checkbox" name="clear_promo_video_desktop"> حذف الفيديو
+                        </label>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">📱 فيديو الإطلاق الرأسي للموبايل (Mobile Vertical Video)</label>
+                    <input type="file" name="promo_video_mobile" class="form-input" accept="video/*">
+                    {% if config.promo_video_mobile %}
+                    <div class="file-preview-card">
+                        <span style="color:#22c55e;">✓ فيديو الموبايل مرفوع ومفعل</span>
+                        <label style="color:var(--danger); cursor:pointer; font-size:11.5px;">
+                            <input type="checkbox" name="clear_promo_video_mobile"> حذف الفيديو
+                        </label>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="settings-grid-2">
+                <div class="form-group">
+                    <label class="form-label">🖼️ صورة غلاف بوابة المنيو (Menu Cover Landing Image)</label>
+                    <input type="file" name="menu_cover_image" class="form-input" accept="image/*">
+                    {% if config.menu_cover_image %}
+                    <div class="file-preview-card">
+                        <span style="color:#22c55e;">✓ صورة الغلاف مرفوعة ومفعلة</span>
+                        <label style="color:var(--danger); cursor:pointer; font-size:11.5px;">
+                            <input type="checkbox" name="clear_menu_cover_image"> حذف الصورة
+                        </label>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">🗺️ صورة لقطة خريطة موقع الكافيه (Map Screenshot Image)</label>
+                    <input type="file" name="map_image" class="form-input" accept="image/*">
+                    {% if config.map_image %}
+                    <div class="file-preview-card">
+                        <span style="color:#22c55e;">✓ صورة الخريطة مرفوعة</span>
+                        <label style="color:var(--danger); cursor:pointer; font-size:11.5px;">
+                            <input type="checkbox" name="clear_map_image"> حذف الصورة
+                        </label>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL 3: Staff & Permissions Management -->
+        <div class="settings-panel" id="panel-staff" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px;">
+                <div class="settings-section-title" style="margin:0; border:none; padding:0;">
+                    <i class="fa-solid fa-users-gear"></i> إدارة طاقم العمل والموظفين والمدراء
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" onclick="openStaffUserModal('create')">
+                    <i class="fa-solid fa-user-plus"></i> إضافة موظف / مدير جديد ➕
+                </button>
+            </div>
+
+            <div style="overflow-x:auto; border-radius:12px; border:1px solid rgba(255,255,255,0.08);">
+                <table class="staff-table" id="staffUsersTable">
+                    <thead>
+                        <tr>
+                            <th>اسم الموظف</th>
+                            <th>اسم المستخدم (Login)</th>
+                            <th>الدور والصلاحية</th>
+                            <th>آخر دخول</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in staff_users %}
+                        <tr id="staff-row-{{ u.id }}">
+                            <td><b style="color:#fff;">{{ u.employee_name }}</b></td>
+                            <td><code>{{ u.username }}</code></td>
+                            <td>
+                                {% if u.role == 'ADMIN' %}
+                                    <span style="background:rgba(212,175,55,0.15); color:var(--primary); padding:3px 10px; border-radius:6px; font-weight:700; font-size:11px;">👑 مدير (Admin)</span>
+                                {% else %}
+                                    <span style="background:rgba(255,255,255,0.05); color:#a0a0a0; padding:3px 10px; border-radius:6px; font-weight:700; font-size:11px;">🧑‍🍳 موظف صالة (Staff)</span>
+                                {% endif %}
+                            </td>
+                            <td style="font-size:12px; color:var(--text-muted);">{{ u.last_login|date:"Y-m-d H:i"|default:"-" }}</td>
+                            <td>
+                                <div style="display:flex; gap:6px;">
+                                    <button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" title="تغيير كلمة المرور" onclick="openChangePasswordModal('{{ u.id }}', '{{ u.employee_name|escapejs }}')">
+                                        <i class="fa-solid fa-key"></i> كلمة السر
+                                    </button>
+                                    <button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" title="تعديل البيانات" onclick="openStaffUserModal('edit', '{{ u.id }}', '{{ u.username|escapejs }}', '{{ u.employee_name|escapejs }}', '{{ u.role }}')">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px; border-color:var(--danger); color:var(--danger);" title="حذف الموظف" onclick="deleteStaffUser('{{ u.id }}', '{{ u.employee_name|escapejs }}')">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" style="text-align:center; padding:25px; color:var(--text-muted);">لا يوجد موظفون معرفون حالياً.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- PANEL 4: Loyverse POS -->
+        <div class="settings-panel" id="panel-loyverse" style="display:none;">
+            <div class="settings-section-title">
+                <i class="fa-solid fa-cash-register"></i> ربط نقاط البيع والكاشير المباشر (Loyverse POS API)
+            </div>
+            <div class="form-group">
+                <label class="form-label">رمز الوصول المباشر (Loyverse Access Token)</label>
+                <input type="text" name="loyverse_api_token" id="settingLoyverseToken" class="form-input" value="{{ config.loyverse_api_token|default_if_none:'' }}" placeholder="مثال: 3832fd4c96814ccabbb6ee9d197a1901">
+                <div style="background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.25); border-radius:10px; padding:12px; margin-top:10px; font-size:12.5px; color:#22c55e;">
+                    🛡️ <b>نظام المزامنة الآمن:</b> عند تشغيل المزامنة، يقوم النظام بسحب الأسعار والمنتجات المسموحة للبيع مع <b>الحفاظ الكامل 100% على كافة تعديلاتك وفلاترك وأقسامك السابقة</b> دون مساس!
+                </div>
+            </div>
+            <div style="display:flex; gap:12px; margin-top:20px; align-items:center;">
+                <button type="button" class="btn btn-secondary" onclick="triggerLoyverseSyncFromSettings()" id="btnSyncFromSettings" style="border-color:#22c55e; color:#22c55e; padding:10px 20px;">
+                    <i class="fa-solid fa-rotate"></i> تشغيل المزامنة الحية الآمنة 🔄
+                </button>
+                <span id="loyverseSyncStatusText" style="font-size:13px; color:var(--text-muted);"></span>
+            </div>
+        </div>
+
+        <!-- PANEL 5: WhatsApp & Simulator -->
+        <div class="settings-panel" id="panel-whatsapp" style="display:none;">
+            <div class="settings-section-title">
+                <i class="fa-brands fa-whatsapp" style="color:#25d366;"></i> بوابة رسائل الواتساب (UltraMsg API & المحاكاة)
+            </div>
+            <div class="settings-grid-2">
+                <div class="form-group">
+                    <label class="form-label">UltraMsg Instance ID (معرف الحساب)</label>
+                    <input type="text" name="ultramsg_instance_id" class="form-input" value="{{ config.ultramsg_instance_id|default_if_none:'' }}" placeholder="e.g. instance12345">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">UltraMsg API Token (رمز الحساب)</label>
+                    <input type="text" name="ultramsg_token" class="form-input" value="{{ config.ultramsg_token|default_if_none:'' }}" placeholder="e.g. tokensecret">
+                </div>
+            </div>
+
+            <!-- Simulation & Test Box -->
+            <div style="margin-top:25px; padding:20px; background:rgba(0,0,0,0.35); border-radius:14px; border:1px solid rgba(255,255,255,0.06);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <h4 style="font-size:14px; color:var(--primary); margin:0;">
+                        <i class="fa-solid fa-terminal"></i> سجل محاكاة رسائل الواتساب الصادرة (Live Messages Log)
+                    </h4>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="refreshSettingsWhatsAppLogs()" style="padding:4px 10px; font-size:11px;">
+                        <i class="fa-solid fa-rotate-right"></i> تحديث السجل
+                    </button>
+                </div>
+                <div class="whatsapp-log-box" id="settingsWhatsAppLogBox">
+                    <p style="color:var(--text-muted); text-align:center;">جاري تحميل سجل الرسائل...</p>
+                </div>
+
+                <!-- Test Sender -->
+                <div style="display:flex; gap:10px; margin-top:14px; align-items:center;">
+                    <input type="text" id="testPhoneInput" class="form-input" placeholder="رقم هاتف تجريبي (e.g. 0791112233)" style="flex:1;">
+                    <button type="button" class="btn btn-secondary" onclick="sendTestWhatsApp()" style="padding:10px 16px; font-size:12.5px; white-space:nowrap;">
+                        <i class="fa-brands fa-whatsapp"></i> إرسال رسالة اختبار
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL 6: Loyalty & Raffle -->
+        <div class="settings-panel" id="panel-loyalty" style="display:none;">
+            <div class="settings-section-title">
+                <i class="fa-solid fa-gift"></i> إعدادات برنامج الولاء والجوائز والشرائح وتهاني أعياد الميلاد
+            </div>
+            <div class="settings-grid-2">
+                <div class="form-group">
+                    <label class="form-label">معدل تحويل النقاط (لكل 1 د.أ مشتريات)</label>
+                    <input type="number" name="points_conversion_rate" class="form-input" value="{{ config.points_conversion_rate }}" step="any">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">حد تذكرة السحب (د.أ لكل تذكرة)</label>
+                    <input type="number" name="raffle_ticket_threshold" class="form-input" value="{{ config.raffle_ticket_threshold }}" step="any">
+                </div>
+            </div>
+            <div class="settings-grid-2">
+                <div class="form-group">
+                    <label class="form-label">حد المستوى الفضي (نقاط في 12 شهر)</label>
+                    <input type="number" name="silver_tier_threshold" class="form-input" value="{{ config.silver_tier_threshold }}" step="any">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">حد المستوى الذهبي (نقاط في 12 شهر)</label>
+                    <input type="number" name="gold_tier_threshold" class="form-input" value="{{ config.gold_tier_threshold }}" step="any">
+                </div>
+            </div>
+            <div class="settings-grid-2">
+                <div class="form-group">
+                    <label class="form-label">اسم جائزة السحب الشهري الكبرى</label>
+                    <input type="text" name="raffle_prize_name" class="form-input" value="{{ config.raffle_prize_name }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">صورة الجائزة (Prize Image File)</label>
+                    <input type="file" name="raffle_prize_image" class="form-input" accept="image/*">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">تفاصيل ووصف الجائزة</label>
+                <textarea name="raffle_prize_desc" class="form-textarea" rows="2">{{ config.raffle_prize_desc|default_if_none:'' }}</textarea>
+            </div>
+
+            <!-- Birthday Messages -->
+            <div style="background:rgba(255,255,255,0.02); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); margin-top:20px;">
+                <h4 style="color:var(--primary); font-size:14px; margin:0 0 14px;">🎂 رسائل التهنئة الآلية لأعياد ميلاد العملاء:</h4>
+                <div class="form-group">
+                    <label class="form-label">رسالة الفئة البرونزية (Bronze)</label>
+                    <input type="text" name="birthday_msg_bronze" class="form-input" value="{{ config.birthday_msg_bronze }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">رسالة الفئة الفضية (Silver)</label>
+                    <input type="text" name="birthday_msg_silver" class="form-input" value="{{ config.birthday_msg_silver }}">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">رسالة الفئة الذهبية (Gold)</label>
+                    <input type="text" name="birthday_msg_gold" class="form-input" value="{{ config.birthday_msg_gold }}">
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL 7: Featured Item Launch Promotion -->
+        <div class="settings-panel" id="panel-featured" style="display:none;">
+            <div class="settings-section-title">
+                <i class="fa-solid fa-sparkles"></i> إطلاق الصنف المميز وعروض التذوق الخاصة
+            </div>
+            
+            <div class="form-group" style="background:rgba(212,175,55,0.06); padding:14px; border-radius:10px; border:1px solid rgba(212,175,55,0.25);">
+                <label style="display:flex; align-items:center; gap:10px; font-weight:700; color:#fff; cursor:pointer;">
+                    <input type="checkbox" name="featured_item_is_active" {% if config.featured_item_is_active %}checked{% endif %}>
+                    تفعيل وإظهار بطاقة الصنف الجديد المميز أعلى صفحة المنيو للزبائن ✨
+                </label>
+            </div>
+
+            <div class="settings-grid-2">
+                <div class="form-group">
+                    <label class="form-label">اسم الصنف المميز (Featured Item Name)</label>
+                    <input type="text" name="featured_item_name" class="form-input" value="{{ config.featured_item_name|default_if_none:'' }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">سعر العرض الخاص للتجربة (Special Launch Price)</label>
+                    <input type="number" name="featured_item_special_price" class="form-input" value="{{ config.featured_item_special_price|default_if_none:'' }}" step="0.001" placeholder="مثال: 3.500">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">الوصف التسويقي للصنف المميز</label>
+                <textarea name="featured_item_desc" class="form-textarea" rows="2">{{ config.featured_item_desc|default_if_none:'' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">فيديو العرض الترويجي للصنف الجديد (Featured Promo Video)</label>
+                <input type="file" name="featured_item_video" class="form-input" accept="video/*">
+                {% if config.featured_item_video %}
+                <div class="file-preview-card">
+                    <span style="color:#22c55e;">✓ فيديو الصنف مرفوع ومفعل</span>
+                    <label style="color:var(--danger); cursor:pointer; font-size:11.5px;">
+                        <input type="checkbox" name="clear_featured_item_video"> حذف الفيديو
+                    </label>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </form>
+
+</div>
+
+<!-- =================== Staff Modals =================== -->
+
+<!-- Staff User Modal (Create / Edit) -->
+<div class="modal-overlay" id="staffUserModal">
+    <div class="modal-content glass-card">
+        <h3 id="staffModalTitle" style="margin-top:0; font-size:18px; color:var(--primary); border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px;">
+            إضافة موظف جديد
+        </h3>
+        <form id="staffUserForm" onsubmit="saveStaffUser(event)">
+            <input type="hidden" id="staffUserId" name="user_id">
+            
+            <div class="form-group">
+                <label class="form-label">اسم الموظف الكامل</label>
+                <input type="text" id="staffEmployeeName" name="employee_name" class="form-input" placeholder="مثال: أحمد خليل" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">اسم المستخدم لتسجيل الدخول (Username)</label>
+                <input type="text" id="staffUsername" name="username" class="form-input" placeholder="مثال: ahmed123" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">الدور والصلاحية (Role)</label>
+                <select id="staffRole" name="role" class="form-select">
+                    <option value="WAITER">🧑‍🍳 موظف صالة (Floor Staff / Waiter)</option>
+                    <option value="ADMIN">👑 مدير نظام / مسؤول (Admin / Manager)</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="staffPasswordGroup">
+                <label class="form-label" id="staffPasswordLabel">كلمة المرور</label>
+                <input type="password" id="staffPassword" name="password" class="form-input" placeholder="أدخل كلمة المرور">
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button type="button" class="btn btn-secondary" onclick="closeSettingsModal('staffUserModal')">إلغاء</button>
+                <button type="submit" class="btn btn-primary">حفظ الموظف</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal-overlay" id="changePasswordModal">
+    <div class="modal-content glass-card">
+        <h3 style="margin-top:0; font-size:18px; color:var(--primary); border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px;">
+            <i class="fa-solid fa-key"></i> تغيير كلمة المرور
+        </h3>
+        <p id="changePasswordUserDisplay" style="font-weight:700; color:#fff; margin-bottom:14px;"></p>
+        <form id="changePasswordForm" onsubmit="saveStaffPassword(event)">
+            <input type="hidden" id="changePasswordUserId" name="user_id">
+            <div class="form-group">
+                <label class="form-label">كلمة المرور الجديدة</label>
+                <input type="password" id="newPasswordInput" name="new_password" class="form-input" placeholder="أدخل كلمة السر الجديدة" required>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button type="button" class="btn btn-secondary" onclick="closeSettingsModal('changePasswordModal')">إلغاء</button>
+                <button type="submit" class="btn btn-primary">تحديث كلمة السر ✓</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function switchSettingsTab(tabKey, btn) {
+    document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    document.querySelectorAll('.settings-panel').forEach(p => p.style.display = 'none');
+    const target = document.getElementById(`panel-${tabKey}`);
+    if (target) target.style.display = 'block';
+
+    if (tabKey === 'whatsapp') {
+        refreshSettingsWhatsAppLogs();
+    }
+}
+
+function closeSettingsModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.style.display = 'none';
+}
+
+async function saveFullCafeSettings(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    try {
+        const res = await fetch('/api/staff/config/edit/', {
+            method: 'POST',
+            body: formData,
+            headers: {'X-CSRFToken': getCookie('csrftoken') || ''}
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast('تم حفظ كافة إعدادات الكافيه بنجاح! 💾✨', 'success');
+            setTimeout(() => window.location.reload(), 1200);
+        } else {
+            showToast(data.message || 'حدث خطأ أثناء الحفظ', 'danger');
+        }
+    } catch(err) {
+        showToast('تعذر الاتصال بالسيرفر لحفظ الإعدادات', 'danger');
+    }
+}
+
+async function triggerLoyverseSyncFromSettings() {
+    const btn = document.getElementById('btnSyncFromSettings');
+    const statusText = document.getElementById('loyverseSyncStatusText');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري المزامنة الآمنة...';
+    }
+    if (statusText) statusText.innerText = 'جاري الاتصال بخوادم Loyverse...';
+
+    try {
+        const res = await fetch('/api/staff/loyverse/sync/', {
+            method: 'POST',
+            headers: {'X-CSRFToken': getCookie('csrftoken') || ''}
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast(data.message, 'success');
+            if (statusText) statusText.innerHTML = `<span style="color:#22c55e;">${data.message}</span>`;
+        } else {
+            showToast(data.message, 'danger');
+            if (statusText) statusText.innerHTML = `<span style="color:#ef4444;">${data.message}</span>`;
+        }
+    } catch(err) {
+        showToast('فشل الاتصال بخوادم Loyverse', 'danger');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-rotate"></i> تشغيل المزامنة الحية الآمنة 🔄';
+        }
+    }
+}
+
+// Staff Management
+function openStaffUserModal(mode, id, username, empName, role) {
+    if (mode === 'create') {
+        document.getElementById('staffModalTitle').innerText = 'إضافة موظف / مدير جديد';
+        document.getElementById('staffUserId').value = '';
+        document.getElementById('staffEmployeeName').value = '';
+        document.getElementById('staffUsername').value = '';
+        document.getElementById('staffRole').value = 'WAITER';
+        document.getElementById('staffPassword').required = true;
+        document.getElementById('staffPasswordLabel').innerText = 'كلمة المرور *';
+    } else {
+        document.getElementById('staffModalTitle').innerText = 'تعديل بيانات الموظف';
+        document.getElementById('staffUserId').value = id;
+        document.getElementById('staffEmployeeName').value = empName;
+        document.getElementById('staffUsername').value = username;
+        document.getElementById('staffRole').value = role;
+        document.getElementById('staffPassword').required = false;
+        document.getElementById('staffPasswordLabel').innerText = 'كلمة المرور (اتركها فارغة إذا لم ترغب بالتغيير)';
+    }
+    document.getElementById('staffUserModal').style.display = 'flex';
+}
+
+async function saveStaffUser(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    try {
+        const res = await fetch('/api/staff/users/manage/', {
+            method: 'POST',
+            body: formData,
+            headers: {'X-CSRFToken': getCookie('csrftoken') || ''}
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast(data.message, 'success');
+            closeSettingsModal('staffUserModal');
+            setTimeout(() => window.location.reload(), 900);
+        } else {
+            showToast(data.message || 'خطأ في حفظ الموظف', 'danger');
+        }
+    } catch(err) {
+        showToast('تعذر الاتصال بالسيرفر', 'danger');
+    }
+}
+
+function openChangePasswordModal(userId, empName) {
+    document.getElementById('changePasswordUserId').value = userId;
+    document.getElementById('changePasswordUserDisplay').innerText = `الموظف: ${empName}`;
+    document.getElementById('newPasswordInput').value = '';
+    document.getElementById('changePasswordModal').style.display = 'flex';
+}
+
+async function saveStaffPassword(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    try {
+        const res = await fetch('/api/staff/users/change-password/', {
+            method: 'POST',
+            body: formData,
+            headers: {'X-CSRFToken': getCookie('csrftoken') || ''}
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast(data.message, 'success');
+            closeSettingsModal('changePasswordModal');
+        } else {
+            showToast(data.message || 'خطأ في التغيير', 'danger');
+        }
+    } catch(e) {
+        showToast('تعذر الاتصال بالسيرفر', 'danger');
+    }
+}
+
+async function deleteStaffUser(userId, empName) {
+    if (!confirm(`هل أنت متأكد من حذف حساب الموظف (${empName})؟`)) return;
+    try {
+        const formData = new FormData();
+        formData.append('user_id', userId);
+        const res = await fetch('/api/staff/users/delete/', {
+            method: 'POST',
+            body: formData,
+            headers: {'X-CSRFToken': getCookie('csrftoken') || ''}
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast(data.message, 'success');
+            const row = document.getElementById(`staff-row-${userId}`);
+            if (row) row.remove();
+        } else {
+            showToast(data.message || 'خطأ أثناء الحذف', 'danger');
+        }
+    } catch(e) {}
+}
+
+// WhatsApp Logs
+async function refreshSettingsWhatsAppLogs() {
+    const box = document.getElementById('settingsWhatsAppLogBox');
+    if (!box) return;
+    try {
+        const res = await fetch('/api/staff/whatsapp/logs/');
+        const data = await res.json();
+        if (data.status === 'success') {
+            if (data.logs.length === 0) {
+                box.innerHTML = '<p style="color:var(--text-muted); text-align:center;">لا توجد رسائل واتساب مسجلة حالياً.</p>';
+            } else {
+                box.innerHTML = data.logs.map(log => `
+                    <div style="background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; margin-bottom:6px; border:1px solid rgba(255,255,255,0.05);">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                            <span style="font-weight:700; color:#25d366;">${log.phone_number}</span>
+                            <span style="font-size:10px; color:${log.status.includes('Real') ? '#22c55e' : 'var(--primary)'};">${log.status}</span>
+                        </div>
+                        <div style="color:#ddd; line-height:1.4;">${log.message}</div>
+                    </div>
+                `).reverse().join('');
+            }
+        }
+    } catch(err) {
+        box.innerHTML = '<p style="color:#ef4444; text-align:center;">تعذر تحميل السجل.</p>';
+    }
+}
+
+async function sendTestWhatsApp() {
+    const phone = document.getElementById('testPhoneInput').value.trim();
+    if (!phone) {
+        alert('الرجاء إدخال رقم الهاتف أولاً');
+        return;
+    }
+    const formData = new FormData();
+    formData.append('phone_number', phone);
+    formData.append('message', 'تجربة إرسال رسالة من نظام وايت بيرد كافيه الذكي ☕✨');
+
+    try {
+        const res = await fetch('/api/staff/whatsapp/test-send/', {
+            method: 'POST',
+            body: formData,
+            headers: {'X-CSRFToken': getCookie('csrftoken') || ''}
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast(data.message, 'success');
+            refreshSettingsWhatsAppLogs();
+        } else {
+            showToast(data.message, 'danger');
+        }
+    } catch(err) {
+        showToast('خطأ في إرسال الرسالة التجريبية', 'danger');
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

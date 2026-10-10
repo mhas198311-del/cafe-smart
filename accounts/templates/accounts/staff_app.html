@@ -1,0 +1,751 @@
+{% extends 'base.html' %}
+
+{% block title %}White Bird Cafe - Staff App{% endblock %}
+
+{% block extra_css %}
+.staff-app-wrapper {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 12px 14px 110px;
+}
+
+/* Header */
+.staff-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: rgba(22, 16, 12, 0.95);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    border-radius: 16px;
+    position: sticky;
+    top: 10px;
+    z-index: 100;
+    backdrop-filter: blur(16px);
+    margin-bottom: 14px;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.5);
+}
+
+.staff-header h2 { font-size: 16px; font-weight: 700; margin: 0; color: #fff; }
+.role-badge {
+    font-size: 11px; padding: 4px 10px; border-radius: 14px;
+    background: rgba(212,175,55,0.15); color: var(--primary);
+    border: 1px solid rgba(212,175,55,0.35); font-weight: 700;
+}
+
+/* Top Navigation Tabs */
+.top-nav-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 14px;
+    padding: 5px;
+    margin-bottom: 14px;
+    gap: 5px;
+}
+
+.top-tab-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px 4px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #a0a0a0;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.top-tab-btn i { font-size: 16px; pointer-events: none; }
+.top-tab-btn span { pointer-events: none; }
+
+.top-tab-btn.active {
+    background: var(--primary);
+    color: #000;
+    box-shadow: 0 2px 10px rgba(212, 175, 55, 0.4);
+    border-color: rgba(255,255,255,0.2);
+}
+
+.top-tab-btn:hover:not(.active) {
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+}
+
+/* Quick Tools Ribbon */
+.quick-tools-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.quick-tool-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: #fff;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.quick-tool-btn.apk {
+    background: rgba(34, 197, 94, 0.15);
+    border-color: rgba(34, 197, 94, 0.4);
+    color: #22c55e;
+}
+.quick-tool-btn.sound {
+    background: rgba(212, 175, 55, 0.15);
+    border-color: rgba(212, 175, 55, 0.4);
+    color: var(--primary);
+}
+
+/* Section Title */
+.app-section-title {
+    font-size: 14px; font-weight: 700; letter-spacing: 0.5px;
+    color: var(--primary); text-transform: uppercase;
+    margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+.app-section-title i { color: var(--primary); font-size: 16px; }
+
+.ws-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #ef4444; display: inline-block;
+    box-shadow: 0 0 6px #ef4444; transition: background 0.4s, box-shadow 0.4s;
+}
+.ws-dot.connected { background: #22c55e; box-shadow: 0 0 10px #22c55e; }
+
+/* Call Cards */
+.call-card {
+    background: rgba(24, 18, 14, 0.9);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px; padding: 14px 16px;
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+    animation: slideIn 0.3s ease, pulseCard 1.5s infinite alternate;
+}
+@keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+@keyframes pulseCard {
+    0% { box-shadow: 0 0 0 rgba(212,175,55,0); }
+    100% { box-shadow: 0 0 18px rgba(212,175,55,0.45); }
+}
+
+.call-card.bill  { border-color: rgba(212,175,55,0.6); }
+.call-card.waiter { border-color: rgba(239,68,68,0.6); }
+.call-card.hookah { border-color: rgba(168,85,247,0.6); }
+
+.call-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+}
+.call-icon.bill   { background: rgba(212,175,55,0.18); color: var(--primary); }
+.call-icon.waiter { background: rgba(239,68,68,0.18);  color: #ef4444; }
+.call-icon.hookah { background: rgba(168,85,247,0.18); color: #a855f7; }
+
+.call-info { flex: 1; }
+.call-info h4 { font-size: 16px; font-weight:700; margin:0 0 4px; color:#fff; }
+.call-info p  { font-size: 13px; color: var(--text-muted); margin:0; }
+.call-info .call-time { font-size: 11px; color: var(--primary); font-weight: 600; margin-top: 4px; display: block; }
+
+.btn-accept {
+    font-size: 13px; padding: 10px 18px; border-radius: 12px;
+    border: none; cursor: pointer; font-weight: 700;
+    background: var(--primary); color: #000; transition: all 0.2s ease;
+    white-space: nowrap;
+}
+.btn-accept:hover { opacity: 0.9; transform: scale(1.03); }
+
+.no-calls-msg { text-align: center; padding: 45px 10px; color: var(--text-muted); font-size: 14px; }
+.no-calls-msg i { font-size: 44px; display:block; margin-bottom:12px; opacity:0.25; }
+
+/* Menu Search and Items */
+.menu-search-input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(212,175,55,0.3);
+    color: #fff;
+    font-size: 14px;
+    margin-bottom: 14px;
+}
+.menu-search-input:focus { outline: none; border-color: var(--primary); }
+
+.toggle-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; margin-bottom: 8px; font-size: 14px;
+    transition: background 0.2s ease;
+}
+.toggle-item.out-of-stock {
+    opacity: 0.55;
+    border-color: rgba(239,68,68,0.4);
+    background: rgba(239,68,68,0.04);
+}
+.toggle-item .item-cat { font-size: 11px; color: var(--text-muted); display:block; margin-top:2px; }
+.ios-toggle { position: relative; width: 48px; height: 28px; flex-shrink:0; }
+.ios-toggle input { opacity:0; width:0; height:0; }
+.ios-slider {
+    position: absolute; inset: 0; cursor: pointer;
+    background: #ef4444; border-radius: 28px; transition: background 0.3s;
+}
+.ios-slider:before {
+    content: ""; position: absolute;
+    width: 22px; height: 22px; left: 3px; bottom: 3px;
+    background: #fff; border-radius: 50%; transition: transform 0.3s;
+}
+.ios-toggle input:checked + .ios-slider { background: #22c55e; }
+.ios-toggle input:checked + .ios-slider:before { transform: translateX(20px); }
+
+/* Messages */
+.msg-card {
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; margin-bottom: 10px; font-size: 13px;
+}
+.msg-card.unread { border-color: rgba(212,175,55,0.45); background: rgba(212,175,55,0.03); }
+.msg-card h5 { font-size: 14px; margin: 0 0 6px; font-weight:700; color:#fff; }
+.msg-card p  { margin: 0 0 10px; color: var(--text-muted); font-size: 13px; line-height:1.5; }
+.msg-meta { display: flex; justify-content: space-between; align-items:center; }
+.msg-type { font-size: 11px; color: var(--primary); font-weight: 600; }
+.btn-read {
+    font-size: 11px; padding: 5px 12px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.12); background: none;
+    color: var(--text-muted); cursor: pointer;
+}
+
+/* Scan */
+.scan-btn {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 16px; border-radius: 16px;
+    background: var(--primary); color: #000;
+    font-size: 16px; font-weight: 700; border: none; cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+/* Bottom Navigation Bar */
+.bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    display: flex; background: rgba(14, 10, 8, 0.98);
+    border-top: 1px solid rgba(212,175,55,0.3);
+    backdrop-filter: blur(16px); z-index: 200;
+}
+.bottom-nav button, .bottom-nav a {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 10px 0; text-decoration: none;
+    border: none; background: transparent;
+    color: #999; font-size: 11px; gap: 4px; transition: all 0.2s;
+    cursor: pointer;
+}
+.bottom-nav button i, .bottom-nav a i { font-size: 18px; pointer-events: none; }
+.bottom-nav button span, .bottom-nav a span { pointer-events: none; }
+.bottom-nav button.active, .bottom-nav a.active { color: var(--primary); font-weight: 700; }
+.notif-badge {
+    background: var(--primary); color: #000; border-radius: 20px;
+    padding: 0 6px; font-size: 10px; line-height: 16px; font-weight: 700;
+}
+{% endblock %}
+
+{% block content %}
+<div class="staff-app-wrapper">
+
+    <!-- Top Header -->
+    <div class="staff-header">
+        <div>
+            <h2>🐦 White Bird Staff</h2>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:3px;">
+                الموظف: <b>{{ user.employee_name }}</b>
+            </div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+            <span class="role-badge">
+                {% if user.role == 'ADMIN' %}👑 مدير{% else %}🧑‍🍳 موظف صالة{% endif %}
+            </span>
+            <a href="{% url 'accounts:staff_logout' %}" style="font-size:11px; color:var(--text-muted); text-decoration:none;">
+                <i class="fa-solid fa-right-from-bracket"></i> خروج
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Tools Ribbon -->
+    <div class="quick-tools-bar">
+        <a href="{% url 'accounts:staff_download_apk' %}" class="quick-tool-btn apk">
+            <i class="fa-brands fa-android"></i>
+            <span>تحميل تطبيق APK 📥</span>
+        </a>
+        <button type="button" class="quick-tool-btn sound" id="btnPushToggle" onclick="requestPushPermission()">
+            <i class="fa-solid fa-bell"></i>
+            <span>تفعيل الرنين 🔔</span>
+        </button>
+        {% if user.role == 'ADMIN' %}
+        <a href="{% url 'accounts:staff_dashboard' %}" class="quick-tool-btn">
+            <i class="fa-solid fa-sliders"></i>
+            <span>لوحة الإدارة 👑</span>
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Top Segmented Navigation Tabs -->
+    <div class="top-nav-tabs">
+        <button type="button" class="top-tab-btn active" data-tab="calls" onclick="switchTab('calls')">
+            <i class="fa-solid fa-bell"></i>
+            <span>النداءات</span>
+        </button>
+        <button type="button" class="top-tab-btn" data-tab="menu" onclick="switchTab('menu')">
+            <i class="fa-solid fa-utensils"></i>
+            <span>المنيو ({{ menu_items|length }})</span>
+        </button>
+        <button type="button" class="top-tab-btn" data-tab="scan" onclick="switchTab('scan')">
+            <i class="fa-solid fa-barcode"></i>
+            <span>المسح</span>
+        </button>
+        <button type="button" class="top-tab-btn" data-tab="msgs" onclick="switchTab('msgs')">
+            <i class="fa-solid fa-envelope"></i>
+            <span>الرسائل {% if unread_count > 0 %}<span class="notif-badge">{{ unread_count }}</span>{% endif %}</span>
+        </button>
+    </div>
+
+    <!-- SECTION 1: Live Calls -->
+    <div class="app-section" id="sectionCalls" style="display: block !important;">
+        <div class="app-section-title">
+            <i class="fa-solid fa-bell"></i>
+            <span>نداءات الطاولات المباشرة</span>
+            <span class="ws-dot" id="wsDot"></span>
+            <span id="wsStatus" style="font-size:11px; color:var(--text-muted); font-weight:normal;">
+                جاري الاتصال...
+            </span>
+        </div>
+        <div id="callsList">
+            <div class="no-calls-msg" id="noCallsMsg">
+                <i class="fa-solid fa-mug-hot"></i>
+                <span>لا توجد نداءات طاولات حالياً ☕</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 2: Quick Menu Toggle -->
+    <div class="app-section" id="sectionMenu" style="display: none !important;">
+        <div class="app-section-title">
+            <i class="fa-solid fa-utensils"></i>
+            <span>التحكم الفوري بتوفر أصناف المنيو ({{ menu_items|length }} صنف)</span>
+        </div>
+        <input type="text" id="menuSearchInput" class="menu-search-input"
+               placeholder="🔍 بحث سريع عن صنف للتحكم بتوفره..."
+               onkeyup="filterMenuItems(this.value)">
+
+        <div id="menuItemsContainer">
+            {% for item in menu_items %}
+            <div class="toggle-item glass-card {% if item.status_override == 'OUT_OF_STOCK' %}out-of-stock{% endif %}" id="item-row-{{ item.id }}" data-name="{{ item.display_name|default:item.loyverse_name|lower }}">
+                <div>
+                    <span style="font-weight:600; color:#fff; font-size:14px;">{{ item.display_name|default:item.loyverse_name }}</span>
+                    <span class="item-cat">{{ item.category_name|default:"عام" }} &bull; <b style="color:var(--primary);">{{ item.price }} د.أ</b></span>
+                </div>
+                <label class="ios-toggle">
+                    <input type="checkbox" {% if item.status_override != 'OUT_OF_STOCK' %}checked{% endif %}
+                           onchange="toggleItem({{ item.id }}, this.checked)">
+                    <span class="ios-slider"></span>
+                </label>
+            </div>
+            {% empty %}
+            <p style="color:var(--text-muted); text-align:center; padding:24px 0; font-size:13px;">
+                لا توجد أصناف مخصصة للبيع حالياً
+            </p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- SECTION 3: Barcode Scan -->
+    <div class="app-section" id="sectionScan" style="display: none !important;">
+        <div class="app-section-title">
+            <i class="fa-solid fa-barcode"></i>
+            <span>مسح باركود العميل</span>
+        </div>
+        <button class="scan-btn" onclick="openScanPrompt()">
+            <i class="fa-solid fa-qrcode" style="font-size:22px;"></i>
+            <span>مسح أو إدخال الباركود</span>
+        </button>
+        <div id="scanResult" style="display:none; margin-top:14px; padding:18px; text-align:center;" class="glass-card"></div>
+    </div>
+
+    <!-- SECTION 4: Customer Messages -->
+    <div class="app-section" id="sectionMessages" style="display: none !important;">
+        <div class="app-section-title">
+            <i class="fa-solid fa-envelope"></i>
+            <span>رسائل العملاء الواردة</span>
+            {% if unread_count > 0 %}
+            <span class="notif-badge">{{ unread_count }}</span>
+            {% endif %}
+        </div>
+        {% for msg in messages_list %}
+        <div class="msg-card {% if not msg.is_read %}unread{% endif %}" id="msg-{{ msg.id }}">
+            <h5>{{ msg.name }} <span style="font-size:11px; color:var(--text-muted); font-weight:400;">— {{ msg.contact }}</span></h5>
+            <p>{{ msg.message|truncatechars:130 }}</p>
+            <div class="msg-meta">
+                <span class="msg-type">{{ msg.inquiry_type }}</span>
+                {% if not msg.is_read %}
+                <button class="btn-read" onclick="markRead({{ msg.id }})">
+                    تأشير كمقروء ✓
+                </button>
+                {% else %}
+                <span style="font-size:11px; color:var(--text-muted);">✓ مقروء</span>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <p style="color:var(--text-muted); text-align:center; padding:24px 0; font-size:13px;">
+            لا توجد رسائل واردة
+        </p>
+        {% endfor %}
+    </div>
+
+</div>
+
+<!-- Bottom Navigation Bar -->
+<nav class="bottom-nav">
+    <button type="button" class="active" data-tab="calls" onclick="switchTab('calls')">
+        <i class="fa-solid fa-bell"></i>
+        <span>نداءات</span>
+    </button>
+    <button type="button" data-tab="menu" onclick="switchTab('menu')">
+        <i class="fa-solid fa-utensils"></i>
+        <span>منيو</span>
+    </button>
+    <button type="button" data-tab="scan" onclick="switchTab('scan')">
+        <i class="fa-solid fa-barcode"></i>
+        <span>مسح</span>
+    </button>
+    <button type="button" data-tab="msgs" onclick="switchTab('msgs')">
+        <i class="fa-solid fa-envelope"></i>
+        <span>رسائل {% if unread_count > 0 %}<span class="notif-badge">{{ unread_count }}</span>{% endif %}</span>
+    </button>
+    {% if user.role == 'ADMIN' %}
+    <a href="{% url 'accounts:staff_dashboard' %}">
+        <i class="fa-solid fa-sliders"></i>
+        <span>إدارة</span>
+    </a>
+    {% endif %}
+</nav>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.VAPID_PUBLIC_KEY = '{{ vapid_public_key }}';
+window.staffName = '{{ user.employee_name }}';
+var ws = null;
+var alertInterval = null;
+var audioCtx = null;
+var activeCalls = {};
+
+// =================== Master Tab Switcher ===================
+window.switchTab = function(tabName) {
+    var sections = {
+        'calls': 'sectionCalls',
+        'menu': 'sectionMenu',
+        'scan': 'sectionScan',
+        'msgs': 'sectionMessages'
+    };
+    
+    var allSections = document.querySelectorAll('.app-section');
+    for (var i = 0; i < allSections.length; i++) {
+        allSections[i].style.cssText = 'display: none !important;';
+    }
+    
+    var targetId = sections[tabName] || tabName;
+    var target = document.getElementById(targetId);
+    if (target) {
+        target.style.cssText = 'display: block !important;';
+    }
+    
+    var allButtons = document.querySelectorAll('.top-tab-btn, .bottom-nav button');
+    for (var j = 0; j < allButtons.length; j++) {
+        var btn = allButtons[j];
+        if (btn.getAttribute('data-tab') === tabName) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    }
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+// =================== Menu Search Filter ===================
+window.filterMenuItems = function(query) {
+    var q = (query || '').toLowerCase().trim();
+    document.querySelectorAll('#menuItemsContainer .toggle-item').forEach(function(el) {
+        var name = el.getAttribute('data-name') || '';
+        el.style.display = name.indexOf(q) !== -1 ? 'flex' : 'none';
+    });
+};
+
+// =================== Web Push & Audio Setup ===================
+window.playChimeTone = function() {
+    if ('vibrate' in navigator) {
+        navigator.vibrate([300, 150, 300, 150, 400]);
+    }
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.6);
+        gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.6);
+    } catch(e) {}
+};
+
+window.requestPushPermission = async function() {
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') await audioCtx.resume();
+        playChimeTone();
+    } catch(e) {}
+
+    var btn = document.getElementById('btnPushToggle');
+    if (btn) {
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> <span>مفعلة ✓</span>';
+        btn.style.background = '#22c55e';
+        btn.style.color = '#fff';
+    }
+    showToast('تم تفعيل نظام الرنين والاهتزاز الفوري 🔔', 'success');
+};
+
+// =================== WebSocket Table Calls Feed ===================
+function connectWS() {
+    var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    var host = window.location.host;
+    var wsUrl = protocol + '//' + host + '/ws/table-calls/?role=staff';
+
+    ws = new WebSocket(wsUrl);
+
+    ws.onopen = function() {
+        var dot = document.getElementById('wsDot');
+        if (dot) dot.classList.add('connected');
+        var st = document.getElementById('wsStatus');
+        if (st) st.innerHTML = '<span style="color:#22c55e;">متصل ✓</span>';
+    };
+
+    ws.onclose = function() {
+        var dot = document.getElementById('wsDot');
+        if (dot) dot.classList.remove('connected');
+        var st = document.getElementById('wsStatus');
+        if (st) st.innerHTML = '<span style="color:#ef4444;">إعادة الاتصال...</span>';
+        setTimeout(connectWS, 3000);
+    };
+
+    ws.onmessage = function(e) {
+        try {
+            var data = JSON.parse(e.data);
+            if (data.event === 'new_call') {
+                renderCall(data.table, data.call_type, data.time);
+            } else if (data.event === 'call_accepted') {
+                clearCall(data.table);
+            }
+        } catch(err) {
+            console.error('WS message error:', err);
+        }
+    };
+}
+
+function renderCall(tableNum, callType, callTime) {
+    var key = tableNum + '_' + callType;
+    if (activeCalls[key]) return;
+    activeCalls[key] = true;
+
+    var isBill = callType === 'bill';
+    var isHookah = callType === 'hookah';
+
+    var callTitle = isBill ? '📄 طلب فاتورة وحساب'
+                 : (isHookah ? '💨 طلب أرجيلة وفحم'
+                 : '🚨 نداء نادل للخدمة');
+
+    var iconClass = isBill ? 'fa-file-invoice-dollar' : (isHookah ? 'fa-smoking' : 'fa-hand');
+    var typeClass = isBill ? 'bill' : (isHookah ? 'hookah' : 'waiter');
+
+    var card = document.createElement('div');
+    card.className = 'call-card ' + typeClass;
+    card.id = 'call-' + key;
+    card.innerHTML = '<div class="call-icon ' + typeClass + '"><i class="fa-solid ' + iconClass + '"></i></div>' +
+        '<div class="call-info"><h4>طاولة رقم ' + tableNum + '</h4>' +
+        '<p>' + callTitle + '</p>' +
+        '<span class="call-time"><i class="fa-regular fa-clock"></i> ' + (callTime || '') + '</span></div>' +
+        '<button class="btn-accept" onclick="acceptCall(\'' + tableNum + '\', \'' + callType + '\', \'' + key + '\', this)">' +
+        'قبول الطلب ✓</button>';
+
+    var noCalls = document.getElementById('noCallsMsg');
+    if (noCalls) noCalls.style.display = 'none';
+    var list = document.getElementById('callsList');
+    if (list) list.prepend(card);
+
+    startAlarmLoop();
+}
+
+window.acceptCall = function(tableNum, callType, key, btn) {
+    stopAlarmLoop();
+    if (window.NativeAndroidBridge && typeof window.NativeAndroidBridge.stopNativeAlarm === 'function') {
+        try { window.NativeAndroidBridge.stopNativeAlarm(); } catch(e) {}
+    }
+
+    fetch('/api/staff/table-calls/accept/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') || ''},
+        body: JSON.stringify({table_number: tableNum, call_type: callType})
+    }).catch(function(e) {});
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            type: 'accept_call',
+            table: tableNum,
+            waiter_name: window.staffName
+        }));
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'تم القبول ✓';
+        btn.style.background = '#22c55e';
+        btn.style.color = '#fff';
+    }
+    clearCall(tableNum);
+};
+
+function clearCall(tableNum) {
+    stopAlarmLoop();
+    if (window.NativeAndroidBridge && typeof window.NativeAndroidBridge.stopNativeAlarm === 'function') {
+        try { window.NativeAndroidBridge.stopNativeAlarm(); } catch(e) {}
+    }
+
+    document.querySelectorAll('[id^="call-' + tableNum + '_"]').forEach(function(el) { el.remove(); });
+    Object.keys(activeCalls).filter(function(k) { return k.startsWith(tableNum + '_'); }).forEach(function(k) { delete activeCalls[k]; });
+
+    if (document.querySelectorAll('.call-card').length === 0) {
+        var noCalls = document.getElementById('noCallsMsg');
+        if (noCalls) noCalls.style.display = 'block';
+    }
+}
+
+function startAlarmLoop() {
+    if (alertInterval) return;
+    playChimeTone();
+    alertInterval = setInterval(function() {
+        if (document.querySelectorAll('.call-card').length > 0) {
+            playChimeTone();
+        } else {
+            stopAlarmLoop();
+        }
+    }, 3500);
+}
+
+function stopAlarmLoop() {
+    if (alertInterval) {
+        clearInterval(alertInterval);
+        alertInterval = null;
+    }
+}
+
+// =================== Quick Menu Toggle ===================
+window.toggleItem = function(id, checked) {
+    var row = document.getElementById('item-row-' + id);
+    if (row) {
+        if (!checked) {
+            row.classList.add('out-of-stock');
+        } else {
+            row.classList.remove('out-of-stock');
+        }
+    }
+
+    fetch('/api/staff/menu/toggle-status/', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken') || ''},
+        body: JSON.stringify({item_id: id, status: checked ? 'AVAILABLE' : 'OUT_OF_STOCK'})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if(d.status === 'success') {
+            showToast(d.message, 'success');
+        } else {
+            showToast(d.message || 'خطأ في التحديث', 'danger');
+        }
+    }).catch(function(e) {
+        showToast('تعذر الاتصال بالسيرفر', 'danger');
+    });
+};
+
+window.openScanPrompt = function() {
+    var barcode = prompt('أدخل رقم الباركود أو امسحه:');
+    if (!barcode) return;
+    fetch('/api/staff/redeem-scan/', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken') || ''},
+        body: JSON.stringify({barcode: barcode.trim()})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        var box = document.getElementById('scanResult');
+        if (!box) return;
+        box.style.display = 'block';
+        if (d.status === 'success') {
+            box.innerHTML = '<div style="font-size:32px;">✅</div>' +
+                '<div style="font-size:17px;font-weight:700;color:var(--primary);margin-top:8px;">' + d.customer_name + '</div>' +
+                '<div style="font-size:13px;color:var(--text-muted);margin-top:6px;">النقاط: <b>' + d.points + '</b> | الفئة: <b>' + d.tier + '</b></div>';
+        } else {
+            box.innerHTML = '<div style="color:#ef4444;font-size:14px;">❌ ' + d.message + '</div>';
+        }
+        setTimeout(function() { box.style.display = 'none'; }, 6000);
+    });
+};
+
+window.markRead = function(id) {
+    fetch('/api/staff/messages/read/', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken') || ''},
+        body:JSON.stringify({message_id:id})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.status==='success') {
+            var card = document.getElementById('msg-' + id);
+            if(card) { card.classList.remove('unread'); var btn=card.querySelector('.btn-read'); if(btn) btn.outerHTML='<span style="font-size:11px;color:var(--text-muted);">✓ مقروء</span>'; }
+        }
+    });
+};
+
+function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Init
+connectWS();
+</script>
+{% endblock %}

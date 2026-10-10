@@ -1,0 +1,356 @@
+{% extends 'base.html' %}
+
+{% block title %}White Bird Cafe - Contact Us{% endblock %}
+
+{% block extra_css %}
+.contact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 40px;
+    margin-top: 20px;
+}
+
+@media (max-width: 992px) {
+    .contact-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.contact-info-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.contact-method-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 24px;
+}
+
+.contact-method-icon {
+    font-size: 24px;
+    color: var(--primary);
+    background: rgba(212, 175, 55, 0.08);
+    width: 54px;
+    height: 54px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    flex-shrink: 0;
+}
+
+.contact-method-details h4 {
+    font-size: 18px;
+    margin-bottom: 4px;
+    font-family: var(--font-head);
+}
+
+.contact-method-details p {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.map-wrapper {
+    width: 100%;
+    height: 250px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-light);
+    margin-top: 10px;
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.form-input, .form-textarea, .form-select {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: rgba(18, 12, 8, 0.5);
+    border: 1px solid var(--border-light);
+    color: #ffffff;
+    font-family: var(--font-body);
+    font-size: 15px;
+    transition: all 0.3s ease;
+}
+
+.form-input:focus, .form-textarea:focus, .form-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.1);
+}
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1100px;">
+    
+    <div style="text-align:center; margin-bottom: 40px;">
+        <h2 style="font-size:36px; font-weight:700;"><span data-tr="contact_header">Get In Touch</span></h2>
+        <p style="color:var(--text-muted); font-size:15px; margin-top:8px;" data-tr="contact_subtitle">We would love to hear from you. Reach out or visit us in Wadi Musa.</p>
+    </div>
+
+    <div class="contact-grid">
+        
+        <!-- Left: Contact Details & Google Map -->
+        <div class="contact-info-panel">
+            
+            <!-- Phone & Whatsapp Card -->
+            <div class="contact-method-card glass-card">
+                <div class="contact-method-icon">
+                    <i class="fa-solid fa-phone"></i>
+                </div>
+                <div class="contact-method-details" style="width:100%;">
+                    <h4 data-tr="lbl_call_us">Call & WhatsApp</h4>
+                    <p style="font-size:15px; font-weight:600; color: var(--primary); margin-bottom:12px;">
+                        {{ config.phone_number }}
+                    </p>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <a href="tel:{{ config.phone_number|cut:' ' }}" class="btn btn-primary" style="padding: 8px 16px; font-size:13px; gap:6px;">
+                            <i class="fa-solid fa-phone"></i>
+                            <span class="lang-ar">اتصال مباشر</span>
+                            <span class="lang-en">Call Now</span>
+                        </a>
+                        <a href="https://wa.me/{{ config.whatsapp_number }}" target="_blank" class="btn btn-primary" style="padding: 8px 16px; font-size:13px; gap:6px;">
+                            <i class="fa-brands fa-whatsapp"></i>
+                            <span class="lang-ar">واتساب</span>
+                            <span class="lang-en">WhatsApp</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Social Media Card -->
+            {% if config.instagram_url or config.facebook_url or config.tiktok_url %}
+            <div class="contact-method-card glass-card">
+                <div class="contact-method-icon">
+                    <i class="fa-solid fa-share-nodes"></i>
+                </div>
+                <div class="contact-method-details" style="width: 100%;">
+                    <h4 data-tr="lbl_follow_us">Follow Us</h4>
+                    <p data-tr="desc_follow_us">Stay updated with our latest news & specialty recipes</p>
+                    <div style="display:flex; gap:20px; margin-top:10px; font-size: 22px;">
+                        {% if config.instagram_url %}
+                            <a href="{{ config.instagram_url }}" target="_blank" style="color: var(--text-muted); transition: color 0.3s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">
+                                <i class="fa-brands fa-instagram"></i>
+                            </a>
+                        {% endif %}
+                        {% if config.facebook_url %}
+                            <a href="{{ config.facebook_url }}" target="_blank" style="color: var(--text-muted); transition: color 0.3s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">
+                                <i class="fa-brands fa-facebook"></i>
+                            </a>
+                        {% endif %}
+                        {% if config.tiktok_url %}
+                            <a href="{{ config.tiktok_url }}" target="_blank" style="color: var(--text-muted); transition: color 0.3s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">
+                                <i class="fa-brands fa-tiktok"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Location Details & Directions Button -->
+            <div class="contact-method-card glass-card" style="flex-direction: column; gap:16px;">
+                <div style="display:flex; gap:16px; align-items:flex-start; width:100%;">
+                    <div class="contact-method-icon">
+                        <i class="fa-solid fa-location-dot"></i>
+                    </div>
+                    <div class="contact-method-details" style="flex-grow:1;">
+                        <h4 data-tr="lbl_location">Our Location</h4>
+                        <p data-tr="val_location_desc">{{ config.location_desc_en }}</p>
+                        <!-- Directions: opens Google Maps navigation to exact coordinates -->
+                        <a href="https://www.google.com/maps/dir/?api=1&destination={{ config.latitude }},{{ config.longitude }}" target="_blank" class="btn btn-primary" style="padding: 8px 16px; font-size:13px; gap:6px; margin-top:6px;">
+                            <i class="fa-solid fa-compass"></i> <span data-tr="btn_get_directions">Get Directions</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Static Map Image — clickable → opens Google Maps -->
+                <div class="map-wrapper" style="position:relative; cursor:pointer; height:260px;">
+                    {% if config.map_image %}
+                        <img src="{{ config.map_image.url }}" alt="موقع وايت بيرد كافيه"
+                             style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
+                    {% else %}
+                        {% load static %}
+                        <img src="{% static 'map_location.png' %}" alt="موقع وايت بيرد كافيه"
+                             style="width:100%; height:100%; object-fit:cover; border-radius:12px;">
+                    {% endif %}
+                    <!-- Overlay link — entire image opens Google Maps -->
+                    <a href="https://www.google.com/maps/dir/?api=1&destination={{ config.latitude }},{{ config.longitude }}"
+                       target="_blank"
+                       style="position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:flex-end; padding:10px; text-decoration:none; border-radius:12px;">
+                        <span style="background:rgba(0,0,0,0.70); color:#fff; font-size:12px; padding:5px 10px; border-radius:6px; backdrop-filter:blur(4px); display:flex; align-items:center; gap:6px;">
+                            <i class="fa-solid fa-map-location-dot" style="color:var(--primary);"></i>
+                            <span class="lang-ar">فتح في خرائط جوجل</span>
+                            <span class="lang-en">Open in Google Maps</span>
+                        </span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Hours Card -->
+            <div class="contact-method-card glass-card">
+                <div class="contact-method-icon">
+                    <i class="fa-solid fa-clock"></i>
+                </div>
+                <div class="contact-method-details">
+                    <h4 data-tr="lbl_hours">Opening Hours</h4>
+                    <p data-tr="val_hours_desc">{{ config.opening_hours_en }}</p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right: Contact Form -->
+        <div class="glass-card" style="padding:40px 30px; height:fit-content;">
+            <h3 style="font-size:22px; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:10px;" data-tr="lbl_send_msg">Send Message</h3>
+            
+            <form id="contactUsForm" onsubmit="handleContactSubmit(event)">
+                <div class="form-group">
+                    <label class="form-label" data-tr="lbl_your_name">Your Name</label>
+                    <input type="text" name="name" class="form-input" placeholder="e.g. Ahmad Salem" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" data-tr="lbl_your_email">Email / Phone</label>
+                    <input type="text" name="contact" class="form-input" placeholder="e.g. name@example.com or +9627..." required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" data-tr="lbl_msg_type">Inquiry Type</label>
+                    <select name="type" class="form-select" id="contactInquiryType">
+                        <option value="General Inquiry">General Inquiry</option>
+                        <option value="Private Booking">Private Booking / Event</option>
+                        <option value="Feedback">Feedback / Suggestion</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" data-tr="lbl_msg_text">Message Text</label>
+                    <textarea name="message" class="form-textarea" rows="4" placeholder="How can we help you today?" required id="contactMsgText"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">
+                    <i class="fa-solid fa-paper-plane" style="margin-right:4px;"></i> <span data-tr="btn_send">Send Message</span>
+                </button>
+            </form>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Local page translations
+    const contactTranslations = {
+        en: {
+            "contact_header": "Get In Touch",
+            "contact_subtitle": "We would love to hear from you. Reach out or visit us in Wadi Musa.",
+            "lbl_call_us": "Call & WhatsApp",
+            "lbl_location": "Our Location",
+            "val_location_desc": "{{ config.location_desc_en|escapejs }}",
+            "btn_get_directions": "Get Directions",
+            "lbl_hours": "Opening Hours",
+            "val_hours_desc": "{{ config.opening_hours_en|escapejs }}",
+            "lbl_send_msg": "Send Message",
+            "lbl_your_name": "Your Name",
+            "lbl_your_email": "Email / Phone",
+            "lbl_msg_type": "Inquiry Type",
+            "lbl_msg_text": "Message Text",
+            "btn_send": "Send Message",
+            "lbl_follow_us": "Follow Us",
+            "desc_follow_us": "Stay updated with our latest news & specialty recipes"
+        },
+        ar: {
+            "contact_header": "اتصل بنا",
+            "contact_subtitle": "يسعدنا جداً سماع رأيك. تفضل بالتواصل معنا أو زرنا في مقهانا بوادي موسى.",
+            "lbl_call_us": "الهاتف والواتساب",
+            "lbl_location": "موقعنا الجغرافي",
+            "val_location_desc": "{{ config.location_desc_ar|escapejs }}",
+            "btn_get_directions": "الحصول على الاتجاهات",
+            "lbl_hours": "ساعات العمل",
+            "val_hours_desc": "{{ config.opening_hours_ar|escapejs }}",
+            "lbl_send_msg": "أرسل لنا رسالة",
+            "lbl_your_name": "الاسم الكريم",
+            "lbl_your_email": "البريد الإلكتروني / الهاتف",
+            "lbl_msg_type": "نوع الاستفسار",
+            "lbl_msg_text": "نص الرسالة",
+            "btn_send": "إرسال الرسالة",
+            "lbl_follow_us": "تابعنا على منصاتنا",
+            "desc_follow_us": "ابقَ على اطلاع بأحدث أخبارنا وصفاتنا الخاصة"
+        }
+    };
+
+    // Merge custom contact translations
+    Object.assign(window.cafeTranslations.en, contactTranslations.en);
+    Object.assign(window.cafeTranslations.ar, contactTranslations.ar);
+
+    // Apply language dynamically to translate form options
+    function translateContactForm(lang) {
+        const typeEl = document.getElementById('contactInquiryType');
+        const textEl = document.getElementById('contactMsgText');
+        
+        if (typeEl) {
+            typeEl.options[0].text = lang === 'ar' ? 'استفسار عام' : 'General Inquiry';
+            typeEl.options[1].text = lang === 'ar' ? 'حجز خاص / فعالية' : 'Private Booking / Event';
+            typeEl.options[2].text = lang === 'ar' ? 'اقتراح / شكوى' : 'Feedback / Suggestion';
+        }
+        if (textEl) {
+            textEl.placeholder = lang === 'ar' ? 'كيف يمكننا مساعدتك اليوم؟' : 'How can we help you today?';
+        }
+    }
+
+    window.addEventListener('langChanged', (e) => {
+        translateContactForm(e.detail);
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const activeLang = localStorage.getItem('cafe_lang') || 'en';
+        translateContactForm(activeLang);
+        applyLanguage(activeLang);
+    });
+
+    // Handle form submit dynamically to Django API
+    function handleContactSubmit(e) {
+        e.preventDefault();
+        const activeLang = localStorage.getItem('cafe_lang') || 'en';
+        const form = e.target;
+        const formData = new FormData(form);
+
+        fetch('{% url "menu:contact_submit" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const msg = activeLang === 'ar' ? 'تم إرسال رسالتك بنجاح! شكراً لتواصلك معنا.' : 'Message sent successfully! Thank you for reaching out.';
+                showToast(msg, 'success');
+                form.reset();
+            } else {
+                showToast(data.message || 'Error', 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            const msg = activeLang === 'ar' ? 'حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.' : 'An error occurred. Please try again.';
+            showToast(msg, 'error');
+        });
+    }
+</script>
+{% endblock %}
