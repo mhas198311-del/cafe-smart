@@ -649,7 +649,7 @@
                             <span class="lang-ar">رقم الهاتف</span>
                             <span class="lang-en">Phone Number</span>
                         </label>
-                        <input type="tel" name="phone_number" class="form-input" placeholder="+962791234567" required>
+                        <input type="tel" name="phone_number" class="form-input" placeholder="07XXXXXXXX" dir="ltr" inputmode="tel" autocomplete="tel" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label" data-tr="label_password">كلمة المرور</label>
@@ -679,7 +679,7 @@
                             <span class="lang-ar">رقم الهاتف</span>
                             <span class="lang-en">Phone Number</span>
                         </label>
-                        <input type="tel" name="phone_number" id="regPhone" class="form-input" placeholder="+962791234567" required>
+                        <input type="tel" name="phone_number" id="regPhone" class="form-input" placeholder="07XXXXXXXX" dir="ltr" inputmode="tel" autocomplete="tel" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label" data-tr="label_birthdate">تاريخ الميلاد (يتطلب عمر 18+)</label>
@@ -806,7 +806,7 @@
                         <span class="lang-ar">رقم الهاتف</span>
                         <span class="lang-en">Phone Number</span>
                     </label>
-                    <input type="tel" name="phone_number" id="forgotPhoneInput" class="form-input" placeholder="+962791234567" required>
+                    <input type="tel" name="phone_number" id="forgotPhoneInput" class="form-input" placeholder="07XXXXXXXX" dir="ltr" inputmode="tel" autocomplete="tel" required>
                 </div>
                 <div style="display:flex; gap:12px; margin-top:20px;">
                     <button type="button" class="btn btn-secondary" onclick="closeForgotPasswordModal()">
@@ -888,7 +888,7 @@
             const res = await fetch('/api/customer/login/', { method: 'POST', body: formData });
             const data = await res.json();
             if (data.status === 'success') {
-                showToast(localStorage.getItem('cafe_lang') === 'ar' ? 'تم تسجيل الدخول بنجاح!' : 'Logged in successfully!', 'success');
+                showToast(currentLang === 'ar' ? 'تم تسجيل الدخول بنجاح!' : 'Logged in successfully!', 'success');
                 setTimeout(() => window.location.href = data.redirect, 1000);
             } else {
                 showToast(data.message, 'danger');
@@ -903,7 +903,7 @@
         const birthDateVal = document.getElementById('regBirthDate').value;
         const age = getAge(birthDateVal);
         if (age < 18) {
-            showToast(localStorage.getItem('cafe_lang') === 'ar' ? 'يجب أن يكون عمرك 18 سنة أو أكثر للتسجيل' : 'Must be 18 years or older to register.', 'danger');
+            showToast(currentLang === 'ar' ? 'يجب أن يكون عمرك 18 سنة أو أكثر للتسجيل' : 'Must be 18 years or older to register.', 'danger');
             return;
         }
         const formData = new FormData(e.target);
@@ -953,7 +953,7 @@
     function translatePointsVal() {
         const textEl = document.getElementById('pointsValText');
         if (textEl) {
-            textEl.innerText = localStorage.getItem('cafe_lang') === 'ar' ? 'نقاط ولاء نشطة ومتاحة للاستخدام' : 'Active loyalty points available';
+            textEl.innerText = currentLang === 'ar' ? 'نقاط ولاء نشطة ومتاحة للاستخدام' : 'Active loyalty points available';
         }
     }
 
@@ -989,7 +989,7 @@
             correctLevel : QRCode.CorrectLevel.M
         });
         document.getElementById('countdownBar').style.width = '100%';
-        document.getElementById('countdownText').innerText = localStorage.getItem('cafe_lang') === 'ar' ? 'أظهر هذا الكود للويتر لمسحه والاستلام' : 'Show this QR to floor waiter to claim';
+        document.getElementById('countdownText').innerText = currentLang === 'ar' ? 'أظهر هذا الكود للويتر لمسحه والاستلام' : 'Show this QR to floor waiter to claim';
         document.getElementById('customerNameText').innerText = reward;
         document.getElementById('customerPhoneText').innerText = code;
         document.getElementById('qrDrawerModal').classList.add('active');
@@ -1133,7 +1133,7 @@
             const diff = dest - now;
             if (diff <= 0) {
                 clearInterval(timerInterval);
-                document.getElementById('raffleTimer').innerText = localStorage.getItem('cafe_lang') === 'ar' ? 'السحب جارٍ حالياً!' : 'Draw is in progress!';
+                document.getElementById('raffleTimer').innerText = currentLang === 'ar' ? 'السحب جارٍ حالياً!' : 'Draw is in progress!';
                 return;
             }
             const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -1141,7 +1141,7 @@
             const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             const secs = Math.floor((diff % (1000 * 60)) / 1000);
             
-            const isAr = localStorage.getItem('cafe_lang') === 'ar';
+            const isAr = currentLang === 'ar';
             document.getElementById('raffleTimer').innerText = isAr ? 
                 `ينتهي السحب خلال: ${days} يوم ، ${hours} ساعة ، ${mins} دقيقة ، ${secs} ثانية` : 
                 `Draw ends in: ${days}d ${hours}h ${mins}m ${secs}s`;
@@ -1195,7 +1195,7 @@
                 document.getElementById('forgotTargetPhoneEn').innerText = phone;
                 document.getElementById('forgotStep1').style.display = 'none';
                 document.getElementById('forgotStep2').style.display = 'block';
-                showToast(localStorage.getItem('cafe_lang') === 'ar' ? 'تم إرسال كود التحقق بالواتساب!' : 'OTP verification code sent via WhatsApp!', 'success');
+                showToast(currentLang === 'ar' ? 'تم إرسال كود التحقق بالواتساب!' : 'OTP verification code sent via WhatsApp!', 'success');
             } else {
                 showToast(data.message, 'danger');
             }
@@ -1214,7 +1214,7 @@
             const res = await fetch('/api/customer/reset-password/', { method: 'POST', body: formData });
             const data = await res.json();
             if (data.status === 'success') {
-                showToast(localStorage.getItem('cafe_lang') === 'ar' ? 'تم تعيين كلمة المرور بنجاح! يرجى تسجيل الدخول.' : 'Password reset successfully! Please login.', 'success');
+                showToast(currentLang === 'ar' ? 'تم تعيين كلمة المرور بنجاح! يرجى تسجيل الدخول.' : 'Password reset successfully! Please login.', 'success');
                 closeForgotPasswordModal();
                 setTimeout(() => window.location.reload(), 1500);
             } else {

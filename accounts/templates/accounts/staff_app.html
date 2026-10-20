@@ -81,12 +81,15 @@
 /* Quick Tools Ribbon */
 .quick-tools-bar {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 14px;
 }
 
 .quick-tool-btn {
-    flex: 1;
+    flex: 1 1 140px;
+    min-width: 0;
+    text-align: center;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -574,6 +577,9 @@ function connectWS() {
 }
 
 function renderCall(tableNum, callType, callTime) {
+    // Table numbers arrive over the WebSocket; keep only safe characters before building HTML
+    tableNum = String(tableNum).replace(/[^0-9A-Za-z\u0600-\u06FF _-]/g, '');
+    callType = String(callType).replace(/[^a-z_]/g, '');
     var key = tableNum + '_' + callType;
     if (activeCalls[key]) return;
     activeCalls[key] = true;
@@ -706,13 +712,25 @@ window.openScanPrompt = function() {
         var box = document.getElementById('scanResult');
         if (!box) return;
         box.style.display = 'block';
+        box.innerHTML = '';
+        var icon = document.createElement('div');
+        icon.style.fontSize = '32px';
+        var line1 = document.createElement('div');
+        var line2 = document.createElement('div');
+        line1.style.cssText = 'font-size:17px;font-weight:700;color:var(--primary);margin-top:8px;';
+        line2.style.cssText = 'font-size:13px;color:var(--text-muted);margin-top:6px;';
         if (d.status === 'success') {
-            box.innerHTML = '<div style="font-size:32px;">✅</div>' +
-                '<div style="font-size:17px;font-weight:700;color:var(--primary);margin-top:8px;">' + d.customer_name + '</div>' +
-                '<div style="font-size:13px;color:var(--text-muted);margin-top:6px;">النقاط: <b>' + d.points + '</b> | الفئة: <b>' + d.tier + '</b></div>';
+            icon.textContent = '✅';
+            line1.textContent = d.customer_name || '';
+            line2.textContent = d.type === 'voucher'
+                ? 'تم صرف الكوبون: ' + (d.reward || '')
+                : 'النقاط: ' + d.points + ' | الفئة: ' + d.tier;
         } else {
-            box.innerHTML = '<div style="color:#ef4444;font-size:14px;">❌ ' + d.message + '</div>';
+            icon.textContent = '❌';
+            line2.style.color = '#ef4444';
+            line2.textContent = d.message || 'رمز غير صحيح';
         }
+        box.appendChild(icon); box.appendChild(line1); box.appendChild(line2);
         setTimeout(function() { box.style.display = 'none'; }, 6000);
     });
 };
@@ -748,4 +766,4 @@ function getCookie(name) {
 // Init
 connectWS();
 </script>
-{% endblock %}
+{% endblock %}

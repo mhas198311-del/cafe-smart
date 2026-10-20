@@ -1,8 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#120c08">
+    <link rel="icon" href="/static/images/logo.jpg">
+    <script>
+        // Apply the saved language before the page paints, so visitors never see the other language flash first.
+        (function () {
+            var lang = 'ar';
+            try { lang = localStorage.getItem('cafe_lang') || 'ar'; } catch (e) {}
+            document.documentElement.lang = lang;
+            document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+        })();
+    </script>
     <title>{% block title %}White Bird Cafe Smart Web{% endblock %}</title>
     
     <!-- Google Fonts including Tajawal for Arabic -->
@@ -66,6 +77,36 @@
         a:hover {
             color: var(--primary-hover);
         }
+
+        /* Language visibility: show only the spans that match the active language */
+        html[lang="en"] .lang-ar { display: none !important; }
+        html[lang="ar"] .lang-en { display: none !important; }
+
+        /* Media never wider than its container */
+        img, video { max-width: 100%; }
+
+        /* Phone numbers and other LTR snippets inside Arabic text */
+        .ltr-text { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+
+        /* Wide tables scroll inside their own box instead of stretching the page */
+        .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        /* Default dark form fields (pages can still restyle them) */
+        .form-input, .form-textarea, .form-select {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #fff;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .form-select option { background: #1f140e; color: #fff; }
 
         /* RTL Styles override */
         [dir="rtl"] {
@@ -397,13 +438,11 @@
             {% if request.session.staff_user_id %}
                 <a href="/staff/dashboard/" class="nav-link {% if '/staff/dashboard/' in request.path %}active{% endif %}" data-tr="nav_staff_portal">Staff Portal</a>
                 <a href="/staff/logout/" class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;" data-tr="nav_logout">Logout</a>
-            {% else %}
-                <a href="/staff/login/" class="nav-link {% if '/staff/login/' in request.path %}active{% endif %}" data-tr="nav_staff_login">Staff Login</a>
             {% endif %}
             
             <!-- Language toggle button -->
             <button id="langToggleBtn" class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;" onclick="toggleLanguage()">
-                <i class="fa-solid fa-globe" style="margin-right: 4px;"></i> <span id="langToggleText">العربية</span>
+                <i class="fa-solid fa-globe"></i> <span id="langToggleText">English</span>
             </button>
         </nav>
 
@@ -426,18 +465,16 @@
         {% if request.session.staff_user_id %}
             <a href="/staff/dashboard/" class="mobile-nav-link {% if '/staff/dashboard/' in request.path %}active{% endif %}" onclick="closeMobileMenu()" data-tr="nav_staff_portal">لوحة الموظفين</a>
             <a href="/staff/logout/" class="btn btn-secondary" onclick="closeMobileMenu()" style="padding: 10px 20px; font-size: 15px; margin-top:6px;" data-tr="nav_logout">خروج</a>
-        {% else %}
-            <a href="/staff/login/" class="mobile-nav-link {% if '/staff/login/' in request.path %}active{% endif %}" onclick="closeMobileMenu()" data-tr="nav_staff_login">دخول الموظفين</a>
         {% endif %}
         
         <!-- Language toggle in mobile drawer -->
         <button id="langToggleBtnMobile" class="btn btn-secondary" style="padding: 10px 22px; font-size: 15px; margin-top: 10px;" onclick="toggleLanguage()">
-            <i class="fa-solid fa-globe" style="margin-right: 6px;"></i> <span id="langToggleTextMobile">العربية</span>
+            <i class="fa-solid fa-globe"></i> <span id="langToggleTextMobile">English</span>
         </button>
 
         <!-- Extra Bottom Close Button -->
         <button type="button" class="btn btn-secondary" onclick="closeMobileMenu()" style="padding: 7px 18px; font-size: 13px; margin-top: 6px; border-color: rgba(255,255,255,0.15); opacity: 0.85;">
-            <i class="fa-solid fa-xmark" style="margin-right: 4px;"></i> <span data-tr="close_menu">إغلاق القائمة</span>
+            <i class="fa-solid fa-xmark"></i> <span data-tr="close_menu">إغلاق القائمة</span>
         </button>
     </div>
 
@@ -452,23 +489,26 @@
         {% if global_config %}
             <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 15px; font-size: 20px;">
                 {% if global_config.instagram_url %}
-                    <a href="{{ global_config.instagram_url }}" target="_blank" style="color: var(--text-muted); transition: color 0.3s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">
+                    <a href="{{ global_config.instagram_url }}" target="_blank" rel="noopener" aria-label="Instagram" style="color: var(--text-muted); transition: color 0.3s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">
                         <i class="fa-brands fa-instagram"></i>
                     </a>
                 {% endif %}
                 {% if global_config.facebook_url %}
-                    <a href="{{ global_config.facebook_url }}" target="_blank" style="color: var(--text-muted); transition: color 0.3s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">
+                    <a href="{{ global_config.facebook_url }}" target="_blank" rel="noopener" aria-label="Facebook" style="color: var(--text-muted); transition: color 0.3s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">
                         <i class="fa-brands fa-facebook"></i>
                     </a>
                 {% endif %}
                 {% if global_config.tiktok_url %}
-                    <a href="{{ global_config.tiktok_url }}" target="_blank" style="color: var(--text-muted); transition: color 0.3s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">
+                    <a href="{{ global_config.tiktok_url }}" target="_blank" rel="noopener" aria-label="Tiktok" style="color: var(--text-muted); transition: color 0.3s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-muted)'">
                         <i class="fa-brands fa-tiktok"></i>
                     </a>
                 {% endif %}
             </div>
         {% endif %}
         <p>&copy; 2026 <span data-tr="footer_text">White Bird Cafe. Premium Smart Table Services & CRM System.</span></p>
+        {% if not request.session.staff_user_id %}
+            <p style="margin-top: 10px; font-size: 12px;"><a href="/staff/login/" style="color: var(--text-muted); opacity: 0.6;" data-tr="nav_staff_login">Staff Login</a></p>
+        {% endif %}
     </footer>
 
     <!-- Toast Alerts -->
@@ -490,7 +530,7 @@
                 // Menu page
                 "menu_title": "Specialty Coffee & Drinks Menu",
                 "menu_subtitle": "Indulge in our exquisite selection of specialty coffees, refreshing cold beverages, and comforting hot drinks crafted with passion at White Bird Cafe.",
-                "search_placeholder": "Search specialty coffee, cold & hot drinks...",
+                "search_placeholder": "Search the menu...",
                 "all_items": "All Items",
                 "low_stock": "Low Stock",
                 "fresh_available": "Freshly Available",
@@ -592,7 +632,7 @@
                 // Menu page
                 "menu_title": "قائمة المشروبات والقهوة المختصة",
                 "menu_subtitle": "استمتع بتشكيلتنا الفاخرة من القهوة المختصة والمشروبات الساخنة والباردة المنعشة المحضرة بكل حب وعناية في وايت بيرد كافيه.",
-                "search_placeholder": "ابحث عن القهوة المختصة، المشروبات الباردة والساخنة...",
+                "search_placeholder": "ابحث في المنيو...",
                 "all_items": "كل الأصناف",
                 "low_stock": "كمية محدودة",
                 "fresh_available": "متوفر طازجاً",
@@ -683,11 +723,12 @@
             }
         };
 
-        let currentLang = localStorage.getItem('cafe_lang') || 'en';
+        let currentLang = 'ar';
+        try { currentLang = localStorage.getItem('cafe_lang') || 'ar'; } catch (e) {}
 
         function applyLanguage(lang) {
             currentLang = lang;
-            localStorage.setItem('cafe_lang', lang);
+            try { localStorage.setItem('cafe_lang', lang); } catch (e) {}
             
             const btnText = lang === 'ar' ? 'English' : 'العربية';
             const toggleTextEl = document.getElementById('langToggleText');

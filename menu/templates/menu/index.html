@@ -3,10 +3,6 @@
 {% block title %}White Bird Cafe - Digital Menu{% endblock %}
 
 {% block extra_css %}
-/* Language visibility utilities */
-html[lang="en"] .lang-ar { display: none !important; }
-html[lang="ar"] .lang-en { display: none !important; }
-
 .menu-hero {
     text-align: center;
     padding: 60px 24px;
@@ -130,6 +126,8 @@ html[lang="ar"] .lang-en { display: none !important; }
     transform: translateY(-50%);
     color: var(--primary);
     font-size: 18px;
+    z-index: 2;
+    pointer-events: none;
 }
 
 [dir="rtl"] .search-bar i {
@@ -374,6 +372,184 @@ html[lang="ar"] .lang-en { display: none !important; }
 [dir="rtl"] .stock-tag i { margin-right: 0; margin-left: 4px; }
 .stock-tag.low { color: #e6995c; font-weight: 600; }
 .stock-tag.high { color: var(--success); }
+
+/* Text that may be English inside an Arabic page keeps its own direction */
+.item-title, .item-desc { unicode-bidi: plaintext; }
+
+/* Tablet */
+@media (max-width: 900px) {
+    .menu-grid {
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 16px;
+    }
+}
+
+/* Phone: compact rows, one per item, small square photo on the side */
+@media (max-width: 600px) {
+    .container {
+        padding: 20px 14px;
+    }
+
+    .menu-hero {
+        padding: 28px 18px;
+        margin-bottom: 20px;
+        border-radius: 18px;
+    }
+
+    .menu-hero h2 {
+        font-size: 26px;
+    }
+
+    .menu-hero p {
+        font-size: 14px;
+    }
+
+    .menu-tabs-nav {
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .tab-nav-btn {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+
+    .search-bar {
+        margin-bottom: 14px;
+    }
+
+    .search-input {
+        padding: 13px 20px 13px 48px;
+        font-size: 15px;
+    }
+
+    [dir="rtl"] .search-input {
+        padding: 13px 48px 13px 20px;
+    }
+
+    .search-bar i {
+        left: 18px;
+        font-size: 16px;
+    }
+
+    [dir="rtl"] .search-bar i {
+        right: 18px;
+    }
+
+    /* Filters become one horizontally scrollable row */
+    .filter-tags-container {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        overflow-x: auto;
+        margin: 0 -14px 20px;
+        padding: 2px 14px 6px;
+        scrollbar-width: none;
+    }
+
+    .filter-tags-container::-webkit-scrollbar {
+        display: none;
+    }
+
+    .filter-tag-btn {
+        flex-shrink: 0;
+        padding: 7px 14px;
+        font-size: 13px;
+    }
+
+    .section-wrapper {
+        margin-bottom: 14px;
+    }
+
+    .section-banner {
+        height: 84px;
+        padding: 0 18px;
+        border-radius: 14px;
+    }
+
+    .banner-title {
+        font-size: 18px;
+    }
+
+    .accordion-chevron {
+        width: 32px;
+        height: 32px;
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+
+    .section-body {
+        padding: 12px 0 4px 0;
+    }
+
+    .menu-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .menu-item-card.glass-card {
+        display: grid;
+        grid-template-columns: 84px 1fr;
+        column-gap: 14px;
+        align-items: start;
+        padding: 12px;
+        border-radius: 14px;
+        height: auto;
+    }
+
+    .menu-item-card:hover .item-img {
+        transform: none;
+    }
+
+    .item-img-container {
+        grid-row: 1 / span 3;
+        width: 84px;
+        height: 84px;
+        margin: 0;
+        border-radius: 10px;
+    }
+
+    .no-image-placeholder {
+        font-size: 28px;
+    }
+
+    .item-badge {
+        top: 4px;
+        right: 4px;
+        padding: 2px 5px;
+        font-size: 9px;
+    }
+
+    [dir="rtl"] .item-badge {
+        left: 4px;
+    }
+
+    .item-header, .item-desc, .item-footer {
+        grid-column: 2;
+    }
+
+    .item-header {
+        margin-bottom: 4px;
+        gap: 8px;
+    }
+
+    .item-title, .item-price {
+        font-size: 15px;
+    }
+
+    .item-desc {
+        font-size: 12.5px;
+        line-height: 1.5;
+        margin-bottom: 6px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .item-footer {
+        padding-top: 6px;
+    }
+}
 {% endblock %}
 
 {% block content %}
@@ -478,7 +654,7 @@ html[lang="ar"] .lang-en { display: none !important; }
             <span class="lang-ar">بدون حليب</span>
         </button>
         <button class="filter-tag-btn" data-filter="caffeine_free" onclick="toggleFilter('caffeine_free', this)">
-            <i class="fa-solid fa-bolt-slash" style="color: #ffeaa7;"></i>
+            <i class="fa-solid fa-leaf" style="color: #ffeaa7;"></i>
             <span class="lang-en">Caffeine-Free</span>
             <span class="lang-ar">بدون كافيين</span>
         </button>
@@ -633,15 +809,6 @@ html[lang="ar"] .lang-en { display: none !important; }
             if (!wasActive) {
                 activeFilters.add(filterName);
                 btn.classList.add('active');
-
-                // Smart Tab Switch: If filtering for 'hot', switch to Hot Drinks tab; if 'cold', switch to Cold Drinks tab
-                if (filterName === 'hot') {
-                    const hotTabBtn = document.querySelector('.tab-nav-btn[data-tab-id="1"]');
-                    if (hotTabBtn && activeTabId !== '1') setActiveTab('1', hotTabBtn);
-                } else if (filterName === 'cold') {
-                    const coldTabBtn = document.querySelector('.tab-nav-btn[data-tab-id="2"]');
-                    if (coldTabBtn && activeTabId !== '2') setActiveTab('2', coldTabBtn);
-                }
             } else {
                 document.querySelector('.filter-tag-btn[data-filter="all"]').classList.add('active');
             }
@@ -652,13 +819,23 @@ html[lang="ar"] .lang-en { display: none !important; }
 
     function runMenuFiltering() {
         const query = (document.getElementById('menuSearch').value || '').toLowerCase().trim();
-        const activePane = document.getElementById(`tab-pane-${activeTabId}`);
-        if (!activePane) return;
+        // While searching or filtering, look through every tab so nothing is missed;
+        // otherwise show only the selected tab.
+        const searchAllTabs = query !== '' || activeFilters.size > 0;
+        const panes = document.querySelectorAll('.tab-pane');
+        if (!panes.length) return;
 
         let totalVisibleItemsInTab = 0;
 
-        // Filter items within the active tab pane
-        const sectionWrappers = activePane.querySelectorAll('.section-wrapper');
+        panes.forEach(pane => {
+        const isActivePane = pane.getAttribute('data-tab-id') === activeTabId;
+        if (!searchAllTabs && !isActivePane) {
+            pane.style.display = 'none';
+            return;
+        }
+        let visibleInPane = 0;
+
+        const sectionWrappers = pane.querySelectorAll('.section-wrapper');
         
         sectionWrappers.forEach(wrapper => {
             const items = wrapper.querySelectorAll('.menu-item-card');
@@ -682,7 +859,7 @@ html[lang="ar"] .lang-en { display: none !important; }
                 }
 
                 if (matchesSearch && matchesFilters) {
-                    item.style.display = 'flex';
+                    item.style.display = '';
                     visibleCount++;
                 } else {
                     item.style.display = 'none';
@@ -692,10 +869,14 @@ html[lang="ar"] .lang-en { display: none !important; }
             // Show or hide the whole section wrapper based on visible items
             if (visibleCount > 0) {
                 wrapper.style.display = 'block';
-                totalVisibleItemsInTab += visibleCount;
+                visibleInPane += visibleCount;
             } else {
                 wrapper.style.display = 'none';
             }
+        });
+
+        pane.style.display = (isActivePane || visibleInPane > 0) ? 'block' : 'none';
+        totalVisibleItemsInTab += visibleInPane;
         });
 
         // Toggle No Items Found message
@@ -740,7 +921,7 @@ html[lang="ar"] .lang-en { display: none !important; }
 
     // Run initially based on global language
     window.addEventListener('DOMContentLoaded', () => {
-        const activeLang = localStorage.getItem('cafe_lang') || 'en';
+        const activeLang = currentLang;
         translateStockTags(activeLang);
         
         // Initialize background image of the first active tab

@@ -104,7 +104,7 @@
             });
             const data = await res.json();
             if (data.status === 'success') {
-                const activeLang = localStorage.getItem('cafe_lang') || 'en';
+                const activeLang = currentLang;
                 const msg = activeLang === 'ar' ? 'تم تسجيل الدخول بنجاح!' : data.message;
                 showToast(msg, 'success');
                 setTimeout(() => window.location.href = data.redirect, 1000);

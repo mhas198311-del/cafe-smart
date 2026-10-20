@@ -44,7 +44,6 @@
     height: 90px;
     border-radius: 50%;
     border: 4px solid rgba(195, 158, 103, 0.15);
-    border-top-color: var(--primary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -52,13 +51,29 @@
     font-weight: 700;
     color: var(--primary);
     position: relative;
+}
+
+/* Only the ring spins; the number inside stays upright */
+.session-timer-circle::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 4px solid transparent;
+    border-top-color: var(--primary);
     animation: spin-timer-border 1s linear infinite;
 }
 
 .session-timer-number {
     position: absolute;
-    animation: none;
     font-family: 'Outfit', sans-serif;
+}
+
+.session-timer-hint {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: -15px 0 20px;
 }
 
 @keyframes spin-timer-border {
@@ -66,9 +81,6 @@
     100% { transform: rotate(360deg); }
 }
 
-.session-timer-circle * {
-    transform: rotate(0deg); /* keep text straight */
-}
 
 /* Service Button Stack */
 .service-button-stack {
@@ -244,7 +256,7 @@
 <div class="container table-service-wrapper">
     
     <div style="margin-bottom:25px;">
-        <h2 class="table-header-title" id="pageTitleText">طاولة رقم <span>{{ table_number }}</span></h2>
+        <h2 class="table-header-title" id="pageTitleText"><span class="lang-ar">طاولة رقم</span><span class="lang-en">Table</span> <span>{{ table_number }}</span></h2>
         <p style="font-size:14px; color:var(--text-muted);" data-tr="table_subtitle">خدمات الخدمة الذكية للطاولة</p>
     </div>
 
@@ -256,6 +268,10 @@
                 <span class="session-timer-number" id="countdownSecsPage">60</span>
             </div>
         </div>
+        <p class="session-timer-hint">
+            <span class="lang-ar">الخدمة متاحة لمدة 60 ثانية، امسح رمز الطاولة مرة أخرى إذا انتهت</span>
+            <span class="lang-en">Service stays open for 60 seconds. Scan the table code again if it runs out.</span>
+        </p>
 
         <div class="service-button-stack">
             
@@ -311,10 +327,10 @@
     <!-- Bottom Shortcuts -->
     <div style="display:flex; justify-content:center; gap:20px; margin-top:20px;">
         <a href="/" class="btn btn-secondary">
-            <i class="fa-solid fa-book-open" style="margin-left:4px;"></i> <span data-tr="nav_menu">تصفح المنيو</span>
+            <i class="fa-solid fa-book-open" style="margin-left:4px;"></i> <span data-tr="table_nav_menu">تصفح المنيو</span>
         </a>
         <a href="/loyalty/" class="btn btn-secondary">
-            <i class="fa-solid fa-id-card" style="margin-left:4px;"></i> <span data-tr="nav_crm">نادي الولاء</span>
+            <i class="fa-solid fa-id-card" style="margin-left:4px;"></i> <span data-tr="table_nav_crm">نادي الولاء</span>
         </a>
     </div>
 
@@ -333,8 +349,8 @@
             "btn_hookah": "Hookah Service",
             "desc_hookah": "Request fresh hot coals or change hookah head",
             "status_connecting": "Connecting service...",
-            "nav_menu": "Browse Menu",
-            "nav_crm": "Loyalty Club"
+            "table_nav_menu": "Browse Menu",
+            "table_nav_crm": "Loyalty Club"
         },
         ar: {
             "table_subtitle": "خدمات الخدمة الذكية للطاولة",
@@ -345,31 +361,26 @@
             "btn_hookah": "خدمة الأراجيل",
             "desc_hookah": "طلب فحم إضافي أو تغيير رأس الأرجيلة",
             "status_connecting": "جاري الاتصال بالنظام...",
-            "nav_menu": "تصفح المنيو",
-            "nav_crm": "نادي الولاء"
+            "table_nav_menu": "تصفح المنيو",
+            "table_nav_crm": "نادي الولاء"
         }
     };
 
     Object.assign(window.cafeTranslations.en, tableServiceTranslations.en);
     Object.assign(window.cafeTranslations.ar, tableServiceTranslations.ar);
 
-    const activeLang = localStorage.getItem('cafe_lang') || 'en';
+    const activeLang = currentLang;
     applyLanguage(activeLang);
-
-    // Update page title translation
-    if (activeLang === 'en') {
-        document.getElementById('pageTitleText').innerHTML = `Table <span>{{ table_number }}</span>`;
-    }
 
     let socket = null;
     let timerInterval = null;
-    const tableNum = '{{ table_number }}';
-    const auth = '{{ auth_token }}';
+    const tableNum = encodeURIComponent('{{ table_number|escapejs }}');
+    const auth = encodeURIComponent('{{ auth_token|escapejs }}');
 
     function updateStatus(status) {
         const dot = document.getElementById('statusDotPage');
         const txt = document.getElementById('statusTextPage');
-        const isAr = localStorage.getItem('cafe_lang') === 'ar';
+        const isAr = currentLang === 'ar';
         
         if (status === 'connected') {
             dot.className = 'status-indicator-dot online';
@@ -403,7 +414,7 @@
         socket.onmessage = (e) => {
             const data = JSON.parse(e.data);
             if (data.event === 'call_accepted') {
-                showToast(localStorage.getItem('cafe_lang') === 'ar' ? 'تمت تلبية النداء من الموظفين!' : 'Staff accepted your call!', 'success');
+                showToast(currentLang === 'ar' ? 'تمت تلبية النداء من الموظفين!' : 'Staff accepted your call!', 'success');
                 // Reset success state
                 document.querySelectorAll('.service-action-btn').forEach(btn => {
                     btn.classList.remove('success');
@@ -442,7 +453,7 @@
 
     function triggerServiceCall(type, btnEl, extraDetails = '') {
         if (!socket || socket.readyState !== WebSocket.OPEN) {
-            showToast(localStorage.getItem('cafe_lang') === 'ar' ? 'خطأ بالاتصال بالشبكة' : 'Network connection error.', 'danger');
+            showToast(currentLang === 'ar' ? 'خطأ بالاتصال بالشبكة' : 'Network connection error.', 'danger');
             return;
         }
 
@@ -455,14 +466,14 @@
             btnEl.classList.add('success');
             const spanTitle = btnEl.querySelector('.btn-details h4') || btnEl;
             const originalText = spanTitle.innerText;
-            spanTitle.innerText = localStorage.getItem('cafe_lang') === 'ar' ? 'تم الإرسال...' : 'Sent...';
+            spanTitle.innerText = currentLang === 'ar' ? 'تم الإرسال...' : 'Sent...';
             setTimeout(() => {
                 spanTitle.innerText = originalText;
                 btnEl.classList.remove('success');
             }, 6000);
         }
 
-        showToast(localStorage.getItem('cafe_lang') === 'ar' ? 'تم إرسال تنبيه فوري للموظفين!' : 'Notification sent to staff dashboard!', 'success');
+        showToast(currentLang === 'ar' ? 'تم إرسال تنبيه فوري للموظفين!' : 'Notification sent to staff dashboard!', 'success');
     }
 </script>
 {% endblock %}

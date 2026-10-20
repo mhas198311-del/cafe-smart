@@ -51,9 +51,57 @@
     align-items: start;
 }
 
+/* Grid columns may shrink below their content width, so wide tables scroll inside their card */
+.dashboard-main-grid > * {
+    min-width: 0;
+}
+
 @media (max-width: 1080px) {
     .dashboard-main-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .dashboard-container {
+        margin-top: 12px;
+        padding: 0 10px;
+    }
+
+    .dashboard-title-box {
+        padding: 16px;
+    }
+
+    .dashboard-title-box h2 {
+        font-size: 18px;
+    }
+
+    .dashboard-title-box > div:last-child {
+        width: 100%;
+    }
+
+    .dashboard-title-box > div:last-child .btn {
+        flex: 1 1 100%;
+        justify-content: center;
+    }
+
+    .dashboard-main-grid .glass-card {
+        padding: 16px !important;
+    }
+
+    .cms-sub-tabs {
+        flex-wrap: wrap;
+    }
+
+    .cms-sub-tab-btn {
+        flex: 1 1 auto;
+        justify-content: center;
+        font-size: 12.5px;
+        padding: 9px 12px;
+    }
+
+    .items-search-input {
+        min-width: 0;
     }
 }
 
@@ -147,6 +195,7 @@
 .items-search-input:focus { outline: none; border-color: var(--primary); }
 
 .override-table {
+    min-width: 640px;
     width: 100%;
     border-collapse: collapse;
     font-size: 13.5px;
@@ -576,12 +625,10 @@
             {% if staff_role == 'ADMIN' %}
             <div class="glass-card" style="padding:22px;">
                 <h3 class="section-title"><i class="fa-solid fa-ticket"></i> سحوبات الجوائز والولاء</h3>
-                <div class="raffle-controls" style="display:flex; gap:8px; margin-bottom:14px;">
-                    <input type="number" id="minAmountInput" class="form-input" placeholder="الحد الأدنى للمشتريات (10.00)" value="10.00" step="0.01" style="flex:1;">
-                    <button onclick="calculateTickets()" class="btn btn-secondary btn-sm" style="padding:8px 12px; font-size:12px; white-space:nowrap;">
-                        <i class="fa-solid fa-calculator"></i> احتساب التذاكر
-                    </button>
-                </div>
+                <p style="color:var(--text-muted); font-size:13px; margin:0 0 14px;">
+                    التذاكر المؤهلة للسحب الحالي: <b style="color:var(--primary);">{{ pending_tickets_count }}</b>
+                    <span style="opacity:0.75;">(تُضاف تذكرة لكل {{ config.raffle_ticket_threshold|floatformat:"-2" }} د.أ من الفاتورة، ويمكن تغيير ذلك من الإعدادات)</span>
+                </p>
                 <div class="shuffler-box" id="shufflerContainer">
                     <div class="shuffling-pool" id="shufflingPool">غرفة السحب</div>
                 </div>
@@ -1001,6 +1048,7 @@ function openTabModal(btnOrMode) {
 async function saveTabModal(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
+    formData.append('action', formData.get('tab_id') ? 'update' : 'create');
     try {
         const res = await fetch('/api/staff/tab/manage/', {
             method: 'POST',
@@ -1012,8 +1060,12 @@ async function saveTabModal(e) {
             showToast('تم حفظ التبويب بنجاح!', 'success');
             closeModal('tabModal');
             setTimeout(() => window.location.reload(), 900);
+        } else {
+            showToast(data.message || 'تعذر حفظ التبويب', 'danger');
         }
-    } catch(e) {}
+    } catch(e) {
+        showToast('تعذر الاتصال بالسيرفر', 'danger');
+    }
 }
 
 function openSectionModal(btnOrMode, btn) {
@@ -1040,6 +1092,7 @@ function openSectionModal(btnOrMode, btn) {
 async function saveSectionModal(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
+    formData.append('action', formData.get('section_id') ? 'update' : 'create');
     try {
         const res = await fetch('/api/staff/section/manage/', {
             method: 'POST',
@@ -1051,8 +1104,12 @@ async function saveSectionModal(e) {
             showToast('تم حفظ المجموعة بنجاح!', 'success');
             closeModal('sectionModal');
             setTimeout(() => window.location.reload(), 900);
+        } else {
+            showToast(data.message || 'تعذر حفظ المجموعة', 'danger');
         }
-    } catch(e) {}
+    } catch(e) {
+        showToast('تعذر الاتصال بالسيرفر', 'danger');
+    }
 }
 
 async function markDashMsgRead(id) {
@@ -1074,31 +1131,19 @@ async function markDashMsgRead(id) {
 }
 
 // Raffle Controls
-async function calculateTickets() {
-    const minAmount = document.getElementById('minAmountInput').value;
-    try {
-        const res = await fetch(`/api/staff/raffle/draw/?min_amount=${minAmount}`);
-        const data = await res.json();
-        if (data.status === 'success') {
-            document.getElementById('shufflingPool').innerText = `${data.total_tickets} تذكرة مؤهلة 🎟️`;
-        }
-    } catch(e) {}
-}
-
 async function drawRaffleWinner() {
-    const minAmount = document.getElementById('minAmountInput').value;
+    if (!confirm('سيتم اختيار فائز وإغلاق كل التذاكر الحالية. هل تريد المتابعة؟')) return;
     document.getElementById('shufflingPool').innerText = 'جاري السحب... 🎰';
     try {
         const res = await fetch('/api/staff/raffle/draw/', {
             method: 'POST',
-            headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken') || ''},
-            body: JSON.stringify({min_amount: minAmount})
+            headers: {'X-CSRFToken':getCookie('csrftoken') || ''}
         });
         const data = await res.json();
         if (data.status === 'success') {
             document.getElementById('shufflingPool').innerText = `الفائز: ${data.winner_name} 🎉`;
             document.getElementById('winnerCustomerDetails').innerText = `${data.winner_name} (${data.winner_phone})`;
-            document.getElementById('winnerTicketNumber').innerText = `رقم التذكرة الفائزة: ${data.winning_ticket}`;
+            document.getElementById('winnerTicketNumber').innerText = `رقم التذكرة الفائزة: ${data.ticket_code}`;
             document.getElementById('winnerModal').style.display = 'flex';
         } else {
             showToast(data.message || 'لا توجد تذاكر مؤهلة', 'danger');
@@ -1128,4 +1173,4 @@ function stopChimes() {
     document.getElementById('btnSilenceChime').style.display = 'none';
 }
 </script>
-{% endblock %}
+{% endblock %}
