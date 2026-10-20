@@ -14,6 +14,35 @@ from django.views.decorators.http import require_POST, require_GET
 from cafe_smart.integrations import WhatsAppClient
 from .models import StaffUser, CustomerProfile
 
+def _request_data(request):
+    """
+    Returns the submitted fields whether the page sent a normal form (FormData)
+    or a JSON body, so both kinds of fetch() calls from the templates work.
+    """
+    if request.content_type == "application/json":
+        import json
+        try:
+            data = json.loads(request.body.decode("utf-8") or "{}")
+        except (ValueError, UnicodeDecodeError):
+            return {}
+        return data if isinstance(data, dict) else {}
+    return request.POST
+
+def get_customer_tier(customer, config):
+    """Tier name from points earned in the last 12 months (same rule as the loyalty page)."""
+    from django.utils import timezone
+    from django.db.models import Sum
+    one_year_ago = timezone.now() - timezone.timedelta(days=365)
+    total_earned = customer.points_transactions.filter(
+        transaction_type='EARNED',
+        created_at__gte=one_year_ago
+    ).aggregate(Sum('points'))['points__sum'] or 0
+    if config and total_earned >= config.gold_tier_threshold:
+        return "Gold"
+    if config and total_earned >= config.silver_tier_threshold:
+        return "Silver"
+    return "Bronze"
+
 def calculate_age(birth_date):
     today = datetime.date.today()
     return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
@@ -381,6 +410,8 @@ def staff_dashboard_view(request):
         
     tabs = MenuTab.objects.all().order_by('order_index')
     sections = MenuSection.objects.all().order_by('order_index')
+    from accounts.models import RaffleTicket
+    pending_tickets_count = RaffleTicket.objects.filter(draw_status='PENDING').count()
     
     return render(request, "accounts/dashboard.html", {
         "staff_name": request.session.get("staff_name"),
@@ -389,7 +420,8 @@ def staff_dashboard_view(request):
         "contact_messages": messages,
         "config": config,
         "tabs": tabs,
-        "sections": sections
+        "sections": sections,
+        "pending_tickets_count": pending_tickets_count,
     })
 
 
@@ -681,7 +713,7 @@ def mark_message_read(request):
     if not request.session.get("staff_user_id"):
         return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
 
-    message_id = request.POST.get("message_id")
+    message_id = _request_data(request).get("message_id")
     if not message_id:
         return JsonResponse({"status": "error", "message": "message_id is required"}, status=400)
 
@@ -966,15 +998,28 @@ def staff_redeem_scan(request):
     if not request.session.get("staff_user_id"):
         return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
 
-    voucher_code = request.POST.get("voucher_code")
+    data = _request_data(request)
+    voucher_code = (data.get("voucher_code") or data.get("barcode") or "").strip()
     if not voucher_code:
         return JsonResponse({"status": "error", "message": "Voucher code is required"}, status=400)
 
-    from accounts.models import CustomerVoucher
+    from accounts.models import CustomerVoucher, CafeConfiguration
     try:
         voucher = CustomerVoucher.objects.get(voucher_code=voucher_code)
     except CustomerVoucher.DoesNotExist:
-        return JsonResponse({"status": "error", "message": "Invalid voucher code"}, status=404)
+        # Not a voucher: the staff app also scans the customer's loyalty card barcode
+        customer = CustomerProfile.objects.filter(barcode=voucher_code).first()
+        if not customer:
+            customer = CustomerProfile.objects.filter(phone_number=clean_phone_number(voucher_code)).first()
+        if customer:
+            return JsonResponse({
+                "status": "success",
+                "type": "customer",
+                "customer_name": customer.full_name,
+                "points": customer.points_balance,
+                "tier": get_customer_tier(customer, CafeConfiguration.objects.first()),
+            })
+        return JsonResponse({"status": "error", "message": "الرمز غير صحيح: لا يوجد كوبون أو بطاقة عميل بهذا الرقم"}, status=404)
 
     if voucher.is_redeemed:
         return JsonResponse({"status": "error", "message": "Voucher has already been redeemed"}, status=400)
@@ -985,6 +1030,7 @@ def staff_redeem_scan(request):
 
     return JsonResponse({
         "status": "success",
+        "type": "voucher",
         "message": f"كوبون صالح: تم تأكيد استلام العميل لـ ({voucher.reward_details}) بنجاح!",
         "customer_name": voucher.customer.full_name,
         "reward": voucher.reward_details
@@ -1122,10 +1168,16 @@ def staff_group_items_add(request):
         return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
     
     from menu.models import MenuItem, MenuSection
-    section_id = request.POST.get("section_id")
-    item_ids = request.POST.getlist("item_ids[]")
-    
-    section = MenuSection.objects.get(id=section_id)
+    data = _request_data(request)
+    section_id = data.get("section_id")
+    if hasattr(data, "getlist"):
+        item_ids = data.getlist("item_ids[]") or data.getlist("item_ids")
+    else:
+        item_ids = data.get("item_ids") or []
+
+    section = MenuSection.objects.filter(id=section_id).first() if section_id else None
+    if not section or not item_ids:
+        return JsonResponse({"status": "error", "message": "اختر الصنف والمجموعة أولاً"}, status=400)
     MenuItem.objects.filter(id__in=item_ids).update(custom_section=section)
     
     return JsonResponse({"status": "success", "message": "Items assigned to group successfully!"})
@@ -1138,9 +1190,11 @@ def staff_item_remove_group(request):
         return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
     
     from menu.models import MenuItem
-    item_id = request.POST.get("item_id")
-    
-    item = MenuItem.objects.get(id=item_id)
+    item_id = _request_data(request).get("item_id")
+
+    item = MenuItem.objects.filter(id=item_id).first() if item_id else None
+    if not item:
+        return JsonResponse({"status": "error", "message": "Item not found"}, status=404)
     item.custom_section = None
     item.save()
     

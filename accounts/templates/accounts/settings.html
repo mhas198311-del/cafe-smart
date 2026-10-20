@@ -25,9 +25,9 @@
 
 .settings-tabs-nav {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
     margin-bottom: 25px;
-    overflow-x: auto;
     padding-bottom: 4px;
     border-bottom: 1px solid rgba(255,255,255,0.08);
 }
@@ -189,6 +189,30 @@
 @media (max-width: 900px) {
     .settings-grid-2, .settings-grid-3 { grid-template-columns: 1fr; }
 }
+
+/* Phone: settings tabs wrap into a 2-column grid so every tab is visible */
+@media (max-width: 600px) {
+    .settings-tabs-nav {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        overflow-x: visible;
+        border-bottom: none;
+    }
+
+    .settings-tab-btn {
+        white-space: normal;
+        justify-content: center;
+        text-align: center;
+        border-radius: 12px;
+        border-bottom: 1px solid transparent;
+        padding: 10px 8px;
+        font-size: 12.5px;
+    }
+
+    .settings-tab-btn.active {
+        border-bottom: 1px solid rgba(212, 175, 55, 0.4);
+    }
+}
 {% endblock %}
 
 {% block content %}
@@ -255,11 +279,11 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">رقم هاتف الاتصال</label>
-                    <input type="text" name="phone_number" class="form-input" value="{{ config.phone_number }}">
+                    <input type="text" name="phone_number" dir="ltr" class="form-input" value="{{ config.phone_number }}">
                 </div>
                 <div class="form-group">
                     <label class="form-label">رقم الواتساب الرسمي (بدون +)</label>
-                    <input type="text" name="whatsapp_number" class="form-input" value="{{ config.whatsapp_number }}" placeholder="962791234567">
+                    <input type="text" name="whatsapp_number" dir="ltr" class="form-input" value="{{ config.whatsapp_number }}" placeholder="962791234567">
                 </div>
             </div>
 
@@ -305,15 +329,15 @@
             <div class="settings-grid-3">
                 <div class="form-group">
                     <label class="form-label"><i class="fa-brands fa-instagram" style="color:#e1306c;"></i> انستغرام</label>
-                    <input type="url" name="instagram_url" class="form-input" value="{{ config.instagram_url|default_if_none:'' }}">
+                    <input type="url" name="instagram_url" dir="ltr" class="form-input" value="{{ config.instagram_url|default_if_none:'' }}">
                 </div>
                 <div class="form-group">
                     <label class="form-label"><i class="fa-brands fa-facebook" style="color:#1877f2;"></i> فيسبوك</label>
-                    <input type="url" name="facebook_url" class="form-input" value="{{ config.facebook_url|default_if_none:'' }}">
+                    <input type="url" name="facebook_url" dir="ltr" class="form-input" value="{{ config.facebook_url|default_if_none:'' }}">
                 </div>
                 <div class="form-group">
                     <label class="form-label"><i class="fa-brands fa-tiktok"></i> تيك توك</label>
-                    <input type="url" name="tiktok_url" class="form-input" value="{{ config.tiktok_url|default_if_none:'' }}">
+                    <input type="url" name="tiktok_url" dir="ltr" class="form-input" value="{{ config.tiktok_url|default_if_none:'' }}">
                 </div>
             </div>
         </div>
@@ -471,7 +495,7 @@
             </div>
             <div class="form-group">
                 <label class="form-label">رمز الوصول المباشر (Loyverse Access Token)</label>
-                <input type="text" name="loyverse_api_token" id="settingLoyverseToken" class="form-input" value="{{ config.loyverse_api_token|default_if_none:'' }}" placeholder="مثال: 3832fd4c96814ccabbb6ee9d197a1901">
+                <input type="text" name="loyverse_api_token" dir="ltr" id="settingLoyverseToken" class="form-input" value="{{ config.loyverse_api_token|default_if_none:'' }}" placeholder="مثال: 3832fd4c96814ccabbb6ee9d197a1901">
                 <div style="background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.25); border-radius:10px; padding:12px; margin-top:10px; font-size:12.5px; color:#22c55e;">
                     🛡️ <b>نظام المزامنة الآمن:</b> عند تشغيل المزامنة، يقوم النظام بسحب الأسعار والمنتجات المسموحة للبيع مع <b>الحفاظ الكامل 100% على كافة تعديلاتك وفلاترك وأقسامك السابقة</b> دون مساس!
                 </div>
@@ -492,11 +516,11 @@
             <div class="settings-grid-2">
                 <div class="form-group">
                     <label class="form-label">UltraMsg Instance ID (معرف الحساب)</label>
-                    <input type="text" name="ultramsg_instance_id" class="form-input" value="{{ config.ultramsg_instance_id|default_if_none:'' }}" placeholder="e.g. instance12345">
+                    <input type="text" name="ultramsg_instance_id" dir="ltr" class="form-input" value="{{ config.ultramsg_instance_id|default_if_none:'' }}" placeholder="e.g. instance12345">
                 </div>
                 <div class="form-group">
                     <label class="form-label">UltraMsg API Token (رمز الحساب)</label>
-                    <input type="text" name="ultramsg_token" class="form-input" value="{{ config.ultramsg_token|default_if_none:'' }}" placeholder="e.g. tokensecret">
+                    <input type="text" name="ultramsg_token" dir="ltr" class="form-input" value="{{ config.ultramsg_token|default_if_none:'' }}" placeholder="e.g. tokensecret">
                 </div>
             </div>
 
@@ -516,7 +540,7 @@
 
                 <!-- Test Sender -->
                 <div style="display:flex; gap:10px; margin-top:14px; align-items:center;">
-                    <input type="text" id="testPhoneInput" class="form-input" placeholder="رقم هاتف تجريبي (e.g. 0791112233)" style="flex:1;">
+                    <input type="tel" dir="ltr" id="testPhoneInput" class="form-input" placeholder="رقم هاتف تجريبي (e.g. 0791112233)" style="flex:1;">
                     <button type="button" class="btn btn-secondary" onclick="sendTestWhatsApp()" style="padding:10px 16px; font-size:12.5px; white-space:nowrap;">
                         <i class="fa-brands fa-whatsapp"></i> إرسال رسالة اختبار
                     </button>
@@ -647,7 +671,7 @@
 
             <div class="form-group">
                 <label class="form-label">اسم المستخدم لتسجيل الدخول (Username)</label>
-                <input type="text" id="staffUsername" name="username" class="form-input" placeholder="مثال: ahmed123" required>
+                <input type="text" id="staffUsername" name="username" dir="ltr" class="form-input" placeholder="مثال: ahmed123" required>
             </div>
 
             <div class="form-group">
@@ -872,13 +896,14 @@ async function refreshSettingsWhatsAppLogs() {
             if (data.logs.length === 0) {
                 box.innerHTML = '<p style="color:var(--text-muted); text-align:center;">لا توجد رسائل واتساب مسجلة حالياً.</p>';
             } else {
+                const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
                 box.innerHTML = data.logs.map(log => `
                     <div style="background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; margin-bottom:6px; border:1px solid rgba(255,255,255,0.05);">
                         <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                            <span style="font-weight:700; color:#25d366;">${log.phone_number}</span>
-                            <span style="font-size:10px; color:${log.status.includes('Real') ? '#22c55e' : 'var(--primary)'};">${log.status}</span>
+                            <span style="font-weight:700; color:#25d366;" class="ltr-text">${esc(log.phone_number)}</span>
+                            <span style="font-size:10px; color:${String(log.status || '').includes('Real') ? '#22c55e' : 'var(--primary)'};">${esc(log.status)}</span>
                         </div>
-                        <div style="color:#ddd; line-height:1.4;">${log.message}</div>
+                        <div style="color:#ddd; line-height:1.4; white-space:pre-wrap;">${esc(log.message)}</div>
                     </div>
                 `).reverse().join('');
             }
@@ -931,4 +956,4 @@ function getCookie(name) {
     return cookieValue;
 }
 </script>
-{% endblock %}
+{% endblock %}
