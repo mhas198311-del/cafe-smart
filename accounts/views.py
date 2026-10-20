@@ -11,8 +11,11 @@ from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
-from cafe_smart.integrations import WhatsAppClient
+from cafe_smart.integrations import WhatsAppClient, LoyverseClient, LoyverseError
 from .models import StaffUser, CustomerProfile
+from .security import client_ip, hit_limit, is_limited, reset_limit, staff_is_admin
+
+MIN_CUSTOMER_PASSWORD_LENGTH = 6
 
 def _request_data(request):
     """
@@ -72,6 +75,16 @@ def customer_register_request(request):
 
     if not all([phone_raw, full_name, birth_date_str, password]):
         return JsonResponse({"status": "error", "message": "All fields are required"}, status=400)
+
+    if len(password) < MIN_CUSTOMER_PASSWORD_LENGTH:
+        return JsonResponse({"status": "error", "message": "كلمة المرور يجب أن تكون 6 أحرف على الأقل / Password must be at least 6 characters"}, status=400)
+
+    # Every OTP is a paid WhatsApp message: cap per phone and per visitor
+    if hit_limit(f"otp:phone:{phone_number}", 3, 3600) or hit_limit(f"otp:ip:{client_ip(request)}", 10, 3600):
+        return JsonResponse({
+            "status": "error",
+            "message": "تم طلب رموز كثيرة، حاول بعد ساعة / Too many codes requested, try again in an hour."
+        }, status=429)
 
     # Rate limiting: 60 seconds cooldown between OTP requests (except in unit tests)
     import sys
@@ -163,8 +176,8 @@ def customer_register_verify(request):
     # Create profile
     birth_date = datetime.datetime.strptime(request.session["reg_birth_date"], "%Y-%m-%d").date()
     
-    # Mock a Loyverse Native Customer ID and a fixed barcode
-    loyverse_id = f"LOY-CUST-{secrets.randbelow(90000) + 10000}"
+    # Temporary id until the customer is created/linked in Loyverse below
+    loyverse_id = f"PENDING-{secrets.token_hex(8)}"
     barcode_val = f"WBC{secrets.randbelow(900000000) + 100000000}"
 
     customer = CustomerProfile.objects.create(
@@ -177,13 +190,22 @@ def customer_register_verify(request):
         is_verified=True
     )
 
+    # Create (or reuse by phone) the customer in Loyverse. If Loyverse is unreachable
+    # the account still works and is linked on the next visit to the loyalty page.
+    if LoyverseClient.is_configured():
+        try:
+            LoyverseClient.link_customer(customer)
+        except LoyverseError as e:
+            logger.error(f"Could not link new customer {customer.id} to Loyverse: {e}")
+
     # Trigger welcome WhatsApp message
     try:
         WhatsAppClient.send_welcome_loyalty(customer.phone_number, customer.full_name)
     except Exception as e:
         logger.error(f"Error sending welcome WhatsApp: {e}")
 
-    # Log in
+    # Log in (new session id so an old one cannot be reused)
+    request.session.cycle_key()
     request.session["customer_id"] = customer.id
     request.session["customer_name"] = customer.full_name
     request.session["loyverse_customer_id"] = customer.loyverse_customer_id
@@ -205,15 +227,18 @@ def customer_login(request):
     if not phone_raw or not password:
         return JsonResponse({"status": "error", "message": "Phone number and password are required"}, status=400)
 
-    try:
-        customer = CustomerProfile.objects.get(phone_number=phone_number)
-    except CustomerProfile.DoesNotExist:
-        return JsonResponse({"status": "error", "message": "User not found"}, status=404)
+    limit_key = f"login:customer:{phone_number}"
+    if is_limited(limit_key, 10) or hit_limit(f"login:customer-ip:{client_ip(request)}", 30, 900):
+        return JsonResponse({"status": "error", "message": "محاولات كثيرة، حاول بعد 15 دقيقة / Too many attempts, try again in 15 minutes"}, status=429)
 
-    if not check_password(password, customer.password_hash):
-        return JsonResponse({"status": "error", "message": "Incorrect password"}, status=400)
+    customer = CustomerProfile.objects.filter(phone_number=phone_number).first()
+    if not customer or not check_password(password, customer.password_hash):
+        hit_limit(limit_key, 10, 900)
+        return JsonResponse({"status": "error", "message": "رقم الهاتف أو كلمة المرور غير صحيحة / Incorrect phone number or password"}, status=400)
+    reset_limit(limit_key)
 
     # Log in
+    request.session.cycle_key()
     request.session["customer_id"] = customer.id
     request.session["customer_name"] = customer.full_name
     request.session["loyverse_customer_id"] = customer.loyverse_customer_id
@@ -233,35 +258,24 @@ def customer_logout(request):
 @require_POST
 def staff_login(request):
     """
-    Staff Dashboard Login.
-    If no staff users exist, creates a default 'admin' / 'admin123' user for testing convenience.
+    Staff Dashboard Login. The first manager account is created by seed.py
+    from the INITIAL_ADMIN_USERNAME / INITIAL_ADMIN_PASSWORD environment variables.
     """
-    username = request.POST.get("username")
-    password = request.POST.get("password")
+    username = (request.POST.get("username") or "").strip()
+    password = request.POST.get("password") or ""
 
-    if not StaffUser.objects.exists():
-        StaffUser.objects.create(
-            username="admin",
-            password_hash=make_password("admin123"),
-            employee_name="Manager Admin",
-            role="ADMIN"
-        )
-        StaffUser.objects.create(
-            username="waiter",
-            password_hash=make_password("waiter123"),
-            employee_name="Floor Waiter",
-            role="WAITER"
-        )
+    limit_key = f"login:staff:{username.lower()}"
+    if is_limited(limit_key, 5) or hit_limit(f"login:staff-ip:{client_ip(request)}", 20, 900):
+        return JsonResponse({"status": "error", "message": "محاولات كثيرة، حاول بعد 15 دقيقة / Too many attempts, try again in 15 minutes"}, status=429)
 
-    try:
-        staff = StaffUser.objects.get(username=username)
-    except StaffUser.DoesNotExist:
+    staff = StaffUser.objects.filter(username=username).first()
+    if not staff or not staff.is_active or not check_password(password, staff.password_hash):
+        hit_limit(limit_key, 5, 900)
         return JsonResponse({"status": "error", "message": "Invalid credentials"}, status=401)
-
-    if not check_password(password, staff.password_hash):
-        return JsonResponse({"status": "error", "message": "Invalid credentials"}, status=401)
+    reset_limit(limit_key)
 
     # Log in
+    request.session.cycle_key()
     request.session["staff_user_id"] = staff.id
     request.session["staff_name"] = staff.employee_name
     request.session["staff_role"] = staff.role
@@ -323,13 +337,15 @@ def loyalty_view(request):
     progress = 0
     next_tier_name = "Silver"
     needed = config.silver_tier_threshold
+    points_live = False
 
     if customer_id:
         try:
             customer = CustomerProfile.objects.get(id=customer_id)
             if not customer.barcode:
-                customer.barcode = f"WBC{random.randint(100000000, 999999999)}"
+                customer.barcode = f"WBC{secrets.randbelow(900000000) + 100000000}"
                 customer.save(update_fields=['barcode'])
+            points_live = LoyverseClient.refresh_customer_points(customer)
 
             tickets = customer.raffle_tickets.all().order_by("-created_at")
             vouchers = customer.vouchers.filter(is_redeemed=False).order_by("-created_at")
@@ -375,8 +391,21 @@ def loyalty_view(request):
         today = datetime.date.today()
         is_birthday = (customer.birth_date.month == today.month and customer.birth_date.day == today.day)
 
+    from accounts.models import LoyaltyReward
+    rewards = []
+    if customer:
+        for reward in LoyaltyReward.objects.filter(is_active=True):
+            remaining = max(0, reward.points_required - customer.points_balance)
+            reward.is_available = remaining == 0
+            reward.points_remaining = remaining
+            reward.progress = 100 if not reward.points_required else min(100, int(customer.points_balance * 100 / reward.points_required))
+            rewards.append(reward)
+
     return render(request, "accounts/loyalty.html", {
         "customer": customer,
+        "rewards": rewards,
+        "points_live": points_live,
+        "loyverse_enabled": LoyverseClient.is_configured(),
         "tickets": tickets,
         "vouchers": vouchers,
         "config": config,
@@ -442,11 +471,14 @@ def staff_settings_view(request):
 
     staff_users = StaffUser.objects.all().order_by("-role", "employee_name")
 
+    from accounts.models import LoyaltyReward
     return render(request, "accounts/settings.html", {
         "staff_name": request.session.get("staff_name"),
         "staff_role": request.session.get("staff_role"),
         "config": config,
         "staff_users": staff_users,
+        "rewards": LoyaltyReward.objects.all(),
+        "loyverse_webhook_url": request.build_absolute_uri(f"/integrations/loyverse-webhook/?key={loyverse_webhook_key()}"),
     })
 
 
@@ -498,13 +530,9 @@ def staff_push_subscribe(request):
     from .models import StaffPushSubscription
     import json
 
-    staff_user_id = request.session.get("staff_user_id")
-    staff_user = None
-    if staff_user_id:
-        try:
-            staff_user = StaffUser.objects.get(id=staff_user_id)
-        except StaffUser.DoesNotExist:
-            pass
+    staff_user = StaffUser.objects.filter(id=request.session.get("staff_user_id")).first()
+    if not staff_user:
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
 
     try:
         data = json.loads(request.body)
@@ -529,7 +557,7 @@ def staff_push_subscribe(request):
         return JsonResponse({"status": "success", "message": "Push subscription registered", "created": created})
     except Exception as e:
         logger.error(f"Error saving push subscription: {e}")
-        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+        return JsonResponse({"status": "error", "message": "Could not save subscription"}, status=500)
 
 
 def staff_download_apk(request):
@@ -788,7 +816,7 @@ def get_whatsapp_logs(request):
     """
     Returns the outgoing WhatsApp logs sent during the server's execution session.
     """
-    if not request.session.get("staff_user_id"):
+    if not staff_is_admin(request):
         return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
     
     from cafe_smart.integrations import WhatsAppClient
@@ -803,7 +831,7 @@ def whatsapp_test_send(request):
     """
     Triggers a test message using the configured WhatsApp UltraMsg gateway.
     """
-    if not request.session.get("staff_user_id"):
+    if not staff_is_admin(request):
         return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
         
     phone_number = request.POST.get("phone_number")
@@ -830,57 +858,89 @@ def whatsapp_test_send(request):
         "message_status": status
     })
 
+def loyverse_webhook_key():
+    """
+    Secret part of the webhook URL that is registered in Loyverse.
+    Derived from SECRET_KEY so nothing extra has to be configured;
+    LOYVERSE_WEBHOOK_SECRET overrides it.
+    """
+    import hashlib
+    import hmac
+    override = getattr(settings, "LOYVERSE_WEBHOOK_SECRET", "")
+    if override:
+        return override
+    return hmac.new(settings.SECRET_KEY.encode(), b"loyverse-webhook", hashlib.sha256).hexdigest()[:32]
+
+
+def webhook_key_is_valid(request):
+    return secrets.compare_digest(request.GET.get("key", ""), loyverse_webhook_key())
+
+
 @csrf_exempt
 @require_POST
 def loyverse_webhook(request):
     """
-    Webhook handler for Loyverse. Listens for receipt.created events,
-    associates them with the customer, updates points/spending, generates
-    raffle tickets, and triggers WhatsApp alerts.
+    Loyverse "receipts.update" webhook. Each receipt is re-read from the Loyverse API
+    (when a token is configured) so a forged request cannot add points or raffle tickets.
+    Records earned points for tiers, refreshes the points balance, generates raffle
+    tickets and sends the WhatsApp points message.
     """
     import json
+    if not webhook_key_is_valid(request):
+        return JsonResponse({"status": "error", "message": "Forbidden"}, status=403)
     try:
         data = json.loads(request.body.decode('utf-8'))
     except Exception:
         return JsonResponse({"status": "error", "message": "Invalid JSON payload"}, status=400)
 
-    # In Loyverse Webhooks, the event structure has a type and data
-    receipt_data = data.get("data", data)
-    event_type = data.get("event_type", "receipt.created")
+    # Loyverse sends {"type": "receipts.update", "receipts": [...]}; older test payloads
+    # used {"event_type": "receipt.created", "data": {...}}
+    if isinstance(data.get("receipts"), list):
+        receipts = data["receipts"]
+    else:
+        receipts = [data.get("data", data)]
 
-    if event_type != "receipt.created":
-        return JsonResponse({"status": "success", "message": "Ignored non-receipt event"})
+    results = [_process_loyverse_receipt(r) for r in receipts if isinstance(r, dict)]
+    return JsonResponse({"status": "success", "results": results})
+
+
+def _process_loyverse_receipt(receipt_data):
+    from django.db import transaction
+    from django.utils import timezone
+    from accounts.models import PointsTransaction, CafeConfiguration, RaffleTicket
+
+    receipt_number = str(receipt_data.get("receipt_number") or "").strip()
+    if not receipt_number:
+        return {"status": "ignored", "reason": "no receipt number"}
+
+    if LoyverseClient.is_configured():
+        try:
+            verified = LoyverseClient.get_receipt(receipt_number)
+        except LoyverseError as e:
+            logger.error(f"Webhook receipt {receipt_number} could not be verified: {e}")
+            return {"receipt": receipt_number, "status": "error", "reason": "verification failed"}
+        if not verified:
+            return {"receipt": receipt_number, "status": "ignored", "reason": "receipt not found in Loyverse"}
+        receipt_data = verified
+
+    if receipt_data.get("receipt_type", "SALE") != "SALE" or receipt_data.get("cancelled_at"):
+        return {"receipt": receipt_number, "status": "ignored", "reason": "not a completed sale"}
 
     loyverse_customer_id = receipt_data.get("customer_id")
-    receipt_number = receipt_data.get("receipt_number", f"LV-{random.randint(10000, 99999)}")
-    total_amount = float(receipt_data.get("total_amount", 0.0))
-    points_earned = int(float(receipt_data.get("points_earned", 0.0)))
-
     if not loyverse_customer_id:
-        return JsonResponse({"status": "success", "message": "No customer associated with this receipt"})
+        return {"receipt": receipt_number, "status": "ignored", "reason": "no customer"}
 
-    # Financial Idempotency: Avoid double crediting points if webhook fires multiple times
-    from accounts.models import PointsTransaction
-    if receipt_number and PointsTransaction.objects.filter(receipt_number=receipt_number).exists():
-        return JsonResponse({
-            "status": "success", 
-            "message": "Receipt already processed (Idempotent request)",
-            "receipt_number": receipt_number
-        })
+    customer = CustomerProfile.objects.filter(loyverse_customer_id=loyverse_customer_id).first()
+    if not customer:
+        return {"receipt": receipt_number, "status": "ignored", "reason": "customer not registered on the website"}
 
-    try:
-        customer = CustomerProfile.objects.get(loyverse_customer_id=loyverse_customer_id)
-    except CustomerProfile.DoesNotExist:
-        return JsonResponse({"status": "success", "message": "Associated customer profile not found in local system"})
+    total_amount = float(receipt_data.get("total_money", receipt_data.get("total_amount", 0)) or 0)
+    points_earned = int(float(receipt_data.get("points_earned", 0) or 0))
 
-    # Update customer metrics
-    customer.points_balance += points_earned
-    customer.monthly_spend += total_amount
-    customer.save()
-
-    # Log points earned transaction
-    from accounts.models import PointsTransaction
-    if points_earned > 0:
+    with transaction.atomic():
+        # Loyverse fires receipts.update again when a receipt changes: process each receipt once
+        if PointsTransaction.objects.filter(receipt_number=receipt_number).exists():
+            return {"receipt": receipt_number, "status": "duplicate"}
         PointsTransaction.objects.create(
             customer=customer,
             points=points_earned,
@@ -888,20 +948,21 @@ def loyverse_webhook(request):
             receipt_number=receipt_number
         )
 
-    # Generate raffle tickets based on configuration
-    from accounts.models import CafeConfiguration, RaffleTicket
-    config = CafeConfiguration.objects.first()
-    if not config:
-        config = CafeConfiguration.objects.create()
+        if receipt_data.get("points_balance") is not None:
+            customer.points_balance = int(float(receipt_data["points_balance"]))
+        else:
+            customer.points_balance += points_earned
+        customer.points_synced_at = timezone.now()
+        customer.monthly_spend += total_amount
+        customer.save()
 
-    threshold = config.raffle_ticket_threshold
-    num_tickets = 0
-    if total_amount >= threshold:
-        num_tickets = int(total_amount // threshold)
+        config = CafeConfiguration.objects.first() or CafeConfiguration.objects.create()
+        threshold = config.raffle_ticket_threshold
+        num_tickets = int(total_amount // threshold) if threshold and total_amount >= threshold else 0
         for _ in range(num_tickets):
-            ticket_code = f"TKT-{random.randint(100000, 999999)}"
+            ticket_code = f"TKT-{secrets.randbelow(900000) + 100000}"
             while RaffleTicket.objects.filter(ticket_code=ticket_code).exists():
-                ticket_code = f"TKT-{random.randint(100000, 999999)}"
+                ticket_code = f"TKT-{secrets.randbelow(900000) + 100000}"
             RaffleTicket.objects.create(
                 ticket_code=ticket_code,
                 customer=customer,
@@ -909,85 +970,32 @@ def loyverse_webhook(request):
                 receipt_amount=total_amount
             )
 
-    # Trigger WhatsApp Notification
-    from cafe_smart.integrations import WhatsAppClient
-    try:
-        WhatsAppClient.send_points_earned(customer.phone_number, points_earned, customer.points_balance)
-    except Exception as e:
-        logger.error(f"Failed to send points earned WhatsApp notification: {e}")
+    if points_earned > 0:
+        try:
+            WhatsAppClient.send_points_earned(customer.phone_number, points_earned, customer.points_balance)
+        except Exception as e:
+            logger.error(f"Failed to send points earned WhatsApp notification: {e}")
 
-    return JsonResponse({
-        "status": "success",
-        "message": "Webhook processed successfully",
+    return {
+        "receipt": receipt_number,
+        "status": "processed",
         "points_earned": points_earned,
         "total_points": customer.points_balance,
-        "tickets_generated": num_tickets
-    })
+        "tickets_generated": num_tickets,
+    }
+
 
 @csrf_exempt
 @require_POST
 def customer_redeem_voucher(request):
     """
-    Endpoint for customers to redeem a custom reward (e.g. physical coffee mug/waffle) on their dashboard.
-    Deducts points via API and local DB and generates a QR voucher code.
+    Points are now redeemed by the cashier inside Loyverse (the loyalty page lists
+    the rewards). Kept so old pages get a clear answer instead of a 404.
     """
-    customer_id = request.session.get("customer_id")
-    if not customer_id:
-        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
-
-    points_cost = int(request.POST.get("points_cost", 0))
-    reward_details = request.POST.get("reward_details", "Loyalty Reward")
-
-    if points_cost <= 0:
-        return JsonResponse({"status": "error", "message": "Invalid points value"}, status=400)
-
-    try:
-        customer = CustomerProfile.objects.get(id=customer_id)
-    except CustomerProfile.DoesNotExist:
-        return JsonResponse({"status": "error", "message": "User not found"}, status=404)
-
-    if customer.points_balance < points_cost:
-        return JsonResponse({"status": "error", "message": "Insufficient points balance"}, status=400)
-
-    # Deduct points locally
-    customer.points_balance -= points_cost
-    customer.save()
-
-    # Log points transaction
-    from accounts.models import PointsTransaction
-    PointsTransaction.objects.create(
-        customer=customer,
-        points=-points_cost,
-        transaction_type='REDEEMED',
-        receipt_number="REDEEM"
-    )
-
-    # Sync with Loyverse API
-    from cafe_smart.integrations import LoyverseClient
-    try:
-        LoyverseClient.deduct_points(customer.loyverse_customer_id, points_cost)
-    except Exception as e:
-        logger.error(f"Failed to sync point deduction with Loyverse: {e}")
-
-    # Generate unique Voucher code
-    from accounts.models import CustomerVoucher
-    voucher_code = f"VCH-{random.randint(100000, 999999)}"
-    while CustomerVoucher.objects.filter(voucher_code=voucher_code).exists():
-        voucher_code = f"VCH-{random.randint(100000, 999999)}"
-
-    CustomerVoucher.objects.create(
-        voucher_code=voucher_code,
-        customer=customer,
-        voucher_type="GIFT",
-        reward_details=reward_details
-    )
-
     return JsonResponse({
-        "status": "success",
-        "message": f"Successfully redeemed: {reward_details}",
-        "voucher_code": voucher_code,
-        "new_balance": customer.points_balance
-    })
+        "status": "error",
+        "message": "استبدال النقاط يتم عند الكاشير / Please ask the cashier to redeem your points"
+    }, status=410)
 
 @csrf_exempt
 @require_POST
@@ -1012,12 +1020,28 @@ def staff_redeem_scan(request):
         if not customer:
             customer = CustomerProfile.objects.filter(phone_number=clean_phone_number(voucher_code)).first()
         if customer:
+            LoyverseClient.refresh_customer_points(customer, max_age_seconds=0)
+            config = CafeConfiguration.objects.first()
+            tier = get_customer_tier(customer, config)
+            today = datetime.date.today()
+            is_birthday = bool(customer.birth_date) and (customer.birth_date.month, customer.birth_date.day) == (today.month, today.day)
+            birthday_gift = ""
+            if is_birthday and config:
+                birthday_gift = {"Gold": config.birthday_msg_gold, "Silver": config.birthday_msg_silver}.get(tier, config.birthday_msg_bronze)
+            from accounts.models import LoyaltyReward
+            available_rewards = [
+                f"{r.name_ar} ({r.points_required})"
+                for r in LoyaltyReward.objects.filter(is_active=True, points_required__lte=customer.points_balance)
+            ]
             return JsonResponse({
                 "status": "success",
                 "type": "customer",
                 "customer_name": customer.full_name,
                 "points": customer.points_balance,
-                "tier": get_customer_tier(customer, CafeConfiguration.objects.first()),
+                "tier": tier,
+                "is_birthday": is_birthday,
+                "birthday_gift": birthday_gift,
+                "available_rewards": available_rewards,
             })
         return JsonResponse({"status": "error", "message": "الرمز غير صحيح: لا يوجد كوبون أو بطاقة عميل بهذا الرقم"}, status=404)
 
@@ -1230,6 +1254,12 @@ def customer_forgot_password_request(request):
     
     if not phone_raw:
         return JsonResponse({"status": "error", "message": "رقم الهاتف مطلوب / Phone number is required"}, status=400)
+
+    if hit_limit(f"otp:phone:{phone_number}", 3, 3600) or hit_limit(f"otp:ip:{client_ip(request)}", 10, 3600):
+        return JsonResponse({
+            "status": "error",
+            "message": "تم طلب رموز كثيرة، حاول بعد ساعة / Too many codes requested, try again in an hour."
+        }, status=429)
     
     try:
         customer = CustomerProfile.objects.get(phone_number=phone_number)
@@ -1296,6 +1326,8 @@ def customer_forgot_password_reset(request):
     
     if not all([otp_code, phone_raw, new_password]):
         return JsonResponse({"status": "error", "message": "جميع الحقول مطلوبة / All fields are required"}, status=400)
+    if len(new_password) < MIN_CUSTOMER_PASSWORD_LENGTH:
+        return JsonResponse({"status": "error", "message": "كلمة المرور يجب أن تكون 6 أحرف على الأقل / Password must be at least 6 characters"}, status=400)
         
     is_valid = False
     if session_otp_hash and check_password(otp_code, session_otp_hash):
@@ -1333,15 +1365,14 @@ def staff_loyverse_sync_live(request):
     CRITICAL: Preserves all existing custom item overrides (display_name, custom_section, 
     custom image, descriptions, and filter flags) for existing items!
     """
-    if not request.session.get("staff_user_id"):
+    if not staff_is_admin(request):
         return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
 
     from accounts.models import CafeConfiguration
     from menu.models import MenuCategory, MenuItem, MenuSection
     import requests
 
-    config = CafeConfiguration.objects.first()
-    token = config.loyverse_api_token if config else None
+    token = LoyverseClient.get_token()
 
     if not token:
         return JsonResponse({
@@ -1459,9 +1490,10 @@ def staff_loyverse_sync_live(request):
             "message": f"تمت المزامنة الحية بأمان! تم تحديث {synced_items} صنفاً دون المساس بتخصيصاتك وفلاترك السابقة."
         })
     except Exception as e:
+        logger.error(f"Loyverse live sync failed: {e}")
         return JsonResponse({
             "status": "error",
-            "message": f"فشل الاتصال بخوادم Loyverse: {str(e)}"
+            "message": "فشل الاتصال بخوادم Loyverse. تأكد من رمز الوصول وحاول مرة أخرى."
         }, status=500)
 
 
@@ -1530,6 +1562,10 @@ def staff_user_manage(request):
 
     if not username or not employee_name:
         return JsonResponse({"status": "error", "message": "اسم المستخدم واسم الموظف مطلوبان"}, status=400)
+    if role not in ("ADMIN", "WAITER"):
+        return JsonResponse({"status": "error", "message": "صلاحية غير صحيحة"}, status=400)
+    if password and len(password) < 8:
+        return JsonResponse({"status": "error", "message": "كلمة مرور الموظف يجب أن تكون 8 أحرف على الأقل"}, status=400)
 
     if user_id:
         try:
@@ -1600,6 +1636,8 @@ def staff_user_change_password(request):
 
     if not new_password:
         return JsonResponse({"status": "error", "message": "كلمة المرور الجديدة مطلوبة"}, status=400)
+    if len(new_password) < 8:
+        return JsonResponse({"status": "error", "message": "كلمة مرور الموظف يجب أن تكون 8 أحرف على الأقل"}, status=400)
 
     # Check permission: Only admin can change others' password
     if str(target_user_id) != str(staff_id) and request.session.get("staff_role") != "ADMIN":
@@ -1614,5 +1652,51 @@ def staff_user_change_password(request):
         return JsonResponse({"status": "error", "message": "User not found"}, status=404)
 
 
+@csrf_exempt
+@require_POST
+def staff_rewards_manage(request):
+    """
+    Admin: create, update or delete the rewards shown on the customer loyalty page.
+    """
+    if not staff_is_admin(request):
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
 
+    from accounts.models import LoyaltyReward
+    action = request.POST.get("action")
 
+    if action == "delete":
+        LoyaltyReward.objects.filter(id=request.POST.get("reward_id")).delete()
+        return JsonResponse({"status": "success", "message": "تم حذف المكافأة"})
+
+    if action not in ("create", "update"):
+        return JsonResponse({"status": "error", "message": "Invalid action"}, status=400)
+
+    if action == "update":
+        reward = LoyaltyReward.objects.filter(id=request.POST.get("reward_id")).first()
+        if not reward:
+            return JsonResponse({"status": "error", "message": "Reward not found"}, status=404)
+    else:
+        reward = LoyaltyReward()
+
+    name_ar = (request.POST.get("name_ar") or "").strip()
+    if not name_ar:
+        return JsonResponse({"status": "error", "message": "اسم المكافأة بالعربي مطلوب"}, status=400)
+    try:
+        points_required = int(request.POST.get("points_required", ""))
+        order_index = int(request.POST.get("order_index") or 0)
+    except ValueError:
+        return JsonResponse({"status": "error", "message": "عدد النقاط يجب أن يكون رقماً"}, status=400)
+    if points_required <= 0:
+        return JsonResponse({"status": "error", "message": "عدد النقاط يجب أن يكون أكبر من صفر"}, status=400)
+
+    reward.name_ar = name_ar
+    reward.name_en = (request.POST.get("name_en") or "").strip()
+    reward.points_required = points_required
+    reward.order_index = order_index
+    reward.is_active = request.POST.get("is_active", "on") == "on"
+    if request.POST.get("clear_image") == "on":
+        reward.image = None
+    elif "image" in request.FILES:
+        reward.image = request.FILES["image"]
+    reward.save()
+    return JsonResponse({"status": "success", "message": "تم حفظ المكافأة", "reward_id": reward.id})

@@ -22,6 +22,7 @@ class CustomerProfile(models.Model):
     points_balance = models.IntegerField(default=0, help_text="Synced Loyverse points balance")
     monthly_spend = models.FloatField(default=0.0, help_text="Calculated monthly spend for tier status")
     barcode = models.CharField(max_length=100, blank=True, null=True, db_index=True, help_text="Loyverse customer barcode for scanning")
+    points_synced_at = models.DateTimeField(blank=True, null=True, help_text="Last time points_balance was read from Loyverse")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -154,3 +155,22 @@ class StaffPushSubscription(models.Model):
     def __str__(self):
         return f"Push sub for {self.staff_user} ({self.endpoint[:30]}...)"
 
+
+
+class LoyaltyReward(models.Model):
+    """
+    A reward shown to customers on the loyalty page. Customers ask the cashier for it,
+    and the cashier redeems the points inside Loyverse. The website never deducts points.
+    """
+    name_ar = models.CharField(max_length=255)
+    name_en = models.CharField(max_length=255, blank=True, default="")
+    points_required = models.PositiveIntegerField()
+    image = models.FileField(upload_to='rewards/', blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    order_index = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ["order_index", "points_required"]
+
+    def __str__(self):
+        return f"{self.name_ar} ({self.points_required} pts)"

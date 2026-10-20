@@ -1,6 +1,8 @@
 import json
+import re
 import datetime
 import logging
+from django.core.cache import cache
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 
@@ -20,6 +22,17 @@ def trigger_staff_web_push(table_num, call_type):
         body = f"طاولة رقم {table_num} تنادي الموظف / النادل للخدمة"
     send_web_push_to_staff(title=title, body=body, url="/staff/app/", tag=f"table-{table_num}")
 
+TABLE_NUMBER_RE = re.compile(r'^[A-Za-z0-9_-]{1,10}$')
+# Seconds before the same table can send the same kind of call again
+TABLE_CALL_COOLDOWN = 20
+
+
+@database_sync_to_async
+def session_staff_user_id(scope):
+    session = scope.get('session')
+    return session.get('staff_user_id') if session is not None else None
+
+
 class TableCallConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.client_type = self.scope['query_string'].decode('utf-8')
@@ -35,6 +48,15 @@ class TableCallConsumer(AsyncWebsocketConsumer):
         self.role = self.params.get('role', 'table')
         self.table_number = self.params.get('table', 'unknown')
 
+        # Only logged-in staff may listen to all table calls; tables need a sane number
+        if self.role == 'staff':
+            if not await session_staff_user_id(self.scope):
+                await self.close()
+                return
+        elif not TABLE_NUMBER_RE.match(self.table_number):
+            await self.close()
+            return
+
         # Connect staff to staff group, tables to table-specific groups
         if self.role == 'staff':
             self.group_name = 'staff_dashboard'
@@ -49,6 +71,8 @@ class TableCallConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
     async def disconnect(self, close_code):
+        if not hasattr(self, 'group_name'):
+            return
         # Leave group
         await self.channel_layer.group_discard(
             self.group_name,
@@ -57,10 +81,18 @@ class TableCallConsumer(AsyncWebsocketConsumer):
 
     # Receive message from WebSocket
     async def receive(self, text_data):
-        data = json.loads(text_data)
+        try:
+            data = json.loads(text_data)
+        except (TypeError, ValueError):
+            return
+        if not isinstance(data, dict):
+            return
         msg_type = data.get('type')
 
-        if msg_type in ['call_waiter', 'request_bill', 'request_hookah']:
+        if msg_type in ['call_waiter', 'request_bill', 'request_hookah'] and self.role != 'staff':
+            # Each call can trigger a paid WhatsApp alert: ignore repeats from the same table
+            if not cache.add(f"tablecall:{self.table_number}:{msg_type}", 1, TABLE_CALL_COOLDOWN):
+                return
             # Broadcast table call to staff dashboard
             now_str = datetime.datetime.now().strftime("%I:%M:%S %p")
             if msg_type == 'call_waiter':
@@ -99,10 +131,12 @@ class TableCallConsumer(AsyncWebsocketConsumer):
                 await sync_to_async(WhatsAppClient.send_table_alert, thread_sensitive=False)(self.table_number, call_type)
             except Exception as e:
                 logger.error(f"Failed to trigger fallback WhatsApp table alert: {e}")
-        elif msg_type == 'accept_call':
+        elif msg_type == 'accept_call' and self.role == 'staff':
             # Staff accepted a call. Notify the table client.
-            table_num = data.get('table')
-            waiter_name = data.get('waiter_name', 'Waiter')
+            table_num = str(data.get('table', ''))
+            waiter_name = str(data.get('waiter_name', 'Waiter'))[:60]
+            if not TABLE_NUMBER_RE.match(table_num):
+                return
             
             try:
                 from .views import LIVE_TABLE_CALLS

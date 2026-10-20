@@ -13,6 +13,9 @@ def loyverse_webhook(request):
     Listens to Loyverse Webhooks (items.update, categories.update)
     and synchronizes them into local database models.
     """
+    from accounts.views import webhook_key_is_valid
+    if not webhook_key_is_valid(request):
+        return JsonResponse({"status": "error", "message": "Forbidden"}, status=403)
     try:
         data = json.loads(request.body.decode('utf-8'))
     except json.JSONDecodeError:
@@ -95,8 +98,8 @@ def loyverse_webhook(request):
                         item.save()
 
         return JsonResponse({"status": "success", "message": "Synced successfully"})
-    except Exception as e:
-        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+    except Exception:
+        return JsonResponse({"status": "error", "message": "Sync failed"}, status=500)
 
 @csrf_exempt
 @require_POST
@@ -276,6 +279,10 @@ def contact_submit(request):
 
     if not all([name, contact, message]):
         return JsonResponse({"status": "error", "message": "All fields are required"}, status=400)
+
+    from accounts.security import client_ip, hit_limit
+    if hit_limit(f"contact:{client_ip(request)}", 5, 600):
+        return JsonResponse({"status": "error", "message": "أرسلت رسائل كثيرة، حاول لاحقاً / Too many messages, please try later"}, status=429)
 
     # Save message to database
     msg = ContactMessage.objects.create(

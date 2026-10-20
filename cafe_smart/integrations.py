@@ -151,50 +151,144 @@ class WhatsAppClient:
             pass
         return True
 
+class LoyverseError(Exception):
+    pass
+
+
 class LoyverseClient:
     """
-    Mock Loyverse API integration.
+    Loyverse POS API (https://api.loyverse.com/v1.0).
+    Loyverse is the source of truth for customer points: the website only reads
+    them, and points are redeemed by the cashier inside Loyverse.
     """
-    @classmethod
-    def get_receipts(cls, min_amount=0.0):
-        """
-        Simulate querying Loyverse API for receipts.
-        Returns a list of mock receipts for testing the raffle calculator.
-        """
-        # Generate some mock receipts
-        receipts = [
-            {
-                "receipt_number": "LV-1001",
-                "total_amount": 15.500,
-                "created_at": "2026-06-12T10:00:00Z"
-            },
-            {
-                "receipt_number": "LV-1002",
-                "total_amount": 8.750,
-                "created_at": "2026-06-12T11:30:00Z"
-            },
-            {
-                "receipt_number": "LV-1003",
-                "total_amount": 25.000,
-                "created_at": "2026-06-12T12:15:00Z"
-            },
-            {
-                "receipt_number": "LV-1004",
-                "total_amount": 32.200,
-                "created_at": "2026-06-12T14:00:00Z"
-            },
-            {
-                "receipt_number": "LV-1005",
-                "total_amount": 5.000,
-                "created_at": "2026-06-12T15:30:00Z"
-            }
-        ]
-        return [r for r in receipts if r["total_amount"] >= min_amount]
+    BASE_URL = "https://api.loyverse.com/v1.0"
 
     @classmethod
-    def deduct_points(cls, loyverse_customer_id, points_to_deduct):
+    def get_token(cls):
+        from django.conf import settings
+        from accounts.models import CafeConfiguration
+        config = CafeConfiguration.objects.first()
+        token = (config.loyverse_api_token if config else None) or getattr(settings, "LOYVERSE_API_TOKEN", "")
+        return (token or "").strip()
+
+    @classmethod
+    def is_configured(cls):
+        return bool(cls.get_token())
+
+    @classmethod
+    def _request(cls, method, path, **kwargs):
+        import requests
+        token = cls.get_token()
+        if not token:
+            raise LoyverseError("Loyverse API token is not configured")
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        try:
+            res = requests.request(method, f"{cls.BASE_URL}{path}", headers=headers, timeout=10, **kwargs)
+        except requests.RequestException as e:
+            raise LoyverseError(f"Loyverse connection failed: {e}")
+        if res.status_code == 404:
+            return None
+        if res.status_code >= 400:
+            raise LoyverseError(f"Loyverse API {method} {path} returned {res.status_code}: {res.text[:200]}")
+        return res.json() if res.content else {}
+
+    @staticmethod
+    def _phone_key(phone):
+        """Last 9 digits, so +962791112233 and 0791112233 match."""
+        digits = "".join(c for c in str(phone or "") if c.isdigit())
+        return digits[-9:] if len(digits) >= 9 else digits
+
+    @classmethod
+    def get_customer(cls, customer_id):
+        return cls._request("GET", f"/customers/{customer_id}")
+
+    @classmethod
+    def find_customer_by_phone(cls, phone_number, max_pages=20):
+        """Loyverse has no phone filter, so page through customers (250 per page)."""
+        wanted = cls._phone_key(phone_number)
+        if not wanted:
+            return None
+        cursor = None
+        for _ in range(max_pages):
+            params = {"limit": 250}
+            if cursor:
+                params["cursor"] = cursor
+            data = cls._request("GET", "/customers", params=params) or {}
+            for c in data.get("customers", []):
+                if c.get("deleted_at"):
+                    continue
+                if cls._phone_key(c.get("phone_number")) == wanted:
+                    return c
+            cursor = data.get("cursor")
+            if not cursor:
+                break
+        return None
+
+    @classmethod
+    def save_customer(cls, payload):
+        """Creates a customer, or updates it when payload contains "id"."""
+        return cls._request("POST", "/customers", json=payload)
+
+    @classmethod
+    def get_receipt(cls, receipt_number):
+        return cls._request("GET", f"/receipts/{receipt_number}")
+
+    @classmethod
+    def link_customer(cls, customer):
         """
-        Simulates point deduction from Loyverse customer profile via API.
+        Makes sure the website customer exists in Loyverse and stores its id.
+        Reuses an existing Loyverse customer with the same phone number.
+        Returns the Loyverse customer dict.
         """
-        logger.info(f"[Loyverse API] Successfully deducted {points_to_deduct} points from customer {loyverse_customer_id}")
-        return True
+        lv = cls.find_customer_by_phone(customer.phone_number)
+        if lv:
+            if not lv.get("customer_code"):
+                lv = cls.save_customer({
+                    "id": lv["id"],
+                    "name": lv.get("name") or customer.full_name,
+                    "customer_code": customer.barcode,
+                }) or lv
+        else:
+            lv = cls.save_customer({
+                "name": customer.full_name,
+                "phone_number": customer.phone_number,
+                "customer_code": customer.barcode,
+                "note": "Registered on the website",
+            })
+        if not lv or not lv.get("id"):
+            raise LoyverseError("Loyverse did not return a customer id")
+        customer.loyverse_customer_id = lv["id"]
+        if lv.get("customer_code"):
+            customer.barcode = lv["customer_code"]
+        customer.points_balance = int(float(lv.get("total_points") or 0))
+        from django.utils import timezone
+        customer.points_synced_at = timezone.now()
+        customer.save(update_fields=["loyverse_customer_id", "barcode", "points_balance", "points_synced_at"])
+        return lv
+
+    @classmethod
+    def refresh_customer_points(cls, customer, max_age_seconds=60):
+        """
+        Updates customer.points_balance from Loyverse (at most once a minute).
+        Links the customer first if registration happened while Loyverse was unreachable.
+        Returns True when the shown balance is fresh from Loyverse.
+        """
+        from django.utils import timezone
+        if not cls.is_configured():
+            return False
+        if customer.points_synced_at and (timezone.now() - customer.points_synced_at).total_seconds() < max_age_seconds:
+            return True
+        try:
+            if customer.loyverse_customer_id.startswith("PENDING-"):
+                cls.link_customer(customer)
+                return True
+            lv = cls.get_customer(customer.loyverse_customer_id)
+            if not lv:
+                return False
+            customer.points_balance = int(float(lv.get("total_points") or 0))
+            customer.points_synced_at = timezone.now()
+            customer.save(update_fields=["points_balance", "points_synced_at"])
+            return True
+        except LoyverseError as e:
+            logger.warning(f"Loyverse points refresh failed for customer {customer.id}: {e}")
+            return False

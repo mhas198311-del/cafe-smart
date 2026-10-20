@@ -45,6 +45,7 @@ urlpatterns = [
     path('api/staff/users/manage/', views.staff_user_manage, name='staff_user_manage'),
     path('api/staff/users/delete/', views.staff_user_delete, name='staff_user_delete'),
     path('api/staff/users/change-password/', views.staff_user_change_password, name='staff_user_change_password'),
+    path('api/staff/rewards/manage/', views.staff_rewards_manage, name='staff_rewards_manage'),
 
     # Integrations
     path('integrations/loyverse-webhook/', views.loyverse_webhook, name='loyverse_webhook'),

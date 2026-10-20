@@ -12,7 +12,7 @@ def send_web_push_to_staff(title, body, url="/staff/app/", tag="table-alert"):
     """
     from .models import StaffPushSubscription
     
-    subscriptions = list(StaffPushSubscription.objects.all())
+    subscriptions = list(StaffPushSubscription.objects.filter(staff_user__isnull=False))
     if not subscriptions:
         return 0
 
