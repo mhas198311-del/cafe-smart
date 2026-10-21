@@ -528,3 +528,5 @@ class StaffPwaTests(TestCase):
         login = self.client.get("/staff/login/")
         self.assertContains(login, 'rel="manifest"')
         self.assertContains(login, "installStaffApp()")
+        self.assertContains(login, "togglePassword(this)")
+        self.assertContains(login, "ADMIN_RESET_PASSWORD")
