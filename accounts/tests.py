@@ -362,3 +362,33 @@ class AccountsTests(TestCase):
             response = client.post(reverse('accounts:staff_loyverse_sync_live'))
         self.assertEqual(response.status_code, 400)
         self.assertIn("غير صحيح", response.json()["message"])
+
+    def test_admin_uploads_tab_and_group_images(self):
+        import tempfile
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import override_settings
+        from menu.models import MenuTab, MenuSection
+        StaffUser.objects.create(username="boss", password_hash=make_password("boss-pass1"), employee_name="B", role="ADMIN")
+        client = Client()
+        client.post(reverse('accounts:staff_login_api'), {"username": "boss", "password": "boss-pass1"})
+        png = b"\x89PNG\r\n\x1a\n" + b"0" * 32
+        with tempfile.TemporaryDirectory() as media, override_settings(MEDIA_ROOT=media):
+            res = client.post(reverse('accounts:staff_tab_manage'), {"action": "create", "name_en": "Drinks", "name_ar": "مشروبات",
+                              "image_file": SimpleUploadedFile("tab.png", png, content_type="image/png")})
+            tab = MenuTab.objects.get(id=res.json()["tab_id"])
+            self.assertTrue(tab.image.startswith("/media/menu/tabs/"))
+
+            res = client.post(reverse('accounts:staff_section_manage'), {"action": "create", "tab_id": tab.id, "name_en": "Hot", "name_ar": "ساخن",
+                              "banner_file": SimpleUploadedFile("g.png", png, content_type="image/png")})
+            section = MenuSection.objects.get(id=res.json()["section_id"])
+            self.assertTrue(section.banner_image.startswith("/media/menu/groups/"))
+
+            # Saving without a new file keeps the current image
+            client.post(reverse('accounts:staff_section_manage'), {"action": "update", "section_id": section.id, "name_en": "Hot2",
+                        "name_ar": "ساخن", "banner_image": section.banner_image})
+            section.refresh_from_db()
+            self.assertTrue(section.banner_image.startswith("/media/menu/groups/"))
+
+            bad = client.post(reverse('accounts:staff_tab_manage'), {"action": "create", "name_en": "X", "name_ar": "س",
+                              "image_file": SimpleUploadedFile("x.txt", b"hi", content_type="text/plain")})
+            self.assertEqual(bad.status_code, 400)

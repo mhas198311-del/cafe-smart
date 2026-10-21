@@ -774,6 +774,12 @@
                 <label class="form-label">ترتيب العرض (Order Index)</label>
                 <input type="number" id="tabModalOrder" name="order_index" class="form-input" value="0">
             </div>
+            <div class="form-group">
+                <label class="form-label">صورة التبويب</label>
+                <img id="tabModalPreview" alt="" style="display:none; width:100%; max-height:120px; object-fit:cover; border-radius:8px; margin-bottom:6px;">
+                <input type="file" name="image_file" accept="image/*" class="form-input">
+                <input type="hidden" id="tabModalImage" name="image">
+            </div>
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('tabModal')">إلغاء</button>
                 <button type="submit" class="btn btn-primary">حفظ التبويب</button>
@@ -798,8 +804,10 @@
                 <input type="text" id="sectionModalNameEn" name="name_en" class="form-input" required>
             </div>
             <div class="form-group">
-                <label class="form-label">صورة البانر (Banner Image URL)</label>
-                <input type="url" id="sectionModalBanner" name="banner_image" class="form-input">
+                <label class="form-label">صورة المجموعة (البانر)</label>
+                <img id="sectionModalPreview" alt="" style="display:none; width:100%; max-height:120px; object-fit:cover; border-radius:8px; margin-bottom:6px;">
+                <input type="file" name="banner_file" accept="image/*" class="form-input">
+                <input type="hidden" id="sectionModalBanner" name="banner_image">
             </div>
             <div class="form-group">
                 <label class="form-label">ترتيب العرض (Order Index)</label>
@@ -1042,14 +1050,24 @@ function openTabModal(btnOrMode) {
         document.getElementById('tabModalNameAr').value = '';
         document.getElementById('tabModalNameEn').value = '';
         document.getElementById('tabModalOrder').value = '0';
+        document.getElementById('tabModalImage').value = '';
     } else {
         document.getElementById('tabModalTitle').innerText = 'تعديل التبويب';
         document.getElementById('tabModalId').value = btnOrMode.getAttribute('data-id');
         document.getElementById('tabModalNameAr').value = btnOrMode.getAttribute('data-name-ar');
         document.getElementById('tabModalNameEn').value = btnOrMode.getAttribute('data-name-en');
         document.getElementById('tabModalOrder').value = btnOrMode.getAttribute('data-order-index') || '0';
+        document.getElementById('tabModalImage').value = btnOrMode.getAttribute('data-image') || '';
     }
+    showModalPreview('tabModalPreview', document.getElementById('tabModalImage').value);
+    document.querySelector('#tabModalForm input[type=file]').value = '';
     document.getElementById('tabModal').style.display = 'flex';
+}
+
+function showModalPreview(id, url) {
+    const img = document.getElementById(id);
+    img.src = url || '';
+    img.style.display = url ? 'block' : 'none';
 }
 
 async function saveTabModal(e) {
@@ -1093,6 +1111,8 @@ function openSectionModal(btnOrMode, btn) {
         document.getElementById('sectionModalBanner').value = btnOrMode.getAttribute('data-banner-image') || '';
         document.getElementById('sectionModalOrder').value = btnOrMode.getAttribute('data-order-index') || '0';
     }
+    showModalPreview('sectionModalPreview', document.getElementById('sectionModalBanner').value);
+    document.querySelector('#sectionModal input[type=file]').value = '';
     document.getElementById('sectionModal').style.display = 'flex';
 }
 
