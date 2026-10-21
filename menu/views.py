@@ -238,14 +238,24 @@ def client_menu_view(request):
             }]
         })
 
-    return render(request, "menu/index.html", {"tabs_data": tabs_data})
+    from accounts.models import CafeConfiguration
+    from .seo import menu_schema
+    config = CafeConfiguration.objects.first() or CafeConfiguration.objects.create()
+    return render(request, "menu/index.html", {
+        "tabs_data": tabs_data,
+        "structured_data": menu_schema(request, config, tabs_data),
+    })
 
 
 def cover_page_view(request):
     """
     Renders the premium cover landing page for 26 Cafe.
     """
-    return render(request, "menu/cover.html")
+    from accounts.models import CafeConfiguration
+    from .seo import cafe_schema
+    return render(request, "menu/cover.html", {
+        "structured_data": cafe_schema(request, CafeConfiguration.objects.first() or CafeConfiguration.objects.create()),
+    })
 
 def contact_view(request):
     """
