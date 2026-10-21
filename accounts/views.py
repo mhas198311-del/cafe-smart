@@ -431,7 +431,10 @@ def staff_dashboard_view(request):
     # Import inside to avoid circular import issues
     from menu.models import MenuItem, MenuTab, MenuSection
     from accounts.models import ContactMessage, CafeConfiguration
-    items = MenuItem.objects.all().order_by("category__order_index", "order_index")
+    from django.db.models import F
+    items = MenuItem.objects.select_related("custom_section").order_by(
+        F("custom_section").asc(nulls_first=True), "category__order_index", "order_index"
+    )
     messages = ContactMessage.objects.all().order_by("-created_at")
     config = CafeConfiguration.objects.first()
     if not config:
@@ -446,6 +449,7 @@ def staff_dashboard_view(request):
         "staff_name": request.session.get("staff_name"),
         "staff_role": request.session.get("staff_role"),
         "menu_items": items,
+        "pending_items_count": sum(1 for i in items if i.custom_section_id is None),
         "contact_messages": messages,
         "config": config,
         "tabs": tabs,
@@ -1476,19 +1480,13 @@ def staff_loyverse_sync_live(request):
                 if any(k in full_text for k in ['لاتيه', 'كابتشينو', 'فلات وايت', 'مكياتو', 'حليب', 'سحلب', 'latte', 'cappuccino', 'milk']):
                     is_milky = True
 
-                target_sec = None
-                if is_cold:
-                    target_sec = MenuSection.objects.filter(tab_id=2).first()
-                else:
-                    target_sec = MenuSection.objects.filter(tab_id=1).first()
-
                 MenuItem.objects.create(
                     loyverse_id=item_id,
                     pos_name=item_name,
                     display_name=item_name,
                     price=price,
                     category=category,
-                    custom_section=target_sec,
+                    custom_section=None,  # waits in "pending" until staff place it
                     is_coffee=is_coffee,
                     is_hot=is_hot,
                     is_cold=is_cold,

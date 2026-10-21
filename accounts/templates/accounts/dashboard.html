@@ -412,6 +412,12 @@
 
             <!-- TAB 1: All Menu Items Data Table -->
             <div id="cmsAllItemsPanel">
+                {% if pending_items_count %}
+                <button type="button" class="btn btn-secondary btn-sm" style="margin-bottom:12px; color:#e6995c; border-color:rgba(230,153,92,0.4);"
+                        onclick="document.getElementById('dashboardItemsSearch').value='بانتظار التوزيع'; filterDashboardTable('بانتظار التوزيع')">
+                    <i class="fa-solid fa-inbox"></i> {{ pending_items_count }} صنف جديد بانتظار التوزيع (مخفية عن الزبائن حتى تضعها في مجموعة)
+                </button>
+                {% endif %}
                 <div class="items-table-search">
                     <input type="text" id="dashboardItemsSearch" class="items-search-input" 
                            placeholder="🔍 بحث سريع بالاسم أو القسم أو الفلتر..." 
@@ -432,7 +438,7 @@
                         </thead>
                         <tbody>
                             {% for item in menu_items %}
-                            <tr id="item-row-{{ item.id }}" class="dashboard-item-row" data-name="{{ item.display_name|default:item.pos_name|lower }} {{ item.custom_section.name_ar|default:'غير منسق'|lower }}">
+                            <tr id="item-row-{{ item.id }}" class="dashboard-item-row" data-name="{{ item.display_name|default:item.pos_name|lower }} {{ item.custom_section.name_ar|default:'بانتظار التوزيع'|lower }}">
                                 <td>
                                     <div style="font-weight:700; color:#fff;">{{ item.display_name|default:item.pos_name }}</div>
                                     <div style="font-size:11px; color:var(--text-muted);">POS: {{ item.pos_name }}</div>
@@ -444,7 +450,7 @@
                                         </span>
                                     {% else %}
                                         <span style="font-size:11px; color:#e6995c; background:rgba(230,153,92,0.1); padding:2px 6px; border-radius:4px;">
-                                            غير منسق
+                                            بانتظار التوزيع
                                         </span>
                                     {% endif %}
                                 </td>
@@ -669,7 +675,7 @@
                 <div class="form-group">
                     <label class="form-label">القسم التابع له (Custom Section)</label>
                     <select id="overrideCustomSection" name="custom_section_id" class="form-select">
-                        <option value="">-- غير منسق (بدون قسم) --</option>
+                        <option value="">-- بانتظار التوزيع (مخفي عن الزبائن) --</option>
                         {% for sec in sections %}
                             <option value="{{ sec.id }}">{{ sec.name_ar }} ({{ sec.tab.name_ar }})</option>
                         {% endfor %}

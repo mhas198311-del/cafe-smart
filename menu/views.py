@@ -93,7 +93,7 @@ def loyverse_webhook(request):
                         item.price = price
                         item.category = category
                         item.loyverse_stock = stock
-                        if item_data.get("image_url"):
+                        if item_data.get("image_url") and not item.image:
                             item.image = item_data.get("image_url")
                         item.save()
 
@@ -221,25 +221,7 @@ def client_menu_view(request):
                 "sections": sections_data
             })
             
-    # For fallback (items that don't belong to any custom section)
-    uncategorized_items = MenuItem.objects.filter(custom_section__isnull=True).exclude(status='OUT_OF_STOCK').order_by('order_index')
-    filtered_uncategorized = []
-    for item in uncategorized_items:
-        if item.status == 'AUTOMATIC' and item.loyverse_stock <= 0:
-            continue
-        filtered_uncategorized.append(item)
-        
-    if filtered_uncategorized:
-        # Create a mock tab and section for General/Other items
-        fallback_tab = MenuTab(name_en="New Additions", name_ar="إضافات جديدة", id=9999)
-        fallback_section = MenuSection(name_en="Recently Synced from POS", name_ar="مضافة حديثاً من الكاشير", banner_image="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=1000")
-        tabs_data.append({
-            "tab": fallback_tab,
-            "sections": [{
-                "section": fallback_section,
-                "items": filtered_uncategorized
-            }]
-        })
+    # Items without a group are waiting for staff to place them, so they stay hidden.
 
     from accounts.models import CafeConfiguration
     from .seo import menu_schema
