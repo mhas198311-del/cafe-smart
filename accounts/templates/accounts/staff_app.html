@@ -3,6 +3,16 @@
 {% block title %}White Bird Cafe - Staff App{% endblock %}
 {% block robots %}noindex, nofollow{% endblock %}
 
+{% block extra_head %}
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#0d0a07">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="WB Staff">
+<link rel="apple-touch-icon" href="/static/logo_pwa_192.png">
+<script src="/static/staff_pwa.js" defer></script>
+{% endblock %}
+
 {% block extra_css %}
 .staff-app-wrapper {
     max-width: 600px;
@@ -252,7 +262,7 @@ body > header, body > footer, #mobileNavDrawer { display: none !important; }
             {% if user.role == 'ADMIN' %}
             <a href="{% url 'accounts:staff_dashboard' %}"><i class="fa-solid fa-sliders"></i> لوحة الإدارة</a>
             {% endif %}
-            <a href="{% url 'accounts:staff_download_apk' %}"><i class="fa-brands fa-android"></i> تحميل تطبيق أندرويد</a>
+            <a href="#" data-install-app onclick="installStaffApp(); return false;"><i class="fa-solid fa-mobile-screen-button"></i> تثبيت التطبيق على الموبايل</a>
             <a href="{% url 'accounts:staff_logout' %}"><i class="fa-solid fa-right-from-bracket"></i> تسجيل خروج</a>
         </div>
     </div>
@@ -494,7 +504,8 @@ window.requestPushPermission = async function() {
     if (btn) {
         btn.classList.add('on');
     }
-    showToast('تم تفعيل نظام الرنين والاهتزاز الفوري 🔔', 'success');
+    var pushed = window.subscribeStaffPush ? await subscribeStaffPush(window.VAPID_PUBLIC_KEY) : false;
+    showToast(pushed ? 'تم تفعيل الرنين والإشعارات حتى والشاشة مقفلة 🔔' : 'تم تفعيل الرنين 🔔 (الإشعارات غير مسموحة على هذا الجهاز)', 'success');
 };
 
 // =================== WebSocket Table Calls Feed ===================

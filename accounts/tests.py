@@ -512,3 +512,19 @@ class AccountsTests(TestCase):
         self.assertEqual(log["on_shift"], [])
         self.assertEqual(log["totals"][0]["staff"], "Sami")
         self.assertEqual(sami.get(reverse('accounts:staff_shifts_log')).status_code, 401)
+
+
+class StaffPwaTests(TestCase):
+    def test_manifest_and_service_worker(self):
+        import json, pathlib
+        from django.conf import settings
+        manifest = json.loads((pathlib.Path(settings.BASE_DIR) / "static" / "manifest.json").read_text())
+        self.assertEqual(manifest["start_url"], "/staff/app/")
+        self.assertEqual(manifest["scope"], "/staff/")
+        res = self.client.get("/staff/sw.js")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res["Content-Type"], "application/javascript")
+        self.assertIn(b"addEventListener('push'", res.content)
+        login = self.client.get("/staff/login/")
+        self.assertContains(login, 'rel="manifest"')
+        self.assertContains(login, "installStaffApp()")

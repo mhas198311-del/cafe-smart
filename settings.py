@@ -132,8 +132,8 @@ MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", BASE_DIR / 'media'))
 
 # The fallback pair is the one already used by installed staff phones; it was
 # committed publicly, so set new keys in the environment when convenient.
-VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "BOGy9pfNUVHES4oN5N51_6WNDpSj4BZnEwzKloG-ajrOYvM8YOpxtsep9OeA9ACKgZRHyoawfZylapg2YWSAh0w")
-VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "bQ5LriHRDuovwHmcd8IAaej74MDmJOsZ7COn6R0WNFI")
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
 VAPID_ADMIN_EMAIL = os.environ.get("VAPID_ADMIN_EMAIL", "mailto:admin@whitebirdcafe.com")
 
 # Loyverse token can also come from the environment instead of the settings page
