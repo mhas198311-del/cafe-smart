@@ -478,3 +478,37 @@ class AccountsTests(TestCase):
         self.assertEqual(arrive("https://whitebirdcafe.com/table/7/?auth=x").status_code, 200)
         call.refresh_from_db()
         self.assertIsNotNone(call.arrived_at)
+
+    def test_shifts_only_from_cafe_wifi(self):
+        import json as _json
+        StaffUser.objects.create(username="sami", password_hash=make_password("waiter-pass"), employee_name="Sami", role="WAITER")
+        StaffUser.objects.create(username="boss", password_hash=make_password("boss-pass1"), employee_name="Boss", role="ADMIN")
+        cafe, home = "92.253.10.10", "176.29.5.7"
+
+        def login(name, pw, ip):
+            c = Client(HTTP_X_FORWARDED_FOR=ip)
+            c.post(reverse('accounts:staff_login_api'), {"username": name, "password": pw})
+            return c
+
+        def shift(client, action, **extra):
+            return client.post(reverse('accounts:staff_shift'), data=_json.dumps({"action": action}),
+                               content_type="application/json", **extra)
+
+        boss = login("boss", "boss-pass1", f"10.0.0.5, {cafe}, 10.1.2.3")
+        self.assertEqual(boss.post(reverse('accounts:staff_cafe_network'), data="{}", content_type="application/json")
+                         .json()["ips"], [cafe])
+
+        sami = login("sami", "waiter-pass", cafe)
+        # From home, or faking the cafe address at the front of the header: refused
+        self.assertEqual(shift(sami, "start", HTTP_X_FORWARDED_FOR=home).status_code, 403)
+        self.assertEqual(shift(sami, "start", HTTP_X_FORWARDED_FOR=f"{cafe}, {home}").status_code, 403)
+
+        self.assertEqual(shift(sami, "start", HTTP_X_FORWARDED_FOR=cafe).status_code, 200)
+        self.assertEqual(shift(sami, "start", HTTP_X_FORWARDED_FOR=cafe).status_code, 400)  # already on shift
+        log = boss.get(reverse('accounts:staff_shifts_log')).json()
+        self.assertEqual(log["on_shift"], ["Sami"])
+        self.assertEqual(shift(sami, "end", HTTP_X_FORWARDED_FOR=cafe).status_code, 200)
+        log = boss.get(reverse('accounts:staff_shifts_log')).json()
+        self.assertEqual(log["on_shift"], [])
+        self.assertEqual(log["totals"][0]["staff"], "Sami")
+        self.assertEqual(sami.get(reverse('accounts:staff_shifts_log')).status_code, 401)

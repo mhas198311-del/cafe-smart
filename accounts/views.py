@@ -13,7 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
 from cafe_smart.integrations import WhatsAppClient, LoyverseClient, LoyverseError
 from .models import StaffUser, CustomerProfile
-from .security import client_ip, hit_limit, is_limited, reset_limit, staff_is_admin
+from .security import client_ip, hit_limit, is_limited, reset_limit, staff_is_admin, network_ip, on_cafe_network
 
 MIN_CUSTOMER_PASSWORD_LENGTH = 6
 
@@ -483,6 +483,7 @@ def staff_settings_view(request):
         "staff_users": staff_users,
         "rewards": LoyaltyReward.objects.all(),
         "loyverse_webhook_url": request.build_absolute_uri(f"/integrations/loyverse-webhook/?key={loyverse_webhook_key()}"),
+        "current_network_ip": network_ip(request),
     })
 
 
@@ -531,6 +532,7 @@ def staff_app_view(request):
         "messages_list": messages_list,
         "unread_count": unread_count,
         "open_calls": open_calls,
+        "open_shift": user.shifts.filter(ended_at__isnull=True).first(),
         "arrival_qr_required": bool(getattr(CafeConfiguration.objects.first(), "arrival_qr_required", False)),
         "vapid_public_key": getattr(settings, "VAPID_PUBLIC_KEY", ""),
     })
@@ -704,6 +706,88 @@ def staff_table_calls_arrived(request):
     TableCall.objects.filter(table_number=call.table_number, accepted_by_id=staff_id,
                              arrived_at__isnull=True).update(arrived_at=timezone.now())
     return JsonResponse({"status": "success"})
+
+
+def _shift_json(shift):
+    from django.utils import timezone
+    end = shift.ended_at or timezone.now()
+    return {
+        "id": shift.id,
+        "staff": shift.staff.employee_name,
+        "started_at": shift.started_at.isoformat(),
+        "ended_at": shift.ended_at.isoformat() if shift.ended_at else None,
+        "minutes": int((end - shift.started_at).total_seconds() // 60),
+    }
+
+
+@csrf_exempt
+@require_POST
+def staff_shift(request):
+    """Start or end the logged-in staff member's shift, only from the cafe Wi-Fi."""
+    from django.utils import timezone
+    from .models import CafeConfiguration, StaffShift
+    staff = StaffUser.objects.filter(id=request.session.get("staff_user_id"), is_active=True).first()
+    if not staff:
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+    if not on_cafe_network(request, CafeConfiguration.objects.first()):
+        return JsonResponse({"status": "error", "message": "لازم تكون شابك على واي فاي الكافيه"}, status=403)
+
+    action = _request_data(request).get("action")
+    open_shift = StaffShift.objects.filter(staff=staff, ended_at__isnull=True).first()
+    if action == "start":
+        if open_shift:
+            return JsonResponse({"status": "error", "message": "الدوام مبلّش أصلاً"}, status=400)
+        shift = StaffShift.objects.create(staff=staff, start_ip=network_ip(request))
+    elif action == "end":
+        if not open_shift:
+            return JsonResponse({"status": "error", "message": "ما في دوام مفتوح"}, status=400)
+        open_shift.ended_at = timezone.now()
+        open_shift.end_ip = network_ip(request)
+        open_shift.save()
+        shift = open_shift
+    else:
+        return JsonResponse({"status": "error", "message": "Invalid action"}, status=400)
+    return JsonResponse({"status": "success", "shift": _shift_json(shift)})
+
+
+@require_GET
+def staff_shifts_log(request):
+    """Shifts of the last 7 days, with hours per staff member (admin dashboard)."""
+    from django.utils import timezone
+    from .models import StaffShift
+    if not staff_is_admin(request):
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+    since = timezone.now() - datetime.timedelta(days=7)
+    shifts = [_shift_json(s) for s in StaffShift.objects.filter(started_at__gte=since).select_related("staff")[:300]]
+    totals = {}
+    for s in shifts:
+        totals[s["staff"]] = totals.get(s["staff"], 0) + s["minutes"]
+    return JsonResponse({
+        "status": "success",
+        "shifts": shifts,
+        "on_shift": [s["staff"] for s in shifts if not s["ended_at"]],
+        "totals": [{"staff": k, "minutes": v} for k, v in sorted(totals.items(), key=lambda kv: -kv[1])],
+    })
+
+
+@csrf_exempt
+@require_POST
+def staff_cafe_network(request):
+    """Admin, from inside the cafe: save this connection's address as the cafe Wi-Fi (or clear it)."""
+    from .models import CafeConfiguration
+    if not staff_is_admin(request):
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+    config = CafeConfiguration.objects.first() or CafeConfiguration.objects.create()
+    if _request_data(request).get("action") == "clear":
+        config.cafe_network_ips = ""
+    else:
+        ips = [ip for ip in config.cafe_network_ips.splitlines() if ip.strip()]
+        current = network_ip(request)
+        if current not in ips:
+            ips.append(current)
+        config.cafe_network_ips = "\n".join(ips[-5:])  # keep the last few addresses the provider gave
+    config.save(update_fields=["cafe_network_ips"])
+    return JsonResponse({"status": "success", "ips": config.cafe_network_ips.splitlines(), "current": network_ip(request)})
 
 
 @require_GET

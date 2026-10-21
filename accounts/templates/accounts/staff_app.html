@@ -180,6 +180,21 @@ body > header, body > footer, #mobileNavDrawer { display: none !important; }
     color: var(--text-muted); cursor: pointer;
 }
 
+/* Shift */
+.shift-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 12px 14px; margin-bottom: 16px; border-radius: 14px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
+}
+.shift-bar b { display: block; color: #fff; font-size: 14px; }
+.shift-bar small { font-size: 11.5px; color: var(--text-muted); }
+.shift-bar button {
+    padding: 10px 16px; border-radius: 10px; border: none; font-weight: 700; font-size: 13px;
+    background: #22c55e; color: #fff; cursor: pointer; white-space: nowrap;
+}
+.shift-bar.on { border-color: rgba(34,197,94,0.45); background: rgba(34,197,94,0.06); }
+.shift-bar.on button { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.4); }
+
 /* Bottom Navigation Bar */
 .bottom-nav {
     position: fixed; bottom: 0; left: 0; right: 0;
@@ -240,6 +255,15 @@ body > header, body > footer, #mobileNavDrawer { display: none !important; }
             <a href="{% url 'accounts:staff_download_apk' %}"><i class="fa-brands fa-android"></i> تحميل تطبيق أندرويد</a>
             <a href="{% url 'accounts:staff_logout' %}"><i class="fa-solid fa-right-from-bracket"></i> تسجيل خروج</a>
         </div>
+    </div>
+
+    <!-- Shift -->
+    <div class="shift-bar {% if open_shift %}on{% endif %}" id="shiftBar">
+        <div>
+            <b id="shiftTitle">{% if open_shift %}على الدوام{% else %}خارج الدوام{% endif %}</b>
+            <small id="shiftSince">{% if open_shift %}من {{ open_shift.started_at|time:"H:i" }}{% else %}ابدأ دوامك وإنت على واي فاي الكافيه{% endif %}</small>
+        </div>
+        <button type="button" id="shiftBtn" onclick="toggleShift()">{% if open_shift %}إنهاء الدوام{% else %}بدء الدوام{% endif %}</button>
     </div>
 
     <!-- SECTION 1: Live Calls -->
@@ -605,6 +629,34 @@ window.arrivedCall = function(callId, btn, scanned) {
             btn.disabled = false;
             showToast(d.message || 'تعذر التسجيل', 'danger');
         }
+    }).catch(function() {
+        btn.disabled = false;
+        showToast('تعذر الاتصال بالسيرفر', 'danger');
+    });
+};
+
+// =================== Shift ===================
+window.toggleShift = function() {
+    var bar = document.getElementById('shiftBar');
+    var on = bar.classList.contains('on');
+    if (on && !confirm('أكيد بدك تنهي الدوام؟')) return;
+    var btn = document.getElementById('shiftBtn');
+    btn.disabled = true;
+    fetch('/api/staff/shift/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') || ''},
+        body: JSON.stringify({action: on ? 'end' : 'start'})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        btn.disabled = false;
+        if (d.status !== 'success') { showToast(d.message || 'تعذر التسجيل', 'danger'); return; }
+        var started = new Date(d.shift.started_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+        bar.classList.toggle('on', !on);
+        document.getElementById('shiftTitle').textContent = on ? 'خارج الدوام' : 'على الدوام';
+        document.getElementById('shiftSince').textContent = on
+            ? 'آخر دوام: ' + Math.floor(d.shift.minutes / 60) + ' س ' + (d.shift.minutes % 60) + ' د'
+            : 'من ' + started;
+        btn.textContent = on ? 'بدء الدوام' : 'إنهاء الدوام';
+        showToast(on ? 'تم إنهاء الدوام ✓' : 'تم بدء الدوام ✓', 'success');
     }).catch(function() {
         btn.disabled = false;
         showToast('تعذر الاتصال بالسيرفر', 'danger');

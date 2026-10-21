@@ -1,3 +1,5 @@
+import ipaddress
+
 from django.core.cache import cache
 
 
@@ -7,6 +9,28 @@ def client_ip(request):
     if forwarded:
         return forwarded.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR", "")
+
+
+def network_ip(request):
+    """
+    Public address the request really came from, for checking the cafe Wi-Fi.
+    A phone can put anything at the start of X-Forwarded-For, so read it from
+    the right and take the first public address our proxies recorded.
+    """
+    hops = [h.strip() for h in request.META.get("HTTP_X_FORWARDED_FOR", "").split(",") if h.strip()]
+    for hop in reversed(hops):
+        try:
+            if ipaddress.ip_address(hop).is_global:
+                return hop
+        except ValueError:
+            continue
+    return request.META.get("REMOTE_ADDR", "")
+
+
+def on_cafe_network(request, config):
+    """True when no cafe network is set yet, or the request comes from one of its addresses."""
+    allowed = [ip.strip() for ip in (getattr(config, "cafe_network_ips", "") or "").splitlines() if ip.strip()]
+    return not allowed or network_ip(request) in allowed
 
 
 def hit_limit(key, limit, window_seconds):
