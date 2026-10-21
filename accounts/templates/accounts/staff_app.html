@@ -205,6 +205,14 @@
     background: rgba(239,68,68,0.04);
 }
 .toggle-item .item-cat { font-size: 11px; color: var(--text-muted); display:block; margin-top:2px; }
+.toggle-group-title { font-size: 12px; font-weight: 700; color: var(--primary); margin: 16px 2px 8px; }
+.toggle-group-title:first-child { margin-top: 0; }
+.sold-out-chip {
+    display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px;
+    padding: 7px 14px; border-radius: 20px; font-size: 12.5px; cursor: pointer;
+    background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.4); color: #fca5a5;
+}
+.sold-out-chip.active { background: #ef4444; color: #fff; }
 .ios-toggle { position: relative; width: 48px; height: 28px; flex-shrink:0; }
 .ios-toggle input { opacity:0; width:0; height:0; }
 .ios-slider {
@@ -351,28 +359,33 @@
     <div class="app-section" id="sectionMenu" style="display: none !important;">
         <div class="app-section-title">
             <i class="fa-solid fa-utensils"></i>
-            <span>التحكم الفوري بتوفر أصناف المنيو ({{ menu_items|length }} صنف)</span>
+            <span>توفر الأصناف ({{ menu_items|length }} صنف)</span>
         </div>
+        <p style="font-size:12px; color:var(--text-muted); margin:-4px 0 12px;">اطفي الزر لما يخلص الصنف، وبيختفي من منيو الزبائن فوراً.</p>
+        <button type="button" class="sold-out-chip" id="soldOutChip" onclick="toggleSoldOutFilter()">
+            <i class="fa-solid fa-ban"></i> الخلصانة: <b id="soldOutCount">{{ out_of_stock_count }}</b>
+        </button>
         <input type="text" id="menuSearchInput" class="menu-search-input"
                placeholder="🔍 بحث سريع عن صنف للتحكم بتوفره..."
                onkeyup="filterMenuItems(this.value)">
 
         <div id="menuItemsContainer">
             {% for item in menu_items %}
+            {% ifchanged item.group_name %}<div class="toggle-group-title">{{ item.group_name }}</div>{% endifchanged %}
             <div class="toggle-item glass-card {% if item.status_override == 'OUT_OF_STOCK' %}out-of-stock{% endif %}" id="item-row-{{ item.id }}" data-name="{{ item.display_name|default:item.loyverse_name|lower }}">
                 <div>
                     <span style="font-weight:600; color:#fff; font-size:14px;">{{ item.display_name|default:item.loyverse_name }}</span>
-                    <span class="item-cat">{{ item.category_name|default:"عام" }} &bull; <b style="color:var(--primary);">{{ item.price }} د.أ</b></span>
+                    <span class="item-cat"><b style="color:var(--primary);">{{ item.price }} د.أ</b></span>
                 </div>
                 <label class="ios-toggle">
                     <input type="checkbox" {% if item.status_override != 'OUT_OF_STOCK' %}checked{% endif %}
-                           onchange="toggleItem({{ item.id }}, this.checked)">
+                           onchange="toggleItem({{ item.id }}, this.checked, this)">
                     <span class="ios-slider"></span>
                 </label>
             </div>
             {% empty %}
             <p style="color:var(--text-muted); text-align:center; padding:24px 0; font-size:13px;">
-                لا توجد أصناف مخصصة للبيع حالياً
+                لا توجد أصناف على المنيو حالياً. وزّع الأصناف على المجموعات من لوحة التحكم أولاً.
             </p>
             {% endfor %}
         </div>
@@ -494,13 +507,35 @@ window.switchTab = function(tabName) {
 };
 
 // =================== Menu Search Filter ===================
+var soldOutOnly = false;
 window.filterMenuItems = function(query) {
-    var q = (query || '').toLowerCase().trim();
+    var q = (query === undefined ? document.getElementById('menuSearchInput').value : query || '').toLowerCase().trim();
     document.querySelectorAll('#menuItemsContainer .toggle-item').forEach(function(el) {
         var name = el.getAttribute('data-name') || '';
-        el.style.display = name.indexOf(q) !== -1 ? 'flex' : 'none';
+        var show = name.indexOf(q) !== -1 && (!soldOutOnly || el.classList.contains('out-of-stock'));
+        el.style.display = show ? 'flex' : 'none';
+    });
+    // Hide group titles with nothing visible under them
+    document.querySelectorAll('#menuItemsContainer .toggle-group-title').forEach(function(title) {
+        var el = title.nextElementSibling, any = false;
+        while (el && !el.classList.contains('toggle-group-title')) {
+            if (el.style.display !== 'none') any = true;
+            el = el.nextElementSibling;
+        }
+        title.style.display = any ? 'block' : 'none';
     });
 };
+
+window.toggleSoldOutFilter = function() {
+    soldOutOnly = !soldOutOnly;
+    document.getElementById('soldOutChip').classList.toggle('active', soldOutOnly);
+    filterMenuItems();
+};
+
+function updateSoldOutCount() {
+    document.getElementById('soldOutCount').innerText =
+        document.querySelectorAll('#menuItemsContainer .toggle-item.out-of-stock').length;
+}
 
 // =================== Web Push & Audio Setup ===================
 window.playChimeTone = function() {
@@ -677,15 +712,14 @@ function stopAlarmLoop() {
 }
 
 // =================== Quick Menu Toggle ===================
-window.toggleItem = function(id, checked) {
+window.toggleItem = function(id, checked, input) {
     var row = document.getElementById('item-row-' + id);
-    if (row) {
-        if (!checked) {
-            row.classList.add('out-of-stock');
-        } else {
-            row.classList.remove('out-of-stock');
-        }
+    function show(available) {
+        if (row) row.classList.toggle('out-of-stock', !available);
+        if (input) input.checked = available;
+        updateSoldOutCount();
     }
+    show(checked);
 
     fetch('/api/staff/menu/toggle-status/', {
         method: 'POST',
@@ -695,9 +729,11 @@ window.toggleItem = function(id, checked) {
         if(d.status === 'success') {
             showToast(d.message, 'success');
         } else {
+            show(!checked);
             showToast(d.message || 'خطأ في التحديث', 'danger');
         }
     }).catch(function(e) {
+        show(!checked);
         showToast('تعذر الاتصال بالسيرفر', 'danger');
     });
 };

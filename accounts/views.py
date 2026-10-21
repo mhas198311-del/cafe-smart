@@ -504,13 +504,13 @@ def staff_app_view(request):
     except StaffUser.DoesNotExist:
         return redirect("accounts:staff_login_view")
 
-    # Annotate menu items with template-friendly field aliases
-    menu_items = MenuItem.objects.all().order_by(
-        "category__order_index", "order_index"
+    # Only items that are on the customer menu, in the order customers see them
+    menu_items = MenuItem.objects.filter(custom_section__isnull=False).order_by(
+        "custom_section__tab__order_index", "custom_section__order_index", "custom_section_id", "order_index"
     ).annotate(
         loyverse_name=F("pos_name"),
         status_override=F("status"),
-        category_name=F("category__pos_category_name"),
+        group_name=F("custom_section__name_ar"),
     )
 
     messages_list = ContactMessage.objects.all().order_by("-created_at")[:20]
@@ -519,6 +519,7 @@ def staff_app_view(request):
     return render(request, "accounts/staff_app.html", {
         "user": user,
         "menu_items": menu_items,
+        "out_of_stock_count": sum(1 for i in menu_items if i.status == "OUT_OF_STOCK"),
         "messages_list": messages_list,
         "unread_count": unread_count,
         "vapid_public_key": getattr(settings, "VAPID_PUBLIC_KEY", ""),
@@ -809,7 +810,7 @@ def staff_menu_toggle_status(request):
 
     return JsonResponse({
         "status": "success",
-        "message": f"تم تحديث حالة {item.display_name or item.pos_name} إلى {item.status}",
+        "message": f"{item.display_name or item.pos_name}: " + ("متوفر ✓" if item.status != "OUT_OF_STOCK" else "خلص، ومخفي عن المنيو"),
         "new_status": item.status,
         "item_id": item.id
     })
