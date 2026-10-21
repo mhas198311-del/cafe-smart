@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
-{% block title %}White Bird Cafe | Loyalty Club{% endblock %}
+{% block title %}نادي العملاء والنقاط | {{ global_config.cafe_name|default:"White Bird Cafe" }}{% endblock %}
+{% block meta_description %}انضم لنادي عملاء {{ global_config.hero_title_ar }}: اجمع النقاط مع كل زيارة واستبدلها بمكافآت، وادخل السحب الشهري.{% endblock %}
 
 {% block extra_css %}
 @import url('https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap');

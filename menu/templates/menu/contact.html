@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
-{% block title %}White Bird Cafe - Contact Us{% endblock %}
+{% block title %}تواصل معنا والموقع | {{ global_config.cafe_name|default:"White Bird Cafe" }}{% endblock %}
+{% block meta_description %}عنوان {{ global_config.hero_title_ar }}: {{ global_config.location_desc_ar }}. ساعات العمل: {{ global_config.opening_hours_ar }}. هاتف: {{ global_config.phone_number }}{% endblock %}
 
 {% block extra_css %}
 .contact-grid {

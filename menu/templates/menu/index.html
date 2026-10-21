@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
-{% block title %}White Bird Cafe - Digital Menu{% endblock %}
+{% block title %}المنيو والأسعار | {{ global_config.cafe_name|default:"White Bird Cafe" }} Menu{% endblock %}
+{% block meta_description %}منيو {{ global_config.hero_title_ar }}: قهوة مختصة، مشروبات ساخنة وباردة وحلويات مع الأسعار. {{ global_config.location_desc_ar }}{% endblock %}
 
 {% block extra_css %}
 .menu-hero {

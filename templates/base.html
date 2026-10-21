@@ -14,12 +14,26 @@
             document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
         })();
     </script>
-    <title>{% block title %}White Bird Cafe Smart Web{% endblock %}</title>
+    <title>{% block title %}{{ global_config.cafe_name|default:"White Bird Cafe" }}{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}{{ global_config.hero_title_ar }} - {{ global_config.hero_subtitle_ar }}. {{ global_config.location_desc_ar }}{% endblock %}">
+    <meta name="robots" content="{% block robots %}index, follow{% endblock %}">
+    <link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ global_config.cafe_name|default:'White Bird Cafe' }}">
+    <meta property="og:title" content="{% block og_title %}{{ global_config.cafe_name|default:'White Bird Cafe' }} | {{ global_config.hero_title_ar }}{% endblock %}">
+    <meta property="og:description" content="{{ global_config.hero_subtitle_ar }}">
+    <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+    <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% if global_config.menu_cover_image %}{{ global_config.menu_cover_image.url }}{% else %}/static/images/logo.jpg{% endif %}">
+    <meta property="og:locale" content="ar_JO">
+    <meta property="og:locale:alternate" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="apple-touch-icon" href="/static/logo_pwa_192.png">
+    {{ structured_data|default:"" }}
     
     <!-- Google Fonts including Tajawal for Arabic -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=Tajawal:wght@400;500;700&family=Cairo:wght@400;600;700&family=Amiri:ital,wght@0,400;0,700;1,400&family=Aref+Ruqaa:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
     
     <!-- Premium FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">

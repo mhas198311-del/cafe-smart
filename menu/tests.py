@@ -128,3 +128,29 @@ class MenuTests(TestCase):
         self.assertEqual(msg.contact, "jane@example.com")
         self.assertEqual(msg.message, "Hello, I love your coffee!")
 
+
+
+class SeoTests(TestCase):
+    def test_robots_and_sitemap(self):
+        client = Client()
+        robots = client.get('/robots.txt')
+        self.assertEqual(robots.status_code, 200)
+        self.assertIn("Disallow: /staff/", robots.content.decode())
+        self.assertIn("Sitemap: http://testserver/sitemap.xml", robots.content.decode())
+        sitemap = client.get('/sitemap.xml')
+        self.assertEqual(sitemap.status_code, 200)
+        self.assertIn("<loc>http://testserver/menu/</loc>", sitemap.content.decode())
+
+    def test_pages_have_meta_and_structured_data(self):
+        import json, re
+        client = Client()
+        home = client.get('/').content.decode()
+        self.assertIn('<meta name="description"', home)
+        self.assertIn('property="og:image"', home)
+        data = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', home, re.S).group(1))
+        self.assertEqual(data["@type"], "CafeOrCoffeeShop")
+        menu = client.get('/menu/').content.decode()
+        data = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', menu, re.S).group(1))
+        self.assertEqual(data["@type"], "Menu")
+        staff = client.get('/staff/login/').content.decode()
+        self.assertIn('content="noindex, nofollow"', staff)
