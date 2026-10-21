@@ -1,3 +1,4 @@
+from decimal import Decimal
 import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -90,7 +91,8 @@ def loyverse_webhook(request):
                     )
                     if not created:
                         item.pos_name = pos_name
-                        item.price = price
+                        if not item.price_locked:
+                            item.price = price
                         item.category = category
                         item.loyverse_stock = stock
                         if item_data.get("image_url") and not item.image:
@@ -154,7 +156,13 @@ def staff_menu_edit(request):
         if status:
             item.status = status
         if price:
-            item.price = float(price)
+            new_price = Decimal(str(price))
+            if new_price != item.price:
+                # A price set here sticks: Loyverse syncs no longer overwrite it
+                item.price = new_price
+                item.price_locked = True
+        if is_checked(data.get("follow_loyverse_price")):
+            item.price_locked = False
         if order_index is not None:
             item.order_index = int(order_index)
 

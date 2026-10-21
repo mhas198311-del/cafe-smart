@@ -1115,6 +1115,17 @@ def staff_raffle_draw(request):
     })
 
 
+def _uploaded_image_url(request, field, folder):
+    """Save an uploaded image to media storage and return its URL, or None."""
+    from django.core.files.storage import default_storage
+    upload = request.FILES.get(field)
+    if not upload:
+        return None
+    if not (upload.content_type or "").startswith("image/") or upload.size > 8 * 1024 * 1024:
+        raise ValueError("الملف لازم يكون صورة وحجمها أقل من 8 ميغا")
+    return default_storage.url(default_storage.save(f"{folder}/{upload.name}", upload))
+
+
 @csrf_exempt
 @require_POST
 def staff_tab_manage(request):
@@ -1123,11 +1134,15 @@ def staff_tab_manage(request):
     
     from menu.models import MenuTab
     action = request.POST.get("action")
+    try:
+        uploaded = _uploaded_image_url(request, "image_file", "menu/tabs")
+    except ValueError as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
     
     if action == "create":
         name_en = request.POST.get("name_en")
         name_ar = request.POST.get("name_ar")
-        image = request.POST.get("image", "")
+        image = uploaded or request.POST.get("image", "")
         order_index = int(request.POST.get("order_index", 0))
         
         tab = MenuTab.objects.create(name_en=name_en, name_ar=name_ar, image=image, order_index=order_index)
@@ -1138,7 +1153,7 @@ def staff_tab_manage(request):
         tab = MenuTab.objects.get(id=tab_id)
         tab.name_en = request.POST.get("name_en", tab.name_en)
         tab.name_ar = request.POST.get("name_ar", tab.name_ar)
-        tab.image = request.POST.get("image", tab.image)
+        tab.image = uploaded or request.POST.get("image", tab.image)
         tab.order_index = int(request.POST.get("order_index", tab.order_index))
         tab.save()
         return JsonResponse({"status": "success", "message": "Tab updated successfully!"})
@@ -1159,13 +1174,17 @@ def staff_section_manage(request):
     
     from menu.models import MenuSection, MenuTab
     action = request.POST.get("action")
+    try:
+        uploaded = _uploaded_image_url(request, "banner_file", "menu/groups")
+    except ValueError as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
     
     if action == "create":
         tab_id = request.POST.get("tab_id")
         tab = MenuTab.objects.get(id=tab_id)
         name_en = request.POST.get("name_en")
         name_ar = request.POST.get("name_ar")
-        banner_image = request.POST.get("banner_image", "")
+        banner_image = uploaded or request.POST.get("banner_image", "")
         order_index = int(request.POST.get("order_index", 0))
         
         section = MenuSection.objects.create(tab=tab, name_en=name_en, name_ar=name_ar, banner_image=banner_image, order_index=order_index)
@@ -1176,7 +1195,7 @@ def staff_section_manage(request):
         section = MenuSection.objects.get(id=section_id)
         section.name_en = request.POST.get("name_en", section.name_en)
         section.name_ar = request.POST.get("name_ar", section.name_ar)
-        section.banner_image = request.POST.get("banner_image", section.banner_image)
+        section.banner_image = uploaded or request.POST.get("banner_image", section.banner_image)
         section.order_index = int(request.POST.get("order_index", section.order_index))
         section.save()
         return JsonResponse({"status": "success", "message": "Group updated successfully!"})
@@ -1457,7 +1476,8 @@ def staff_loyverse_sync_live(request):
             if existing_item:
                 # SAFE UPDATE: Update POS name, price and category only, DO NOT touch overrides!
                 existing_item.pos_name = item_name
-                existing_item.price = price
+                if not existing_item.price_locked:
+                    existing_item.price = price
                 existing_item.category = category
                 if not existing_item.display_name:
                     existing_item.display_name = item_name
