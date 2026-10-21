@@ -245,15 +245,6 @@
     color: var(--text-muted); cursor: pointer;
 }
 
-/* Scan */
-.scan-btn {
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    width: 100%; padding: 16px; border-radius: 16px;
-    background: var(--primary); color: #000;
-    font-size: 16px; font-weight: 700; border: none; cursor: pointer;
-    transition: opacity 0.2s;
-}
-
 /* Bottom Navigation Bar */
 .bottom-nav {
     position: fixed; bottom: 0; left: 0; right: 0;
@@ -327,10 +318,6 @@
             <i class="fa-solid fa-utensils"></i>
             <span>المنيو ({{ menu_items|length }})</span>
         </button>
-        <button type="button" class="top-tab-btn" data-tab="scan" onclick="switchTab('scan')">
-            <i class="fa-solid fa-barcode"></i>
-            <span>المسح</span>
-        </button>
         <button type="button" class="top-tab-btn" data-tab="msgs" onclick="switchTab('msgs')">
             <i class="fa-solid fa-envelope"></i>
             <span>الرسائل {% if unread_count > 0 %}<span class="notif-badge">{{ unread_count }}</span>{% endif %}</span>
@@ -391,19 +378,6 @@
         </div>
     </div>
 
-    <!-- SECTION 3: Barcode Scan -->
-    <div class="app-section" id="sectionScan" style="display: none !important;">
-        <div class="app-section-title">
-            <i class="fa-solid fa-barcode"></i>
-            <span>مسح باركود العميل</span>
-        </div>
-        <button class="scan-btn" onclick="openScanPrompt()">
-            <i class="fa-solid fa-qrcode" style="font-size:22px;"></i>
-            <span>مسح أو إدخال الباركود</span>
-        </button>
-        <div id="scanResult" style="display:none; margin-top:14px; padding:18px; text-align:center;" class="glass-card"></div>
-    </div>
-
     <!-- SECTION 4: Customer Messages -->
     <div class="app-section" id="sectionMessages" style="display: none !important;">
         <div class="app-section-title">
@@ -447,10 +421,6 @@
         <i class="fa-solid fa-utensils"></i>
         <span>منيو</span>
     </button>
-    <button type="button" data-tab="scan" onclick="switchTab('scan')">
-        <i class="fa-solid fa-barcode"></i>
-        <span>مسح</span>
-    </button>
     <button type="button" data-tab="msgs" onclick="switchTab('msgs')">
         <i class="fa-solid fa-envelope"></i>
         <span>رسائل {% if unread_count > 0 %}<span class="notif-badge">{{ unread_count }}</span>{% endif %}</span>
@@ -478,7 +448,6 @@ window.switchTab = function(tabName) {
     var sections = {
         'calls': 'sectionCalls',
         'menu': 'sectionMenu',
-        'scan': 'sectionScan',
         'msgs': 'sectionMessages'
     };
     
@@ -735,54 +704,6 @@ window.toggleItem = function(id, checked, input) {
     }).catch(function(e) {
         show(!checked);
         showToast('تعذر الاتصال بالسيرفر', 'danger');
-    });
-};
-
-window.openScanPrompt = function() {
-    var barcode = prompt('أدخل رقم الباركود أو امسحه:');
-    if (!barcode) return;
-    fetch('/api/staff/redeem-scan/', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken') || ''},
-        body: JSON.stringify({barcode: barcode.trim()})
-    }).then(function(r) { return r.json(); }).then(function(d) {
-        var box = document.getElementById('scanResult');
-        if (!box) return;
-        box.style.display = 'block';
-        box.innerHTML = '';
-        var icon = document.createElement('div');
-        icon.style.fontSize = '32px';
-        var line1 = document.createElement('div');
-        var line2 = document.createElement('div');
-        line1.style.cssText = 'font-size:17px;font-weight:700;color:var(--primary);margin-top:8px;';
-        line2.style.cssText = 'font-size:13px;color:var(--text-muted);margin-top:6px;';
-        if (d.status === 'success') {
-            icon.textContent = '✅';
-            line1.textContent = d.customer_name || '';
-            line2.textContent = d.type === 'voucher'
-                ? 'تم صرف الكوبون: ' + (d.reward || '')
-                : 'النقاط: ' + d.points + ' | الفئة: ' + d.tier;
-        } else {
-            icon.textContent = '❌';
-            line2.style.color = '#ef4444';
-            line2.textContent = d.message || 'رمز غير صحيح';
-        }
-        box.appendChild(icon); box.appendChild(line1); box.appendChild(line2);
-        if (d.status === 'success' && d.type === 'customer') {
-            if (d.is_birthday) {
-                var bday = document.createElement('div');
-                bday.style.cssText = 'font-size:14px;color:#f5c26b;margin-top:10px;font-weight:700;';
-                bday.textContent = '🎂 عيد ميلاده اليوم: ' + (d.birthday_gift || '');
-                box.appendChild(bday);
-            }
-            var rewards = document.createElement('div');
-            rewards.style.cssText = 'font-size:13px;color:#22c55e;margin-top:10px;';
-            rewards.textContent = (d.available_rewards && d.available_rewards.length)
-                ? '🎁 مكافآت متاحة (تُستبدل من Loyverse): ' + d.available_rewards.join('، ')
-                : 'لا توجد مكافأة متاحة برصيده الحالي';
-            box.appendChild(rewards);
-        }
-        setTimeout(function() { box.style.display = 'none'; }, 10000);
     });
 };
 
