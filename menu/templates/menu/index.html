@@ -266,67 +266,6 @@
     height: 100%;
 }
 
-.item-img-container {
-    height: 180px;
-    width: 100%;
-    border-radius: 12px;
-    overflow: hidden;
-    margin-bottom: 16px;
-    position: relative;
-    background: #19110a;
-    border: 1px solid rgba(255, 255, 255, 0.03);
-}
-
-.item-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.5s ease;
-}
-
-.menu-item-card:hover .item-img {
-    transform: scale(1.08);
-}
-
-.no-image-placeholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #1f140e 0%, #120c08 100%);
-    color: rgba(212, 175, 55, 0.15);
-    font-size: 48px;
-}
-
-.item-badge {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    z-index: 5;
-    background: rgba(18, 12, 8, 0.8);
-    backdrop-filter: blur(4px);
-    border: 1px solid var(--border-gold);
-    color: var(--primary);
-}
-
-[dir="rtl"] .item-badge {
-    right: auto;
-    left: 12px;
-}
-
-.item-badge.low-stock {
-    background: rgba(230, 153, 92, 0.85);
-    color: #ffffff;
-    border-color: #e6995c;
-}
-
 .item-header {
     display: flex;
     justify-content: space-between;
@@ -385,7 +324,7 @@
     }
 }
 
-/* Phone: compact rows, one per item, small square photo on the side */
+/* Phone: compact text rows, one per item */
 @media (max-width: 600px) {
     .container {
         padding: 20px 14px;
@@ -488,44 +427,9 @@
     }
 
     .menu-item-card.glass-card {
-        display: grid;
-        grid-template-columns: 84px 1fr;
-        column-gap: 14px;
-        align-items: start;
-        padding: 12px;
+        padding: 12px 14px;
         border-radius: 14px;
         height: auto;
-    }
-
-    .menu-item-card:hover .item-img {
-        transform: none;
-    }
-
-    .item-img-container {
-        grid-row: 1 / span 3;
-        width: 84px;
-        height: 84px;
-        margin: 0;
-        border-radius: 10px;
-    }
-
-    .no-image-placeholder {
-        font-size: 28px;
-    }
-
-    .item-badge {
-        top: 4px;
-        right: 4px;
-        padding: 2px 5px;
-        font-size: 9px;
-    }
-
-    [dir="rtl"] .item-badge {
-        left: 4px;
-    }
-
-    .item-header, .item-desc, .item-footer {
-        grid-column: 2;
     }
 
     .item-header {
@@ -551,20 +455,6 @@
         padding-top: 6px;
     }
 
-    /* No photo: skip the placeholder and let the text use the full row */
-    .menu-item-card.glass-card.no-photo {
-        grid-template-columns: 1fr;
-    }
-
-    .menu-item-card.no-photo .item-img-container {
-        display: none;
-    }
-
-    .menu-item-card.no-photo .item-header,
-    .menu-item-card.no-photo .item-desc,
-    .menu-item-card.no-photo .item-footer {
-        grid-column: 1;
-    }
 }
 {% endblock %}
 
@@ -702,27 +592,13 @@
                         <div class="section-body" id="section-body-{{ tab_info.tab.id }}-{{ forloop.counter }}">
                             <div class="menu-grid">
                                 {% for item in sec_info.items %}
-                                    <div class="menu-item-card glass-card{% if not item.image %} no-photo{% endif %}" 
+                                    <div class="menu-item-card glass-card" 
                                          data-item-name="{{ item.display_name|lower }} {{ item.description|lower }}"
                                          data-is-hot="{{ item.is_hot|yesno:'true,false' }}"
                                          data-is-cold="{{ item.is_cold|yesno:'true,false' }}"
                                          data-is-coffee="{{ item.is_coffee|yesno:'true,false' }}"
                                          data-is-dairy-free="{{ item.is_dairy_free|yesno:'true,false' }}"
                                          data-is-caffeine-free="{{ item.is_caffeine_free|yesno:'true,false' }}">
-                                        
-                                        <div class="item-img-container">
-                                            {% if item.image %}
-                                                <img src="{{ item.image }}" alt="{{ item.display_name }}" class="item-img" loading="lazy">
-                                            {% else %}
-                                                <div class="no-image-placeholder">
-                                                    <i class="fa-solid fa-mug-hot"></i>
-                                                </div>
-                                            {% endif %}
-                                            
-                                            {% if item.status == 'AUTOMATIC' and item.loyverse_stock <= 3 %}
-                                                <span class="item-badge low-stock" data-tr="low_stock">Low Stock</span>
-                                            {% endif %}
-                                        </div>
                                         
                                         <div class="item-header">
                                             <h4 class="item-title">{{ item.display_name }}</h4>

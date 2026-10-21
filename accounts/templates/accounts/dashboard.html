@@ -718,11 +718,6 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label">رابط صورة الصنف (Image URL)</label>
-                <input type="url" id="overrideImage" name="image" class="form-input" placeholder="https://...">
-            </div>
-
-            <div class="form-group">
                 <label class="form-label">الوصف التسويقي (Description)</label>
                 <textarea id="overrideDesc" name="description" class="form-textarea" rows="2"></textarea>
             </div>
@@ -875,7 +870,6 @@ function openOverrideModal(id, name, desc, image, status, price, orderIndex, cus
     document.getElementById('overrideItemId').value = id;
     document.getElementById('overrideDisplayName').value = name || '';
     document.getElementById('overrideDesc').value = desc || '';
-    document.getElementById('overrideImage').value = image || '';
     document.getElementById('overridePrice').value = price || '';
     document.getElementById('overrideFollowLoyverse').checked = false;
     document.getElementById('overrideFollowLoyverseWrap').style.display = (priceLocked === 'true') ? 'block' : 'none';
