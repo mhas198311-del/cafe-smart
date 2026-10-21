@@ -441,6 +441,20 @@
                 </button>
             </div>
 
+            <div class="form-group" style="background:rgba(34,197,94,0.05); padding:14px; border-radius:10px; border:1px solid rgba(34,197,94,0.3); margin-bottom:12px;">
+                <div style="font-weight:700; color:#fff;">📶 شبكة واي فاي الكافيه (للدوام)</div>
+                <p style="font-size:12px; color:var(--text-muted); margin:6px 0 10px;">
+                    الموظف بيقدر يبدأ وينهي دوامه بس وهو شابك على هالشبكة. اضغط الزر وإنت بالكافيه وشابك على الواي فاي.
+                    إذا وقف الدوام عن الشغل فجأة، غالباً شركة الإنترنت غيّرت العنوان: اضغط الزر مرة ثانية.
+                </p>
+                <div style="font-size:12.5px; margin-bottom:10px;">
+                    الشبكة المعتمدة: <b id="cafeNetworkIps" dir="ltr">{{ config.cafe_network_ips|default:"لسا ما في (الدوام مسموح من أي مكان)"|linebreaksbr }}</b><br>
+                    اتصالك الحالي: <b dir="ltr">{{ current_network_ip }}</b>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" onclick="saveCafeNetwork('use')">اعتمد شبكتي الحالية كشبكة الكافيه</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="saveCafeNetwork('clear')">مسح</button>
+            </div>
+
             <div class="form-group" style="background:rgba(212,175,55,0.06); padding:14px; border-radius:10px; border:1px solid rgba(212,175,55,0.25); margin-bottom:18px;">
                 <label style="display:flex; align-items:center; gap:10px; font-weight:700; color:#fff; cursor:pointer;">
                     <input type="checkbox" name="arrival_qr_required" {% if config.arrival_qr_required %}checked{% endif %}>
@@ -1121,6 +1135,22 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+
+async function saveCafeNetwork(action) {
+    try {
+        const res = await fetch('/api/staff/cafe-network/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') || ''},
+            body: JSON.stringify({action: action})
+        });
+        const d = await res.json();
+        if (d.status !== 'success') throw new Error(d.message);
+        document.getElementById('cafeNetworkIps').innerText = d.ips.length ? d.ips.join('\n') : 'لسا ما في (الدوام مسموح من أي مكان)';
+        showToast(action === 'clear' ? 'انمسحت شبكة الكافيه' : 'تم اعتماد شبكة الكافيه ✓', 'success');
+    } catch (e) {
+        showToast('تعذر الحفظ', 'danger');
+    }
 }
 </script>
 {% endblock %}

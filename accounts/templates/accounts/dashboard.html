@@ -396,6 +396,19 @@
         </div>
     </div>
 
+    <!-- Staff shifts -->
+    <div class="glass-card" style="margin-bottom:25px; padding:20px;">
+        <h3 class="section-title"><i class="fa-solid fa-user-clock"></i> دوام الموظفين (آخر 7 أيام)</h3>
+        <div id="shiftNow" style="font-size:13px; margin-bottom:10px; color:var(--text-muted);"></div>
+        <div id="shiftTotals" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px;"></div>
+        <div style="max-height:320px; overflow-y:auto; border-radius:12px; border:1px solid rgba(255,255,255,0.06);">
+            <table class="override-table">
+                <thead><tr><th>الموظف</th><th>اليوم</th><th>دخول</th><th>خروج</th><th>المدة</th></tr></thead>
+                <tbody id="shiftLogBody"></tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- Main Workspace Grid -->
     <div class="dashboard-main-grid">
         
@@ -1121,6 +1134,44 @@ async function loadCallLog() {
 }
 loadCallLog();
 setInterval(loadCallLog, 15000);
+
+function fmtMinutes(m) { return Math.floor(m / 60) + ' س ' + (m % 60) + ' د'; }
+
+async function loadShifts() {
+    try {
+        const res = await fetch('/api/staff/shifts/log/');
+        const d = await res.json();
+        if (d.status !== 'success') return;
+        document.getElementById('shiftNow').textContent = d.on_shift.length
+            ? '🟢 على الدوام الآن: ' + d.on_shift.join('، ')
+            : 'ما في حدا على الدوام الآن';
+        const totals = document.getElementById('shiftTotals');
+        totals.innerHTML = '';
+        d.totals.forEach(function(t) {
+            const box = document.createElement('div');
+            box.style.cssText = 'padding:8px 14px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(212,175,55,0.25); font-size:12.5px;';
+            box.textContent = t.staff + ': ' + fmtMinutes(t.minutes);
+            totals.appendChild(box);
+        });
+        const body = document.getElementById('shiftLogBody');
+        body.innerHTML = '';
+        if (!d.shifts.length) {
+            body.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">ما في دوامات مسجلة</td></tr>';
+        }
+        d.shifts.forEach(function(sh) {
+            const start = new Date(sh.started_at);
+            const tr = document.createElement('tr');
+            tr.appendChild(callCell(sh.staff));
+            tr.appendChild(callCell(start.toLocaleDateString('ar', {weekday: 'long', day: 'numeric', month: 'numeric'})));
+            tr.appendChild(callCell(start.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})));
+            tr.appendChild(callCell(sh.ended_at ? new Date(sh.ended_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : 'لسا على الدوام', sh.ended_at ? null : '#22c55e'));
+            tr.appendChild(callCell(fmtMinutes(sh.minutes)));
+            body.appendChild(tr);
+        });
+    } catch (e) {}
+}
+loadShifts();
+setInterval(loadShifts, 60000);
 
 function showModalPreview(id, url) {
     const img = document.getElementById(id);

@@ -88,6 +88,7 @@ class CafeConfiguration(models.Model):
     # New Item Launch Promotion (Cinematic video & Special Offer)
     featured_item_is_active = models.BooleanField(default=False, help_text="Toggle to display a special featured item launch card on the menu")
     arrival_qr_required = models.BooleanField(default=False, help_text="Waiters confirm arrival by scanning the table's QR code")
+    cafe_network_ips = models.TextField(blank=True, default="", help_text="Public internet addresses of the cafe Wi-Fi, one per line. Shifts can only start or end from these.")
     featured_item_name = models.CharField(max_length=255, blank=True, null=True, default="Saffron Latte / لاتيه الزعفران")
     featured_item_desc = models.TextField(blank=True, null=True, default="جرب صنفنا الجديد المميز بنكهة الزعفران الفاخرة الممزوجة مع الإسبريسو العضوي.")
     featured_item_video = models.FileField(upload_to='videos/', blank=True, null=True, help_text="Promo video file for the new item")
@@ -192,3 +193,18 @@ class TableCall(models.Model):
 
     def __str__(self):
         return f"Table {self.table_number} {self.call_type} @ {self.created_at:%H:%M}"
+
+
+class StaffShift(models.Model):
+    """A staff member's working shift, started and ended from the staff app."""
+    staff = models.ForeignKey(StaffUser, on_delete=models.CASCADE, related_name="shifts")
+    started_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    start_ip = models.CharField(max_length=64, blank=True)
+    end_ip = models.CharField(max_length=64, blank=True)
+
+    class Meta:
+        ordering = ["-started_at"]
+
+    def __str__(self):
+        return f"{self.staff.employee_name} {self.started_at:%Y-%m-%d %H:%M}"
