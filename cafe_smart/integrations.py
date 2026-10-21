@@ -3,153 +3,190 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+GRAPH_API = "https://graph.facebook.com/v23.0"
+TEMPLATE_LANGUAGE = "ar"
+
+# Message templates the cafe sends first. Meta must approve each one before it
+# can be used; "Submit templates" in Settings → WhatsApp creates them all.
+TEMPLATES = {
+    "otp": {
+        "name": "wb_verification_code",
+        "category": "AUTHENTICATION",
+    },
+    "welcome": {
+        "name": "wb_loyalty_welcome",
+        "category": "UTILITY",
+        "body": "أهلاً {{1}}! تم تفعيل بطاقة الولاء الخاصة بك في White Bird Cafe. اجمع النقاط مع كل زيارة واستبدلها بمكافآت من الكاشير.",
+        "example": ["محمد"],
+    },
+    "points": {
+        "name": "wb_points_earned",
+        "category": "UTILITY",
+        "body": "شكراً لزيارتك White Bird Cafe! تمت إضافة {{1}} نقطة إلى حسابك، ورصيدك الآن {{2}} نقطة.",
+        "example": ["25", "340"],
+    },
+    "winner": {
+        "name": "wb_draw_winner",
+        "category": "UTILITY",
+        "body": "مبروك {{1}}! تذكرتك رقم {{2}} فازت في سحب White Bird Cafe بجائزة: {{3}}. اعرض هذه الرسالة على الكاشير لاستلام جائزتك.",
+        "example": ["محمد", "TKT-123456", "بوكس قهوة مختصة"],
+    },
+}
+
+
+def whatsapp_digits(phone_number):
+    """Phone number as WhatsApp expects it: country code and number, digits only."""
+    digits = "".join(c for c in str(phone_number or "") if c.isdigit())
+    if digits.startswith("00"):
+        digits = digits[2:]
+    if digits.startswith("07") and len(digits) == 10:
+        digits = "962" + digits[1:]
+    elif digits.startswith("7") and len(digits) == 9:
+        digits = "962" + digits
+    return digits
+
+
+def template_definition(key):
+    """The create-template request body Meta expects for one of TEMPLATES."""
+    spec = TEMPLATES[key]
+    if spec["category"] == "AUTHENTICATION":
+        components = [
+            {"type": "BODY", "add_security_recommendation": True},
+            {"type": "FOOTER", "code_expiration_minutes": 5},
+            {"type": "BUTTONS", "buttons": [{"type": "OTP", "otp_type": "COPY_CODE", "text": "نسخ الرمز"}]},
+        ]
+    else:
+        components = [{"type": "BODY", "text": spec["body"], "example": {"body_text": [spec["example"]]}}]
+    return {"name": spec["name"], "language": TEMPLATE_LANGUAGE, "category": spec["category"], "components": components}
+
+
+class WhatsAppNotConfigured(Exception):
+    pass
+
+
 class WhatsAppClient:
     """
-    WhatsApp Gateway API (UltraMsg integration with mock fallback).
+    WhatsApp Business Platform (Meta Cloud API). Every send is logged in
+    WhatsAppMessage, and Meta's delivery updates arrive on the webhook.
     """
-    sent_messages = []
+
+    @staticmethod
+    def _config():
+        from accounts.models import CafeConfiguration
+        config = CafeConfiguration.objects.first()
+        if not config or not config.wa_phone_number_id or not config.wa_access_token:
+            raise WhatsAppNotConfigured("WhatsApp is not connected yet (Settings → WhatsApp).")
+        return config
 
     @classmethod
-    def send_via_ultramsg(cls, phone_number, message):
+    def is_configured(cls):
         try:
-            from accounts.models import CafeConfiguration
-            config = CafeConfiguration.objects.first()
-            if config and config.ultramsg_instance_id and config.ultramsg_token:
-                import requests
-                # Clean phone number: keep only digits
-                cleaned_phone = "".join(filter(str.isdigit, str(phone_number)))
-                # If Jordanian local format, prepend 962
-                if cleaned_phone.startswith("07") and len(cleaned_phone) == 10:
-                    cleaned_phone = "962" + cleaned_phone[1:]
-                
-                url = f"https://api.ultramsg.com/{config.ultramsg_instance_id}/messages/chat"
-                payload = {
-                    "token": config.ultramsg_token,
-                    "to": cleaned_phone,
-                    "body": message
-                }
-                res = requests.post(url, data=payload, timeout=10)
-                logger.info(f"UltraMsg API Response: {res.status_code} - {res.text}")
-                return res.status_code == 200
+            cls._config()
+            return True
+        except WhatsAppNotConfigured:
+            return False
+
+    @classmethod
+    def graph(cls, method, path, payload=None, params=None):
+        import requests
+        config = cls._config()
+        res = requests.request(
+            method, f"{GRAPH_API}/{path}",
+            headers={"Authorization": f"Bearer {config.wa_access_token}"},
+            json=payload, params=params, timeout=15,
+        )
+        try:
+            data = res.json()
+        except ValueError:
+            data = {}
+        if res.status_code >= 400:
+            error = data.get("error", {})
+            raise RuntimeError(error.get("error_user_msg") or error.get("message") or f"HTTP {res.status_code}")
+        return data
+
+    @classmethod
+    def _send(cls, phone_number, kind, payload, preview):
+        from accounts.models import WhatsAppMessage
+        to = whatsapp_digits(phone_number)
+        log = WhatsAppMessage.objects.create(direction="OUT", phone=to, kind=kind, text=preview[:1000], status="pending")
+        try:
+            config = cls._config()
+            data = cls.graph("POST", f"{config.wa_phone_number_id}/messages",
+                             {"messaging_product": "whatsapp", "to": to, **payload})
+            log.wa_message_id = (data.get("messages") or [{}])[0].get("id", "")
+            log.status = "sent"
         except Exception as e:
-            logger.error(f"Error in send_via_ultramsg: {e}")
-        return False
+            log.status = "failed"
+            log.error = str(e)[:500]
+            logger.warning(f"[WhatsApp] {kind} to {to} failed: {e}")
+        log.save()
+        return log.status == "sent"
+
+    @classmethod
+    def send_template(cls, phone_number, key, params):
+        spec = TEMPLATES[key]
+        params = [str(p) for p in params]
+        components = [{"type": "body", "parameters": [{"type": "text", "text": p} for p in params]}]
+        if spec["category"] == "AUTHENTICATION":
+            components.append({"type": "button", "sub_type": "url", "index": "0",
+                               "parameters": [{"type": "text", "text": params[0]}]})
+            preview = "رمز التحقق: ******"
+        else:
+            preview = spec["body"]
+            for i, p in enumerate(params, 1):
+                preview = preview.replace("{{%d}}" % i, p)
+        payload = {"type": "template", "template": {
+            "name": spec["name"], "language": {"code": TEMPLATE_LANGUAGE}, "components": components}}
+        return cls._send(phone_number, key, payload, preview)
+
+    @classmethod
+    def send_text(cls, phone_number, text):
+        """Free-form reply. Meta only delivers it within 24 hours of the customer's last message."""
+        return cls._send(phone_number, "reply", {"type": "text", "text": {"body": text}}, text)
 
     @classmethod
     def send_otp(cls, phone_number, otp_code):
-        msg = f"Your 26 Cafe verification code is: {otp_code}. Valid for 5 minutes."
-        
-        is_sent = cls.send_via_ultramsg(phone_number, msg)
-        status = "Sent (Real)" if is_sent else "Logged (Mock)"
-        
-        cls.sent_messages.append({
-            "phone_number": phone_number,
-            "type": "OTP",
-            "message": f"Your 26 Cafe verification code is: ***. Valid for 5 minutes.",
-            "status": status
-        })
-        
-        logger.info(f"[WhatsApp OTP] {status} to {phone_number}")
-        try:
-            print(f"\n========================================\n[WHATSAPP MESSAGE SENT]\nTo: {phone_number}\nStatus: {status}\nMessage: {msg}\n========================================\n")
-        except UnicodeEncodeError:
-            safe_msg = msg.encode('ascii', errors='replace').decode('ascii')
-            print(f"\n========================================\n[WHATSAPP MESSAGE SENT]\nTo: {phone_number}\nStatus: {status}\nMessage: {safe_msg}\n========================================\n")
-        return True
-
-    @classmethod
-    def send_winner_notification(cls, phone_number, full_name, ticket_code, prize_name="Premium Coffee Box"):
-        msg = f"Congratulations {full_name}! 🎉 Your raffle ticket {ticket_code} has won the 26 Cafe draw for {prize_name}! Show this message to our staff to claim your prize."
-        
-        is_sent = cls.send_via_ultramsg(phone_number, msg)
-        status = "Sent (Real)" if is_sent else "Logged (Mock)"
-        
-        cls.sent_messages.append({
-            "phone_number": phone_number,
-            "type": "WINNER",
-            "message": msg,
-            "status": status
-        })
-        
-        logger.info(f"[WhatsApp Winner] {status} to {phone_number}: {msg}")
-        try:
-            print(f"\n========================================\n[WHATSAPP MESSAGE SENT]\nTo: {phone_number}\nStatus: {status}\nMessage: {msg}\n========================================\n")
-        except UnicodeEncodeError:
-            safe_msg = msg.encode('ascii', errors='replace').decode('ascii')
-            print(f"\n========================================\n[WHATSAPP MESSAGE SENT]\nTo: {phone_number}\nStatus: {status}\nMessage: {safe_msg}\n========================================\n")
-        return True
+        return cls.send_template(phone_number, "otp", [otp_code])
 
     @classmethod
     def send_welcome_loyalty(cls, phone_number, full_name):
-        msg = f"أهلاً بك {full_name} في نادي عملاء 26 Cafe! ☕️🎉\nتم تفعيل بطاقتك بنجاح. اجمع النقاط واستمتع بالمكافآت مع كل زيارة! 🎁"
-        
-        is_sent = cls.send_via_ultramsg(phone_number, msg)
-        status = "Sent (Real)" if is_sent else "Logged (Mock)"
-        
-        cls.sent_messages.append({
-            "phone_number": phone_number,
-            "type": "WELCOME",
-            "message": msg,
-            "status": status
-        })
-        logger.info(f"[WhatsApp Welcome] {status} to {phone_number}: {msg}")
-        try:
-            print(f"\n========================================\n[WHATSAPP MESSAGE SENT]\nTo: {phone_number}\nStatus: {status}\nMessage: {msg}\n========================================\n")
-        except Exception:
-            pass
-        return True
+        return cls.send_template(phone_number, "welcome", [full_name])
 
     @classmethod
     def send_points_earned(cls, phone_number, points_earned, total_points):
-        msg = f"شكراً لزيارتك لـ 26 Cafe! 😍☕️\nتم إضافة نقاط فاتورتك بنجاح.\nرصيدك الحالي: {total_points} نقطة. نراك قريباً! 👋"
-        
-        is_sent = cls.send_via_ultramsg(phone_number, msg)
-        status = "Sent (Real)" if is_sent else "Logged (Mock)"
-        
-        cls.sent_messages.append({
-            "phone_number": phone_number,
-            "type": "POINTS_EARNED",
-            "message": msg,
-            "status": status
-        })
-        logger.info(f"[WhatsApp Points] {status} to {phone_number}: {msg}")
-        try:
-            print(f"\n========================================\n[WHATSAPP MESSAGE SENT]\nTo: {phone_number}\nStatus: {status}\nMessage: {msg}\n========================================\n")
-        except Exception:
-            pass
-        return True
+        return cls.send_template(phone_number, "points", [points_earned, total_points])
 
     @classmethod
-    def send_table_alert(cls, table_number, call_type_key):
-        from accounts.models import CafeConfiguration
-        config = CafeConfiguration.objects.first()
-        if not config or not config.whatsapp_number:
-            logger.warning("No whatsapp configuration found for table alert fallback.")
-            return False
-        
-        type_mapping = {
-            'call': 'الويتر 🤵',
-            'bill': 'الحساب 💳',
-            'hookah': 'خدمة الأراجيل 💨'
-        }
-        call_name = type_mapping.get(call_type_key, 'الخدمة')
-        msg = f"⚠️ *تنبيه طاولة:*\nطاولة رقم *{table_number}* تطلب *{call_name}*."
-        
-        is_sent = cls.send_via_ultramsg(config.whatsapp_number, msg)
-        status = "Sent (Real)" if is_sent else "Logged (Mock)"
-        
-        cls.sent_messages.append({
-            "phone_number": config.whatsapp_number,
-            "type": "TABLE_ALERT",
-            "message": msg,
-            "status": status
-        })
-        logger.info(f"[WhatsApp Table Alert] {status} to {config.whatsapp_number}: {msg}")
-        try:
-            print(f"\n========================================\n[WHATSAPP MESSAGE SENT]\nTo: {config.whatsapp_number}\nStatus: {status}\nMessage: {msg}\n========================================\n")
-        except Exception:
-            pass
-        return True
+    def send_winner_notification(cls, phone_number, full_name, ticket_code, prize_name="جائزة السحب"):
+        return cls.send_template(phone_number, "winner", [full_name, ticket_code, prize_name])
+
+    @classmethod
+    def template_statuses(cls):
+        """Name → status (APPROVED, PENDING, REJECTED) of the templates on the WhatsApp account."""
+        config = cls._config()
+        if not config.wa_business_account_id:
+            raise WhatsAppNotConfigured("WhatsApp Business Account ID is missing.")
+        data = cls.graph("GET", f"{config.wa_business_account_id}/message_templates",
+                         params={"fields": "name,status,category", "limit": 100})
+        return {t["name"]: t.get("status", "") for t in data.get("data", [])}
+
+    @classmethod
+    def submit_templates(cls):
+        """Creates any of TEMPLATES that the account doesn't have yet. Returns name → status or error."""
+        config = cls._config()
+        existing = cls.template_statuses()
+        result = {}
+        for key, spec in TEMPLATES.items():
+            if spec["name"] in existing:
+                result[spec["name"]] = existing[spec["name"]]
+                continue
+            try:
+                data = cls.graph("POST", f"{config.wa_business_account_id}/message_templates", template_definition(key))
+                result[spec["name"]] = data.get("status", "PENDING")
+            except Exception as e:
+                result[spec["name"]] = f"ERROR: {e}"
+        return result
+
 
 class LoyverseError(Exception):
     pass

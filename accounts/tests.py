@@ -530,3 +530,88 @@ class StaffPwaTests(TestCase):
         self.assertContains(login, "installStaffApp()")
         self.assertContains(login, "togglePassword(this)")
         self.assertContains(login, "ADMIN_RESET_PASSWORD")
+
+
+class WhatsAppCloudTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.config = CafeConfiguration.objects.create(
+            wa_phone_number_id="111", wa_business_account_id="222",
+            wa_access_token="tok", wa_verify_token="verify-me")
+
+    def fake_graph(self, calls):
+        def request(method, url, headers=None, json=None, params=None, timeout=None):
+            calls.append({"method": method, "url": url, "json": json, "auth": headers["Authorization"]})
+            return mock.Mock(status_code=200, json=lambda: {"messages": [{"id": "wamid.1"}]})
+        return request
+
+    def test_template_send_and_delivery_status(self):
+        from accounts.models import WhatsAppMessage
+        from cafe_smart.integrations import WhatsAppClient
+        calls = []
+        with mock.patch("requests.request", side_effect=self.fake_graph(calls)):
+            self.assertTrue(WhatsAppClient.send_otp("0791112233", "123456"))
+        body = calls[0]["json"]
+        self.assertTrue(calls[0]["url"].endswith("/111/messages"))
+        self.assertEqual(calls[0]["auth"], "Bearer tok")
+        self.assertEqual(body["to"], "962791112233")
+        self.assertEqual(body["template"]["name"], "wb_verification_code")
+        self.assertEqual(body["template"]["components"][1]["parameters"][0]["text"], "123456")
+        log = WhatsAppMessage.objects.get()
+        self.assertEqual((log.status, log.wa_message_id), ("sent", "wamid.1"))
+        self.assertNotIn("123456", log.text)
+
+        status = {"entry": [{"changes": [{"value": {"statuses": [{"id": "wamid.1", "status": "delivered"}]}}]}]}
+        self.client.post("/api/whatsapp/webhook/", data=status, content_type="application/json")
+        log.refresh_from_db()
+        self.assertEqual(log.status, "delivered")
+
+    def test_webhook_verify_and_incoming_message(self):
+        from accounts.models import ContactMessage
+        url = "/api/whatsapp/webhook/"
+        ok = self.client.get(url, {"hub.mode": "subscribe", "hub.verify_token": "verify-me", "hub.challenge": "42"})
+        self.assertEqual(ok.content, b"42")
+        self.assertEqual(self.client.get(url, {"hub.mode": "subscribe", "hub.verify_token": "x"}).status_code, 403)
+
+        incoming = {"entry": [{"changes": [{"value": {
+            "contacts": [{"wa_id": "962791112233", "profile": {"name": "Sara"}}],
+            "messages": [{"from": "962791112233", "id": "wamid.in", "type": "text", "text": {"body": "مرحبا"}}]}}]}]}
+        self.client.post(url, data=incoming, content_type="application/json")
+        self.client.post(url, data=incoming, content_type="application/json")  # Meta retries: stored once
+        msg = ContactMessage.objects.get()
+        self.assertEqual((msg.name, msg.contact, msg.message), ("Sara", "+962791112233", "مرحبا"))
+
+        # With an app secret set, unsigned calls are refused
+        self.config.wa_app_secret = "s3cret"
+        self.config.save()
+        self.assertEqual(self.client.post(url, data=incoming, content_type="application/json").status_code, 403)
+
+    def test_staff_password_reset_by_whatsapp(self):
+        from django.contrib.auth.hashers import check_password
+        staff = StaffUser.objects.create(username="Boss", employee_name="Boss", role="ADMIN",
+                                         phone_number="+962791234567", password_hash=make_password("old-password"))
+        sent = {}
+        with mock.patch("cafe_smart.integrations.WhatsAppClient.send_otp",
+                        side_effect=lambda phone, code: sent.update(phone=phone, code=code) or True):
+            res = self.client.post("/api/staff/forgot-password/", {"username": "boss"})
+            nobody = self.client.post("/api/staff/forgot-password/", {"username": "nobody"})
+        self.assertEqual(res.json()["message"], nobody.json()["message"])
+        self.assertEqual(sent["phone"], "+962791234567")
+
+        wrong = self.client.post("/api/staff/forgot-password/reset/", {"otp": "000000", "new_password": "new-password"})
+        self.assertEqual(wrong.status_code, 400)
+        ok = self.client.post("/api/staff/forgot-password/reset/", {"otp": sent["code"], "new_password": "new-password"})
+        self.assertEqual(ok.status_code, 200, ok.content)
+        staff.refresh_from_db()
+        self.assertTrue(check_password("new-password", staff.password_hash))
+
+    def test_saving_settings_keeps_secret_token(self):
+        admin = StaffUser.objects.create(username="admin1", employee_name="A", role="ADMIN",
+                                         password_hash=make_password("admin-pass-1"))
+        session = self.client.session
+        session["staff_user_id"] = admin.id
+        session["staff_role"] = "ADMIN"
+        session.save()
+        self.client.post("/api/staff/config/edit/", {"wa_phone_number_id": "999", "wa_access_token": ""})
+        self.config.refresh_from_db()
+        self.assertEqual((self.config.wa_phone_number_id, self.config.wa_access_token), ("999", "tok"))

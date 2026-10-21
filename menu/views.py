@@ -268,7 +268,6 @@ def contact_submit(request):
     Saves the message, alerts staff via WebSocket, and triggers a WhatsApp notification.
     """
     from accounts.models import ContactMessage, CafeConfiguration
-    from cafe_smart.integrations import WhatsAppClient
     from channels.layers import get_channel_layer
     from asgiref.sync import async_to_sync
 
@@ -291,26 +290,6 @@ def contact_submit(request):
         inquiry_type=inquiry_type,
         message=message
     )
-
-    # Mock WhatsApp notification to the owner's configured WhatsApp number
-    config = CafeConfiguration.objects.first()
-    owner_whatsapp = config.whatsapp_number if (config and config.whatsapp_number) else "962792626262"
-    
-    # Trigger message log
-    whatsapp_text = f"📢 *New Inquiry for 26 Cafe*\n\n👤 *From:* {name}\n📞 *Contact:* {contact}\n📌 *Type:* {inquiry_type}\n💬 *Message:* {message}"
-    
-    # We can print to terminal and log in WhatsAppClient list
-    WhatsAppClient.sent_messages.append({
-        "phone_number": owner_whatsapp,
-        "type": "OWNER_INQUIRY_NOTIFICATION",
-        "message": whatsapp_text
-    })
-    try:
-        print(f"\n========================================\n[OWNER NOTIFICATION SENT VIA WHATSAPP]\nTo: {owner_whatsapp}\n{whatsapp_text}\n========================================\n")
-    except UnicodeEncodeError:
-        safe_text = whatsapp_text.encode('ascii', errors='replace').decode('ascii')
-        print(f"\n========================================\n[OWNER NOTIFICATION SENT VIA WHATSAPP]\nTo: {owner_whatsapp}\n{safe_text}\n========================================\n")
-
 
     # Broadcast to staff_dashboard WebSocket group
     channel_layer = get_channel_layer()
