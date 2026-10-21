@@ -107,6 +107,8 @@ body > header, body > footer, #mobileNavDrawer { display: none !important; }
     white-space: nowrap;
 }
 .btn-accept:hover { opacity: 0.9; transform: scale(1.03); }
+.btn-accept.arrived { background: #22c55e; color: #fff; }
+.call-card.taken { animation: none; border-color: rgba(34,197,94,0.5); }
 
 .no-calls-msg { text-align: center; padding: 45px 10px; color: var(--text-muted); font-size: 14px; }
 .no-calls-msg i { font-size: 44px; display:block; margin-bottom:12px; opacity:0.25; }
@@ -323,6 +325,13 @@ body > header, body > footer, #mobileNavDrawer { display: none !important; }
 
 </div>
 
+<!-- Table QR scanner -->
+<div id="qrScanner" style="display:none; position:fixed; inset:0; z-index:500; background:rgba(0,0,0,0.92); flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:20px;">
+    <div style="color:#fff; font-size:17px; font-weight:700;">امسح كود طاولة <span id="qrScannerTable"></span> 📷</div>
+    <video id="qrVideo" playsinline muted style="width:100%; max-width:360px; border-radius:16px; border:2px solid var(--primary);"></video>
+    <button type="button" class="btn-accept" style="background:#333; color:#fff;" onclick="closeTableScanner()">إلغاء</button>
+</div>
+
 <!-- Bottom Navigation Bar -->
 <nav class="bottom-nav">
     <button type="button" class="active" data-tab="calls" onclick="switchTab('calls')">
@@ -344,13 +353,16 @@ body > header, body > footer, #mobileNavDrawer { display: none !important; }
 {% endblock %}
 
 {% block extra_js %}
+{{ open_calls|json_script:"openCallsData" }}
+{% if arrival_qr_required %}<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>{% endif %}
 <script>
 window.VAPID_PUBLIC_KEY = '{{ vapid_public_key }}';
-window.staffName = '{{ user.employee_name }}';
+window.staffName = '{{ user.employee_name|escapejs }}';
+window.staffId = {{ user.id }};
+window.arrivalQrRequired = {{ arrival_qr_required|yesno:'true,false' }};
 var ws = null;
 var alertInterval = null;
 var audioCtx = null;
-var activeCalls = {};
 
 // =================== Master Tab Switcher ===================
 window.switchTab = function(tabName) {
@@ -488,9 +500,12 @@ function connectWS() {
         try {
             var data = JSON.parse(e.data);
             if (data.event === 'new_call') {
-                renderCall(data.table, data.call_type, data.time);
-            } else if (data.event === 'call_accepted') {
-                clearCall(data.table);
+                renderCall(data.table, data.call_type, data.time, data.call_id, false);
+            } else if (data.event === 'call_taken' && data.staff_id !== window.staffId) {
+                // Someone else is going: drop every open card for that table
+                document.querySelectorAll('.call-card[data-table="' + data.table + '"]:not(.taken)').forEach(function(c) {
+                    removeCall(c.id.replace('call-', ''));
+                });
             }
         } catch(err) {
             console.error('WS message error:', err);
@@ -498,81 +513,153 @@ function connectWS() {
     };
 }
 
-function renderCall(tableNum, callType, callTime) {
+var CALL_TITLES = {bill: '📄 طلب الفاتورة', hookah: '💨 طلب أرجيلة', call: '🙋 نداء نادل'};
+var CALL_ICONS = {bill: 'fa-file-invoice-dollar', hookah: 'fa-smoking', call: 'fa-hand'};
+
+function renderCall(tableNum, callType, callTime, callId, mine) {
     // Table numbers arrive over the WebSocket; keep only safe characters before building HTML
     tableNum = String(tableNum).replace(/[^0-9A-Za-z\u0600-\u06FF _-]/g, '');
     callType = String(callType).replace(/[^a-z_]/g, '');
-    var key = tableNum + '_' + callType;
-    if (activeCalls[key]) return;
-    activeCalls[key] = true;
+    callId = parseInt(callId, 10);
+    if (!callId || document.getElementById('call-' + callId)) return;
 
-    var isBill = callType === 'bill';
-    var isHookah = callType === 'hookah';
-
-    var callTitle = isBill ? '📄 طلب فاتورة وحساب'
-                 : (isHookah ? '💨 طلب أرجيلة وفحم'
-                 : '🚨 نداء نادل للخدمة');
-
-    var iconClass = isBill ? 'fa-file-invoice-dollar' : (isHookah ? 'fa-smoking' : 'fa-hand');
-    var typeClass = isBill ? 'bill' : (isHookah ? 'hookah' : 'waiter');
-
+    var typeClass = callType === 'bill' ? 'bill' : (callType === 'hookah' ? 'hookah' : 'waiter');
     var card = document.createElement('div');
     card.className = 'call-card ' + typeClass;
-    card.id = 'call-' + key;
-    card.innerHTML = '<div class="call-icon ' + typeClass + '"><i class="fa-solid ' + iconClass + '"></i></div>' +
-        '<div class="call-info"><h4>طاولة رقم ' + tableNum + '</h4>' +
-        '<p>' + callTitle + '</p>' +
+    card.id = 'call-' + callId;
+    card.setAttribute('data-table', tableNum);
+    card.innerHTML = '<div class="call-icon ' + typeClass + '"><i class="fa-solid ' + (CALL_ICONS[callType] || CALL_ICONS.call) + '"></i></div>' +
+        '<div class="call-info"><h4>طاولة ' + tableNum + '</h4>' +
+        '<p>' + (CALL_TITLES[callType] || CALL_TITLES.call) + '</p>' +
         '<span class="call-time"><i class="fa-regular fa-clock"></i> ' + (callTime || '') + '</span></div>' +
-        '<button class="btn-accept" onclick="acceptCall(\'' + tableNum + '\', \'' + callType + '\', \'' + key + '\', this)">' +
-        'قبول الطلب ✓</button>';
+        '<button class="btn-accept" onclick="acceptCall(' + callId + ', this)">قبول ✓</button>';
 
     var noCalls = document.getElementById('noCallsMsg');
     if (noCalls) noCalls.style.display = 'none';
     var list = document.getElementById('callsList');
     if (list) list.prepend(card);
+    if (mine) {
+        markOnTheWay(card);
+    } else {
+        startAlarmLoop();
+    }
     updateCallsBadge();
-
-    startAlarmLoop();
 }
 
-window.acceptCall = function(tableNum, callType, key, btn) {
-    stopAlarmLoop();
-    if (window.NativeAndroidBridge && typeof window.NativeAndroidBridge.stopNativeAlarm === 'function') {
-        try { window.NativeAndroidBridge.stopNativeAlarm(); } catch(e) {}
-    }
+function markOnTheWay(card) {
+    var id = card.id.replace('call-', '');
+    card.classList.add('taken');
+    card.querySelector('p').textContent = '🚶 بالطريق للطاولة. اضغط "وصلت" لما توصل';
+    var btn = card.querySelector('.btn-accept');
+    btn.className = 'btn-accept arrived';
+    btn.disabled = false;
+    btn.textContent = 'وصلت ✓';
+    btn.setAttribute('onclick', 'arrivedCall(' + id + ', this)');
+}
 
-    fetch('/api/staff/table-calls/accept/', {
+function postCall(url, callId, scanned) {
+    return fetch(url, {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') || ''},
-        body: JSON.stringify({table_number: tableNum, call_type: callType})
-    }).catch(function(e) {});
+        body: JSON.stringify({call_id: callId, scanned: scanned || ''})
+    }).then(function(r) { return r.json(); });
+}
 
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-            type: 'accept_call',
-            table: tableNum,
-            waiter_name: window.staffName
-        }));
-    }
-
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = 'تم القبول ✓';
-        btn.style.background = '#22c55e';
-        btn.style.color = '#fff';
-    }
-    clearCall(tableNum);
-};
-
-function clearCall(tableNum) {
+window.acceptCall = function(callId, btn) {
     stopAlarmLoop();
     if (window.NativeAndroidBridge && typeof window.NativeAndroidBridge.stopNativeAlarm === 'function') {
         try { window.NativeAndroidBridge.stopNativeAlarm(); } catch(e) {}
     }
+    btn.disabled = true;
+    postCall('/api/staff/table-calls/accept/', callId).then(function(d) {
+        var card = document.getElementById('call-' + callId);
+        if (d.status === 'success') {
+            // Other calls from the same table are covered by this visit
+            document.querySelectorAll('.call-card[data-table="' + d.call.table + '"]').forEach(function(c) {
+                if (c !== card) c.remove();
+            });
+            if (card) markOnTheWay(card);
+        } else {
+            showToast(d.message || 'تعذر قبول النداء', 'danger');
+            removeCall(callId);
+        }
+        updateCallsBadge();
+    }).catch(function() {
+        btn.disabled = false;
+        showToast('تعذر الاتصال بالسيرفر', 'danger');
+    });
+};
 
-    document.querySelectorAll('[id^="call-' + tableNum + '_"]').forEach(function(el) { el.remove(); });
-    Object.keys(activeCalls).filter(function(k) { return k.startsWith(tableNum + '_'); }).forEach(function(k) { delete activeCalls[k]; });
+window.arrivedCall = function(callId, btn, scanned) {
+    if (window.arrivalQrRequired && !scanned) {
+        var table = document.getElementById('call-' + callId).getAttribute('data-table');
+        openTableScanner(table, function(text) { arrivedCall(callId, btn, text); });
+        return;
+    }
+    btn.disabled = true;
+    postCall('/api/staff/table-calls/arrived/', callId, scanned).then(function(d) {
+        if (d.status === 'success') {
+            showToast('تم تسجيل الوصول ✓', 'success');
+            removeCall(callId);
+        } else {
+            btn.disabled = false;
+            showToast(d.message || 'تعذر التسجيل', 'danger');
+        }
+    }).catch(function() {
+        btn.disabled = false;
+        showToast('تعذر الاتصال بالسيرفر', 'danger');
+    });
+};
 
+// =================== Table QR scanner (optional arrival check) ===================
+var scanStream = null, scanTimer = null;
+
+function openTableScanner(table, onCode) {
+    var box = document.getElementById('qrScanner');
+    document.getElementById('qrScannerTable').textContent = table;
+    box.style.display = 'flex';
+    var video = document.getElementById('qrVideo');
+    var canvas = document.createElement('canvas');
+    var detector = ('BarcodeDetector' in window) ? new BarcodeDetector({formats: ['qr_code']}) : null;
+
+    navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}}).then(function(stream) {
+        scanStream = stream;
+        video.srcObject = stream;
+        video.play();
+        scanTimer = setInterval(function() {
+            if (video.readyState < 2) return;
+            var found = function(text) {
+                if (!text) return;
+                closeTableScanner();
+                onCode(text);
+            };
+            if (detector) {
+                detector.detect(video).then(function(codes) { if (codes.length) found(codes[0].rawValue); }).catch(function() {});
+            } else if (window.jsQR) {
+                canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+                var ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0);
+                var code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
+                if (code) found(code.data);
+            }
+        }, 300);
+    }).catch(function() {
+        closeTableScanner();
+        showToast('ما قدرنا نفتح الكاميرا. اسمح للتطبيق باستخدامها', 'danger');
+    });
+}
+
+window.closeTableScanner = function() {
+    clearInterval(scanTimer);
+    if (scanStream) scanStream.getTracks().forEach(function(t) { t.stop(); });
+    scanStream = null;
+    document.getElementById('qrScanner').style.display = 'none';
+};
+
+function removeCall(callId) {
+    var card = document.getElementById('call-' + callId);
+    if (card) card.remove();
+    if (!document.querySelector('.call-card:not(.taken)')) stopAlarmLoop();
     updateCallsBadge();
     if (document.querySelectorAll('.call-card').length === 0) {
         var noCalls = document.getElementById('noCallsMsg');
@@ -584,7 +671,7 @@ function startAlarmLoop() {
     if (alertInterval) return;
     playChimeTone();
     alertInterval = setInterval(function() {
-        if (document.querySelectorAll('.call-card').length > 0) {
+        if (document.querySelector('.call-card:not(.taken)')) {
             playChimeTone();
         } else {
             stopAlarmLoop();
@@ -655,6 +742,12 @@ function getCookie(name) {
 }
 
 // Init
+// Calls that were already open when the page loaded
+JSON.parse(document.getElementById('openCallsData').textContent).forEach(function(c) {
+    var t = new Date(c.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+    renderCall(c.table, c.type, t, c.id, c.staff_id === window.staffId);
+});
+
 connectWS();
 
 document.addEventListener('click', function(e) {

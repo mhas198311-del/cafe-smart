@@ -87,6 +87,7 @@ class CafeConfiguration(models.Model):
 
     # New Item Launch Promotion (Cinematic video & Special Offer)
     featured_item_is_active = models.BooleanField(default=False, help_text="Toggle to display a special featured item launch card on the menu")
+    arrival_qr_required = models.BooleanField(default=False, help_text="Waiters confirm arrival by scanning the table's QR code")
     featured_item_name = models.CharField(max_length=255, blank=True, null=True, default="Saffron Latte / لاتيه الزعفران")
     featured_item_desc = models.TextField(blank=True, null=True, default="جرب صنفنا الجديد المميز بنكهة الزعفران الفاخرة الممزوجة مع الإسبريسو العضوي.")
     featured_item_video = models.FileField(upload_to='videos/', blank=True, null=True, help_text="Promo video file for the new item")
@@ -174,3 +175,20 @@ class LoyaltyReward(models.Model):
 
     def __str__(self):
         return f"{self.name_ar} ({self.points_required} pts)"
+
+
+class TableCall(models.Model):
+    """One call from a table (waiter, bill or hookah) and how staff handled it."""
+    TYPE_CHOICES = [('call', 'Waiter'), ('bill', 'Bill'), ('hookah', 'Hookah')]
+    table_number = models.CharField(max_length=10)
+    call_type = models.CharField(max_length=10, choices=TYPE_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    accepted_by = models.ForeignKey(StaffUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="accepted_calls")
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    arrived_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Table {self.table_number} {self.call_type} @ {self.created_at:%H:%M}"

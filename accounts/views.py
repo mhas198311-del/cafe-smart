@@ -496,7 +496,7 @@ def staff_app_view(request):
         return redirect("accounts:staff_login_view")
 
     from menu.models import MenuItem
-    from accounts.models import ContactMessage, StaffUser
+    from accounts.models import ContactMessage, StaffUser, CafeConfiguration
     from django.db.models import F
 
     try:
@@ -516,12 +516,22 @@ def staff_app_view(request):
     messages_list = ContactMessage.objects.all().order_by("-created_at")[:20]
     unread_count = ContactMessage.objects.filter(is_read=False).count()
 
+    # Calls still waiting for someone, plus this waiter's own calls not yet confirmed at the table
+    from django.db.models import Q
+    from django.utils import timezone
+    from .models import TableCall
+    recent = TableCall.objects.filter(created_at__gte=timezone.now() - datetime.timedelta(hours=3), arrived_at__isnull=True)
+    open_calls = [_call_json(c) for c in recent.filter(Q(accepted_at__isnull=True) | Q(accepted_by=user))
+                  .select_related("accepted_by").order_by("created_at")]
+
     return render(request, "accounts/staff_app.html", {
         "user": user,
         "menu_items": menu_items,
         "out_of_stock_count": sum(1 for i in menu_items if i.status == "OUT_OF_STOCK"),
         "messages_list": messages_list,
         "unread_count": unread_count,
+        "open_calls": open_calls,
+        "arrival_qr_required": bool(getattr(CafeConfiguration.objects.first(), "arrival_qr_required", False)),
         "vapid_public_key": getattr(settings, "VAPID_PUBLIC_KEY", ""),
     })
 
@@ -599,21 +609,130 @@ def staff_table_calls_status(request):
     })
 
 
+def _notify_call_taken(call, staff):
+    """Tell the table its waiter is coming, and tell other staff phones to drop the call."""
+    from asgiref.sync import async_to_sync
+    from channels.layers import get_channel_layer
+    layer = get_channel_layer()
+    if layer is None:
+        return
+    try:
+        async_to_sync(layer.group_send)(f"table_{call.table_number}", {
+            "type": "broadcast_call_accepted", "table": call.table_number, "waiter_name": staff.employee_name,
+        })
+        async_to_sync(layer.group_send)("staff_dashboard", {
+            "type": "broadcast_call_taken", "call_id": call.id, "table": call.table_number,
+            "waiter_name": staff.employee_name, "staff_id": staff.id,
+        })
+    except Exception as e:
+        logger.error(f"Could not broadcast accepted call: {e}")
+
+
+def _call_json(call):
+    def secs(a, b):
+        return int((b - a).total_seconds()) if a and b else None
+    return {
+        "id": call.id,
+        "table": call.table_number,
+        "type": call.call_type,
+        "created_at": call.created_at.isoformat(),
+        "waiter": call.accepted_by.employee_name if call.accepted_by else None,
+        "staff_id": call.accepted_by_id,
+        "accept_seconds": secs(call.created_at, call.accepted_at),
+        "arrive_seconds": secs(call.accepted_at, call.arrived_at),
+        "arrived": call.arrived_at is not None,
+    }
+
+
 @csrf_exempt
 @require_POST
 def staff_table_calls_accept(request):
     """
-    Accepts and clears a live table call.
+    A waiter takes a table call. The first one wins; the call is logged with who and when.
     """
-    import json
-    try:
-        data = json.loads(request.body)
-        table_num = str(data.get("table_number", ""))
-        if table_num in LIVE_TABLE_CALLS:
-            LIVE_TABLE_CALLS.pop(table_num, None)
-    except Exception:
-        pass
+    from django.utils import timezone
+    from .models import TableCall
+    staff = StaffUser.objects.filter(id=request.session.get("staff_user_id"), is_active=True).first()
+    if not staff:
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+
+    data = _request_data(request)
+    table_num = str(data.get("table_number", ""))
+    call_id = data.get("call_id")
+    calls = TableCall.objects.filter(accepted_at__isnull=True)
+    calls = calls.filter(id=call_id) if call_id else calls.filter(table_number=table_num)
+    call = calls.order_by("created_at").first()
+    if not call:
+        taken = TableCall.objects.filter(id=call_id).select_related("accepted_by").first() if call_id else None
+        who = taken.accepted_by.employee_name if taken and taken.accepted_by else "موظف آخر"
+        return JsonResponse({"status": "error", "message": f"النداء أخذه {who}"}, status=409)
+
+    # Only one waiter can win the same call
+    now = timezone.now()
+    if not TableCall.objects.filter(id=call.id, accepted_at__isnull=True).update(accepted_by=staff, accepted_at=now):
+        return JsonResponse({"status": "error", "message": "النداء أخذه موظف آخر"}, status=409)
+    # Any other open calls from the same table are handled by the same visit
+    TableCall.objects.filter(table_number=call.table_number, accepted_at__isnull=True).update(accepted_by=staff, accepted_at=now)
+    LIVE_TABLE_CALLS.pop(call.table_number, None)
+    call.refresh_from_db()
+    _notify_call_taken(call, staff)
+    return JsonResponse({"status": "success", "call": _call_json(call)})
+
+
+@csrf_exempt
+@require_POST
+def staff_table_calls_arrived(request):
+    """The waiter who took the call confirms they reached the table."""
+    from django.utils import timezone
+    from .models import TableCall
+    staff_id = request.session.get("staff_user_id")
+    if not staff_id:
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+    data = _request_data(request)
+    call = TableCall.objects.filter(id=data.get("call_id"), accepted_by_id=staff_id).first()
+    if not call:
+        return JsonResponse({"status": "error", "message": "Call not found"}, status=404)
+
+    from .models import CafeConfiguration
+    config = CafeConfiguration.objects.first()
+    if config and config.arrival_qr_required:
+        # The table's QR code holds its link, e.g. https://whitebirdcafe.com/table/7/
+        import re
+        match = re.search(r"/table/([^/?#]+)", str(data.get("scanned", "")))
+        if not match or match.group(1) != call.table_number:
+            return JsonResponse({"status": "error", "message": f"امسح كود طاولة {call.table_number}"}, status=400)
+    TableCall.objects.filter(table_number=call.table_number, accepted_by_id=staff_id,
+                             arrived_at__isnull=True).update(arrived_at=timezone.now())
     return JsonResponse({"status": "success"})
+
+
+@require_GET
+def staff_table_calls_log(request):
+    """Today's calls with response times, plus averages per waiter (admin dashboard)."""
+    from django.utils import timezone
+    from .models import TableCall
+    if not staff_is_admin(request):
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+    start = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
+    calls = list(TableCall.objects.filter(created_at__gte=start).select_related("accepted_by")[:300])
+    rows = [_call_json(c) for c in calls]
+
+    per_waiter = {}
+    for r in rows:
+        if not r["waiter"]:
+            continue
+        w = per_waiter.setdefault(r["waiter"], {"waiter": r["waiter"], "calls": 0, "accept": [], "arrive": []})
+        w["calls"] += 1
+        w["accept"].append(r["accept_seconds"])
+        if r["arrive_seconds"] is not None:
+            w["arrive"].append(r["arrive_seconds"])
+    waiters = [{
+        "waiter": w["waiter"], "calls": w["calls"],
+        "avg_accept": round(sum(w["accept"]) / len(w["accept"])),
+        "avg_arrive": round(sum(w["arrive"]) / len(w["arrive"])) if w["arrive"] else None,
+        "not_confirmed": w["calls"] - len(w["arrive"]),
+    } for w in per_waiter.values()]
+    return JsonResponse({"status": "success", "calls": rows, "waiters": sorted(waiters, key=lambda w: -w["calls"])})
 
 
 
@@ -718,6 +837,7 @@ def staff_config_edit(request):
 
     # Launch Promotion settings
     config.featured_item_is_active = request.POST.get("featured_item_is_active") == "on"
+    config.arrival_qr_required = request.POST.get("arrival_qr_required") == "on"
     config.featured_item_name = request.POST.get("featured_item_name", config.featured_item_name)
     config.featured_item_desc = request.POST.get("featured_item_desc", config.featured_item_desc)
     

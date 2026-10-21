@@ -28,6 +28,12 @@ TABLE_CALL_COOLDOWN = 20
 
 
 @database_sync_to_async
+def log_table_call(table_num, call_type):
+    from .models import TableCall
+    return TableCall.objects.create(table_number=table_num, call_type=call_type).id
+
+
+@database_sync_to_async
 def session_staff_user_id(scope):
     session = scope.get('session')
     return session.get('staff_user_id') if session is not None else None
@@ -108,13 +114,16 @@ class TableCallConsumer(AsyncWebsocketConsumer):
             except Exception:
                 pass
 
+            call_id = await log_table_call(self.table_number, call_type)
+
             await self.channel_layer.group_send(
                 'staff_dashboard',
                 {
                     'type': 'broadcast_table_call',
                     'table': self.table_number,
                     'call_type': call_type,
-                    'time': now_str
+                    'time': now_str,
+                    'call_id': call_id,
                 }
             )
 
@@ -160,7 +169,18 @@ class TableCallConsumer(AsyncWebsocketConsumer):
             'event': 'new_call',
             'table': event['table'],
             'call_type': event['call_type'],
-            'time': event['time']
+            'time': event['time'],
+            'call_id': event.get('call_id'),
+        }))
+
+    async def broadcast_call_taken(self, event):
+        # Another waiter took a call: other staff phones drop it
+        await self.send(text_data=json.dumps({
+            'event': 'call_taken',
+            'call_id': event['call_id'],
+            'table': event['table'],
+            'waiter_name': event['waiter_name'],
+            'staff_id': event['staff_id'],
         }))
 
     async def broadcast_call_accepted(self, event):

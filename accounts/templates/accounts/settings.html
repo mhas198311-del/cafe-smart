@@ -441,6 +441,16 @@
                 </button>
             </div>
 
+            <div class="form-group" style="background:rgba(212,175,55,0.06); padding:14px; border-radius:10px; border:1px solid rgba(212,175,55,0.25); margin-bottom:18px;">
+                <label style="display:flex; align-items:center; gap:10px; font-weight:700; color:#fff; cursor:pointer;">
+                    <input type="checkbox" name="arrival_qr_required" {% if config.arrival_qr_required %}checked{% endif %}>
+                    تأكيد وصول الويتر للطاولة بمسح كود QR الطاولة 📷
+                </label>
+                <p style="font-size:12px; color:var(--text-muted); margin:6px 0 0;">
+                    لما يكون مطفي: الويتر بيضغط "وصلت" بس. لما يكون شغال: لازم يمسح كود الطاولة بكاميرا جواله عشان يسجل الوصول.
+                </p>
+            </div>
+
             <div style="overflow-x:auto; border-radius:12px; border:1px solid rgba(255,255,255,0.08);">
                 <table class="staff-table" id="staffUsersTable">
                     <thead>
