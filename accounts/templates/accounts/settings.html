@@ -506,6 +506,20 @@
                 </button>
                 <span id="loyverseSyncStatusText" style="font-size:13px; color:var(--text-muted);"></span>
             </div>
+
+            <div style="background:rgba(255,255,255,0.02); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); margin-top:24px;">
+                <h4 style="color:var(--primary); font-size:14px; margin:0 0 10px;">👥 ربط الزبائن والنقاط</h4>
+                <p style="font-size:13px; color:var(--text-muted); margin:0 0 10px; line-height:1.7;">
+                    عند تسجيل زبون في الموقع يُنشأ له حساب في Loyverse بنفس رقم الهاتف (أو يُربط بحسابه الموجود)، ويصبح باركود بطاقته هو "كود الزبون" في Loyverse.
+                    رصيد النقاط يُقرأ من Loyverse مباشرة، والاستبدال يتم عند الكاشير.
+                </p>
+                <label class="form-label">رابط الويب هوك (اختياري: لتذاكر السحب ورسالة النقاط على واتساب بعد كل فاتورة)</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="text" readonly dir="ltr" id="loyverseWebhookUrl" class="form-input" value="{{ loyverse_webhook_url }}" onclick="this.select()">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="copyWebhookUrl()"><i class="fa-solid fa-copy"></i> نسخ</button>
+                </div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:6px;">أضِفه في Loyverse كويب هوك من نوع receipts.update. لا تشاركه مع أحد.</div>
+            </div>
         </div>
 
         <!-- PANEL 5: WhatsApp & Simulator -->
@@ -552,6 +566,41 @@
         <div class="settings-panel" id="panel-loyalty" style="display:none;">
             <div class="settings-section-title">
                 <i class="fa-solid fa-gift"></i> إعدادات برنامج الولاء والجوائز والشرائح وتهاني أعياد الميلاد
+            </div>
+
+            <!-- Rewards catalog (managed through its own modal, saved immediately) -->
+            <div style="background:rgba(255,255,255,0.02); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); margin-bottom:24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+                    <h4 style="color:var(--primary); font-size:14px; margin:0;">🎁 المكافآت المعروضة للزبائن</h4>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openRewardModal()"><i class="fa-solid fa-plus"></i> إضافة مكافأة</button>
+                </div>
+                <p style="font-size:12.5px; color:var(--text-muted); margin:0 0 12px;">تظهر في صفحة الزبون مع ما تبقى له من نقاط. الاستبدال يتم عند الكاشير في Loyverse.</p>
+                <div style="overflow-x:auto; border-radius:12px; border:1px solid rgba(255,255,255,0.08);">
+                    <table class="staff-table">
+                        <thead>
+                            <tr><th>المكافأة</th><th>النقاط</th><th>الحالة</th><th>الإجراءات</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for r in rewards %}
+                            <tr>
+                                <td><b style="color:#fff;">{{ r.name_ar }}</b>{% if r.name_en %}<div style="font-size:11px; color:var(--text-muted);">{{ r.name_en }}</div>{% endif %}</td>
+                                <td>{{ r.points_required }}</td>
+                                <td>{% if r.is_active %}<span style="color:#22c55e;">ظاهرة</span>{% else %}<span style="color:var(--text-muted);">مخفية</span>{% endif %}</td>
+                                <td>
+                                    <div style="display:flex; gap:6px;">
+                                        <button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" onclick="openRewardModal(this)"
+                                            data-id="{{ r.id }}" data-name-ar="{{ r.name_ar }}" data-name-en="{{ r.name_en }}" data-points="{{ r.points_required }}"
+                                            data-order="{{ r.order_index }}" data-active="{{ r.is_active|yesno:'1,0' }}"><i class="fa-solid fa-pen"></i></button>
+                                        <button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px; border-color:var(--danger); color:var(--danger);" onclick="deleteReward('{{ r.id }}')"><i class="fa-solid fa-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">لا توجد مكافآت بعد. أضف أول مكافأة، مثلاً: قهوة مجانية مقابل 100 نقطة.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
             <div class="settings-grid-2">
                 <div class="form-group">
@@ -684,12 +733,51 @@
 
             <div class="form-group" id="staffPasswordGroup">
                 <label class="form-label" id="staffPasswordLabel">كلمة المرور</label>
-                <input type="password" id="staffPassword" name="password" class="form-input" placeholder="أدخل كلمة المرور">
+                <input type="password" id="staffPassword" name="password" class="form-input" placeholder="8 أحرف على الأقل" minlength="8" autocomplete="new-password">
             </div>
 
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
                 <button type="button" class="btn btn-secondary" onclick="closeSettingsModal('staffUserModal')">إلغاء</button>
                 <button type="submit" class="btn btn-primary">حفظ الموظف</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Reward Modal (Create / Edit) -->
+<div class="modal-overlay" id="rewardModal">
+    <div class="modal-content glass-card">
+        <h3 id="rewardModalTitle" style="margin-top:0; font-size:18px; color:var(--primary); border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px;">إضافة مكافأة</h3>
+        <form id="rewardForm" onsubmit="saveReward(event)" enctype="multipart/form-data">
+            <input type="hidden" name="reward_id" id="rewardId">
+            <input type="hidden" name="action" id="rewardAction" value="create">
+            <div class="form-group">
+                <label class="form-label">اسم المكافأة بالعربي</label>
+                <input type="text" name="name_ar" id="rewardNameAr" class="form-input" placeholder="مثال: قهوة مجانية" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">الاسم بالإنجليزي (اختياري)</label>
+                <input type="text" name="name_en" id="rewardNameEn" class="form-input" dir="ltr" placeholder="Free coffee">
+            </div>
+            <div class="settings-grid-2">
+                <div class="form-group">
+                    <label class="form-label">عدد النقاط المطلوبة</label>
+                    <input type="number" name="points_required" id="rewardPoints" class="form-input" min="1" step="1" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">الترتيب</label>
+                    <input type="number" name="order_index" id="rewardOrder" class="form-input" step="1" value="0">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">صورة (اختياري)</label>
+                <input type="file" name="image" class="form-input" accept="image/*">
+                <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); margin-top:6px;"><input type="checkbox" name="clear_image"> حذف الصورة الحالية</label>
+            </div>
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#fff;"><input type="checkbox" name="is_active" id="rewardActive" checked> ظاهرة للزبائن</label>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button type="button" class="btn btn-secondary" onclick="closeSettingsModal('rewardModal')">إلغاء</button>
+                <button type="submit" class="btn btn-primary">حفظ المكافأة</button>
             </div>
         </form>
     </div>
@@ -706,7 +794,7 @@
             <input type="hidden" id="changePasswordUserId" name="user_id">
             <div class="form-group">
                 <label class="form-label">كلمة المرور الجديدة</label>
-                <input type="password" id="newPasswordInput" name="new_password" class="form-input" placeholder="أدخل كلمة السر الجديدة" required>
+                <input type="password" id="newPasswordInput" name="new_password" class="form-input" placeholder="8 أحرف على الأقل" minlength="8" autocomplete="new-password" required>
             </div>
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
                 <button type="button" class="btn btn-secondary" onclick="closeSettingsModal('changePasswordModal')">إلغاء</button>
@@ -884,6 +972,74 @@ async function deleteStaffUser(userId, empName) {
         }
     } catch(e) {}
 }
+
+// Rewards catalog
+function openRewardModal(btn) {
+    const form = document.getElementById('rewardForm');
+    form.reset();
+    const d = btn ? btn.dataset : null;
+    document.getElementById('rewardModalTitle').textContent = d ? 'تعديل المكافأة' : 'إضافة مكافأة';
+    document.getElementById('rewardAction').value = d ? 'update' : 'create';
+    document.getElementById('rewardId').value = d ? d.id : '';
+    document.getElementById('rewardNameAr').value = d ? d.nameAr : '';
+    document.getElementById('rewardNameEn').value = d ? d.nameEn : '';
+    document.getElementById('rewardPoints').value = d ? d.points : '';
+    document.getElementById('rewardOrder').value = d ? d.order : 0;
+    document.getElementById('rewardActive').checked = d ? d.active === '1' : true;
+    document.getElementById('rewardModal').style.display = 'flex';
+}
+
+async function saveReward(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    if (!document.getElementById('rewardActive').checked) formData.set('is_active', 'off');
+    try {
+        const res = await fetch('/api/staff/rewards/manage/', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast(data.message, 'success');
+            setTimeout(() => { window.location.hash = 'loyalty'; window.location.reload(); }, 700);
+        } else {
+            showToast(data.message || 'خطأ في حفظ المكافأة', 'danger');
+        }
+    } catch (err) {
+        showToast('تعذر الاتصال بالسيرفر', 'danger');
+    }
+}
+
+async function deleteReward(id) {
+    if (!confirm('حذف هذه المكافأة؟')) return;
+    const formData = new FormData();
+    formData.append('action', 'delete');
+    formData.append('reward_id', id);
+    try {
+        const res = await fetch('/api/staff/rewards/manage/', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast(data.message, 'success');
+            setTimeout(() => { window.location.hash = 'loyalty'; window.location.reload(); }, 700);
+        } else {
+            showToast(data.message || 'خطأ أثناء الحذف', 'danger');
+        }
+    } catch (err) {
+        showToast('تعذر الاتصال بالسيرفر', 'danger');
+    }
+}
+
+function copyWebhookUrl() {
+    const input = document.getElementById('loyverseWebhookUrl');
+    input.select();
+    try { navigator.clipboard.writeText(input.value); } catch (e) { document.execCommand('copy'); }
+    showToast('تم نسخ الرابط', 'success');
+}
+
+// Reopen the tab named in the URL hash (e.g. after saving a reward)
+document.addEventListener('DOMContentLoaded', () => {
+    const tab = window.location.hash.replace('#', '');
+    if (!tab) return;
+    const btn = [...document.querySelectorAll('.settings-tab-btn')].find(b => (b.getAttribute('onclick') || '').includes(`'${tab}'`));
+    if (btn) switchSettingsTab(tab, btn);
+});
 
 // WhatsApp Logs
 async function refreshSettingsWhatsAppLogs() {

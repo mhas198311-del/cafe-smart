@@ -1,12 +1,18 @@
 import datetime
 import jwt
+from unittest import mock
+from django.contrib.auth.hashers import make_password
+from django.core.cache import cache
 from django.test import TestCase, Client
 from django.conf import settings
 from django.urls import reverse
-from accounts.models import CustomerProfile, StaffUser
+from accounts.models import CustomerProfile, StaffUser, CafeConfiguration, LoyaltyReward, RaffleTicket
+from accounts.views import loyverse_webhook_key
+from cafe_smart.integrations import LoyverseClient
 
 class AccountsTests(TestCase):
     def setUp(self):
+        cache.clear()
         # Create standard customer profile
         self.customer = CustomerProfile.objects.create(
             loyverse_customer_id="cust-1234",
@@ -144,31 +150,164 @@ class AccountsTests(TestCase):
         })
         self.assertEqual(res6.status_code, 429)
 
+    def webhook_url(self):
+        return reverse('accounts:loyverse_webhook') + f"?key={loyverse_webhook_key()}"
+
+    def test_loyverse_webhook_requires_key(self):
+        payload = {"receipts": [{"receipt_number": "1-1001", "customer_id": "cust-1234", "total_money": 20, "points_earned": 20}]}
+        res = Client().post(reverse('accounts:loyverse_webhook'), data=payload, content_type='application/json')
+        self.assertEqual(res.status_code, 403)
+        res = Client().post(reverse('accounts:loyverse_webhook') + "?key=wrong", data=payload, content_type='application/json')
+        self.assertEqual(res.status_code, 403)
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.points_balance, 0)
+
     def test_loyverse_webhook_idempotency(self):
         """
         Verifies that duplicate webhook events with the same receipt_number are handled idempotently.
         """
         client = Client()
         payload = {
-            "event_type": "receipt.created",
-            "data": {
+            "type": "receipts.update",
+            "receipts": [{
                 "customer_id": self.customer.loyverse_customer_id,
                 "receipt_number": "LV-TEST-IDEMPOTENT-001",
-                "total_amount": 20.0,
+                "receipt_type": "SALE",
+                "total_money": 20.0,
                 "points_earned": 20
-            }
+            }]
         }
-        
-        # First submission - should credit points
-        res1 = client.post(reverse('accounts:loyverse_webhook'), data=payload, content_type='application/json')
+
+        # First submission - should credit points and raffle tickets
+        res1 = client.post(self.webhook_url(), data=payload, content_type='application/json')
         self.assertEqual(res1.status_code, 200)
+        self.assertEqual(res1.json()["results"][0]["status"], "processed")
         self.customer.refresh_from_db()
         self.assertEqual(self.customer.points_balance, 20)
-        
-        # Second submission with same receipt_number - should return success without double crediting
-        res2 = client.post(reverse('accounts:loyverse_webhook'), data=payload, content_type='application/json')
+        self.assertEqual(RaffleTicket.objects.filter(customer=self.customer).count(), 4)
+
+        # Second submission with same receipt_number - no double crediting
+        res2 = client.post(self.webhook_url(), data=payload, content_type='application/json')
         self.assertEqual(res2.status_code, 200)
-        self.assertIn("Idempotent", res2.json()["message"])
+        self.assertEqual(res2.json()["results"][0]["status"], "duplicate")
         self.customer.refresh_from_db()
         self.assertEqual(self.customer.points_balance, 20)  # Points remain 20, not 40!
+        self.assertEqual(RaffleTicket.objects.filter(customer=self.customer).count(), 4)
 
+    def test_loyverse_webhook_verifies_receipt_with_api(self):
+        """With a token configured, the receipt is re-read from Loyverse and forged values are ignored."""
+        CafeConfiguration.objects.create(loyverse_api_token="tok")
+        forged = {"receipts": [{"receipt_number": "2-2002", "customer_id": "cust-1234", "total_money": 999, "points_earned": 5000}]}
+        real = {"receipt_number": "2-2002", "receipt_type": "SALE", "customer_id": "cust-1234",
+                "total_money": 6.0, "points_earned": 6, "points_balance": 106}
+        with mock.patch.object(LoyverseClient, "get_receipt", return_value=real):
+            res = Client().post(self.webhook_url(), data=forged, content_type='application/json')
+        self.assertEqual(res.json()["results"][0]["status"], "processed")
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.points_balance, 106)
+
+        unknown = {"receipts": [{"receipt_number": "9-9999", "customer_id": "cust-1234", "points_earned": 50}]}
+        with mock.patch.object(LoyverseClient, "get_receipt", return_value=None):
+            res = Client().post(self.webhook_url(), data=unknown, content_type='application/json')
+        self.assertEqual(res.json()["results"][0]["status"], "ignored")
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.points_balance, 106)
+
+    def test_staff_login_has_no_default_accounts(self):
+        res = Client().post(reverse('accounts:staff_login_api'), {"username": "admin", "password": "admin123"})
+        self.assertEqual(res.status_code, 401)
+        self.assertFalse(StaffUser.objects.exists())
+
+    def test_staff_login_rate_limit_and_inactive(self):
+        StaffUser.objects.create(username="boss", password_hash=make_password("correct-horse"), employee_name="Boss", role="ADMIN")
+        StaffUser.objects.create(username="gone", password_hash=make_password("correct-horse"), employee_name="Gone", is_active=False)
+        client = Client()
+        self.assertEqual(client.post(reverse('accounts:staff_login_api'), {"username": "gone", "password": "correct-horse"}).status_code, 401)
+        for _ in range(5):
+            self.assertEqual(client.post(reverse('accounts:staff_login_api'), {"username": "boss", "password": "wrong"}).status_code, 401)
+        # Locked even with the right password
+        self.assertEqual(client.post(reverse('accounts:staff_login_api'), {"username": "boss", "password": "correct-horse"}).status_code, 429)
+        cache.clear()
+        res = client.post(reverse('accounts:staff_login_api'), {"username": "boss", "password": "correct-horse"})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["redirect"], "/staff/dashboard/")
+
+    def test_waiter_cannot_use_admin_tools(self):
+        StaffUser.objects.create(username="w", password_hash=make_password("waiter-pass"), employee_name="W", role="WAITER")
+        client = Client()
+        client.post(reverse('accounts:staff_login_api'), {"username": "w", "password": "waiter-pass"})
+        self.assertEqual(client.post(reverse('accounts:whatsapp_test_send'), {"phone_number": "0790000000"}).status_code, 401)
+        self.assertEqual(client.post(reverse('accounts:staff_loyverse_sync_live')).status_code, 401)
+        self.assertEqual(client.post(reverse('accounts:staff_rewards_manage'), {"action": "create", "name_ar": "x", "points_required": 5}).status_code, 401)
+
+    def test_registration_links_customer_to_loyverse(self):
+        CafeConfiguration.objects.create(loyverse_api_token="tok")
+        client = Client()
+        res = client.post(reverse('accounts:customer_register'), {
+            "phone_number": "0795556677", "full_name": "Sara", "birth_date": "1995-01-01", "password": "secret1"})
+        self.assertEqual(res.status_code, 200)
+        otp = client.session["reg_otp"]
+        created = {"id": "lv-uuid-1", "customer_code": None, "total_points": 0}
+        with mock.patch.object(LoyverseClient, "find_customer_by_phone", return_value=None), \
+             mock.patch.object(LoyverseClient, "save_customer", side_effect=lambda p: {**created, "customer_code": p["customer_code"]}) as save:
+            res = client.post(reverse('accounts:customer_verify'), {"phone_number": "0795556677", "otp": otp})
+        self.assertEqual(res.status_code, 200)
+        sent = save.call_args[0][0]
+        self.assertEqual(sent["phone_number"], "+962795556677")
+        customer = CustomerProfile.objects.get(phone_number="+962795556677")
+        self.assertEqual(customer.loyverse_customer_id, "lv-uuid-1")
+        self.assertEqual(customer.barcode, sent["customer_code"])
+
+    def test_loyalty_page_reads_points_from_loyverse_and_lists_rewards(self):
+        CafeConfiguration.objects.create(loyverse_api_token="tok")
+        self.customer.password_hash = make_password("secret1")
+        self.customer.save()
+        LoyaltyReward.objects.create(name_ar="قهوة مجانية", points_required=100)
+        LoyaltyReward.objects.create(name_ar="حلى", points_required=300)
+        LoyaltyReward.objects.create(name_ar="مخفية", points_required=10, is_active=False)
+        client = Client()
+        client.post(reverse('accounts:customer_login'), {"phone_number": "0791112233", "password": "secret1"})
+        with mock.patch.object(LoyverseClient, "get_customer", return_value={"id": "cust-1234", "total_points": 150}):
+            res = client.get(reverse('accounts:loyalty_view'))
+        self.assertEqual(res.status_code, 200)
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.points_balance, 150)
+        rewards = res.context["rewards"]
+        self.assertEqual([r.name_ar for r in rewards], ["قهوة مجانية", "حلى"])
+        self.assertTrue(rewards[0].is_available)
+        self.assertEqual(rewards[1].points_remaining, 150)
+
+    def test_customer_cannot_redeem_points_on_website(self):
+        client = Client()
+        session = client.session
+        session["customer_id"] = self.customer.id
+        session.save()
+        res = client.post(reverse('accounts:customer_redeem_voucher'), {"points_cost": 1, "reward_details": "Big prize"})
+        self.assertEqual(res.status_code, 410)
+
+    def test_link_customer_reuses_existing_loyverse_customer_by_phone(self):
+        CafeConfiguration.objects.create(loyverse_api_token="tok")
+        self.customer.loyverse_customer_id = "PENDING-abc"
+        self.customer.barcode = "WBC123456789"
+        self.customer.save()
+        calls = []
+
+        def fake_request(method, path, **kwargs):
+            calls.append((method, path, kwargs))
+            if method == "GET" and path == "/customers" and not kwargs["params"].get("cursor"):
+                return {"customers": [{"id": "other", "phone_number": "0790000000"}], "cursor": "page2"}
+            if method == "GET" and path == "/customers":
+                return {"customers": [{"id": "lv-9", "phone_number": "079 111 2233", "customer_code": "", "total_points": 42}]}
+            if method == "POST":
+                return {"id": "lv-9", "customer_code": kwargs["json"]["customer_code"], "total_points": 42}
+
+        with mock.patch.object(LoyverseClient, "_request", side_effect=fake_request):
+            self.assertTrue(LoyverseClient.refresh_customer_points(self.customer))
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.loyverse_customer_id, "lv-9")
+        self.assertEqual(self.customer.points_balance, 42)
+        self.assertEqual(self.customer.barcode, "WBC123456789")
+        # Existing customer updated with our barcode, not duplicated
+        posts = [c for c in calls if c[0] == "POST"]
+        self.assertEqual(len(posts), 1)
+        self.assertEqual(posts[0][2]["json"]["id"], "lv-9")

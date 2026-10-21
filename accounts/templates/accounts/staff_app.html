@@ -731,7 +731,21 @@ window.openScanPrompt = function() {
             line2.textContent = d.message || 'رمز غير صحيح';
         }
         box.appendChild(icon); box.appendChild(line1); box.appendChild(line2);
-        setTimeout(function() { box.style.display = 'none'; }, 6000);
+        if (d.status === 'success' && d.type === 'customer') {
+            if (d.is_birthday) {
+                var bday = document.createElement('div');
+                bday.style.cssText = 'font-size:14px;color:#f5c26b;margin-top:10px;font-weight:700;';
+                bday.textContent = '🎂 عيد ميلاده اليوم: ' + (d.birthday_gift || '');
+                box.appendChild(bday);
+            }
+            var rewards = document.createElement('div');
+            rewards.style.cssText = 'font-size:13px;color:#22c55e;margin-top:10px;';
+            rewards.textContent = (d.available_rewards && d.available_rewards.length)
+                ? '🎁 مكافآت متاحة (تُستبدل من Loyverse): ' + d.available_rewards.join('، ')
+                : 'لا توجد مكافأة متاحة برصيده الحالي';
+            box.appendChild(rewards);
+        }
+        setTimeout(function() { box.style.display = 'none'; }, 10000);
     });
 };
 

@@ -87,8 +87,12 @@ class MenuTests(TestCase):
                 }
             ]
         }
+        from accounts.views import loyverse_webhook_key
+        forbidden = client.post(reverse('menu:loyverse_webhook'), data=json.dumps(webhook_data), content_type="application/json")
+        self.assertEqual(forbidden.status_code, 403)
+
         response = client.post(
-            reverse('menu:loyverse_webhook'),
+            reverse('menu:loyverse_webhook') + f"?key={loyverse_webhook_key()}",
             data=json.dumps(webhook_data),
             content_type="application/json"
         )

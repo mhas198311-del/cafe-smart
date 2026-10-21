@@ -480,6 +480,27 @@
     justify-content: center;
 }
 
+.rewards-section { margin-top: 40px; }
+.rewards-title { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+.rewards-hint { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+.rewards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.reward-card { display: flex; flex-direction: column; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; overflow: hidden; }
+.reward-card.available { border-color: rgba(46, 204, 113, 0.55); box-shadow: 0 0 0 1px rgba(46, 204, 113, 0.2); }
+.reward-img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
+.reward-img-placeholder { display: flex; align-items: center; justify-content: center; background: rgba(195,158,103,0.08); color: var(--primary); font-size: 34px; }
+.reward-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; }
+.reward-name { font-size: 15px; font-weight: 700; color: #fff; }
+.reward-points { font-size: 13px; color: var(--primary); font-weight: 600; }
+.reward-bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.reward-bar > div { height: 100%; background: var(--primary); }
+.reward-card.available .reward-bar > div { background: #2ecc71; }
+.reward-status { font-size: 12.5px; color: var(--text-muted); }
+.reward-status.ok { color: #2ecc71; font-weight: 600; }
+@media (max-width: 600px) {
+    .rewards-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .reward-name { font-size: 13.5px; }
+}
+
 .modal-content {
     max-width: 420px;
     width: 90%;
@@ -551,6 +572,12 @@
                 <h3 data-tr="stat_points_title">رصيد النقاط</h3>
                 <div class="stat-value">{{ customer.points_balance }}</div>
                 <div class="stat-subtitle" id="pointsValText"></div>
+                {% if loyverse_enabled and not points_live %}
+                <div class="stat-subtitle" style="color:#e0a85a; margin-top:4px;">
+                    <span class="lang-ar">آخر رصيد محفوظ{% if customer.points_synced_at %} ({{ customer.points_synced_at|date:"d/m H:i" }}){% endif %}، تعذّر التحديث الآن</span>
+                    <span class="lang-en">Last saved balance{% if customer.points_synced_at %} ({{ customer.points_synced_at|date:"d/m H:i" }}){% endif %}, live update unavailable</span>
+                </div>
+                {% endif %}
             </div>
 
             <!-- Active Raffle Tickets Card -->
@@ -569,7 +596,10 @@
             <p style="font-size:14px; color:#ecd0a5; margin:10px 0 20px;">
                 {% if tier == 'Gold' %}{{ config.birthday_msg_gold }}{% elif tier == 'Silver' %}{{ config.birthday_msg_silver }}{% else %}{{ config.birthday_msg_bronze }}{% endif %}
             </p>
-            <button class="btn btn-primary" onclick="claimBirthdayReward()">تفعيل هدية عيد الميلاد 🎁</button>
+            <button class="btn btn-primary" onclick="openQrModal()">
+                <span class="lang-ar">اعرض بطاقتك على الكاشير لاستلام هديتك 🎁</span>
+                <span class="lang-en">Show your card to the cashier to get your gift 🎁</span>
+            </button>
         </div>
         {% endif %}
 
@@ -588,6 +618,50 @@
         </div>
 
 
+
+        <!-- REWARDS CATALOG: redeemed by the cashier in Loyverse -->
+        {% if rewards %}
+        <div class="rewards-section">
+            <h3 class="rewards-title">
+                <span class="lang-ar">المكافآت 🎁</span>
+                <span class="lang-en">Rewards 🎁</span>
+            </h3>
+            <p class="rewards-hint">
+                <span class="lang-ar">عندما يكفي رصيدك لمكافأة، اطلبها من الكاشير واعرض له بطاقتك ليخصم النقاط.</span>
+                <span class="lang-en">When your balance is enough for a reward, ask the cashier and show your card to redeem the points.</span>
+            </p>
+            <div class="rewards-grid">
+                {% for reward in rewards %}
+                <div class="reward-card{% if reward.is_available %} available{% endif %}">
+                    {% if reward.image %}
+                        <img src="{{ reward.image.url }}" alt="" class="reward-img" loading="lazy">
+                    {% else %}
+                        <div class="reward-img reward-img-placeholder"><i class="fa-solid fa-gift"></i></div>
+                    {% endif %}
+                    <div class="reward-body">
+                        <div class="reward-name">
+                            <span class="lang-ar">{{ reward.name_ar }}</span>
+                            <span class="lang-en">{{ reward.name_en|default:reward.name_ar }}</span>
+                        </div>
+                        <div class="reward-points">{{ reward.points_required }} <span class="lang-ar">نقطة</span><span class="lang-en">pts</span></div>
+                        <div class="reward-bar"><div style="width: {{ reward.progress }}%;"></div></div>
+                        {% if reward.is_available %}
+                            <div class="reward-status ok">
+                                <span class="lang-ar">✓ متاحة، اطلبها من الكاشير</span>
+                                <span class="lang-en">✓ Available, ask the cashier</span>
+                            </div>
+                        {% else %}
+                            <div class="reward-status">
+                                <span class="lang-ar">باقي {{ reward.points_remaining }} نقطة</span>
+                                <span class="lang-en">{{ reward.points_remaining }} points to go</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
 
         <!-- UNUSED CLAIMED VOUCHERS -->
         {% if vouchers %}
@@ -687,7 +761,7 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label" data-tr="label_create_password">إنشاء كلمة المرور</label>
-                        <input type="password" name="password" class="form-input" placeholder="••••••••" required>
+                        <input type="password" name="password" class="form-input" placeholder="••••••••" minlength="6" autocomplete="new-password" required>
                     </div>
                     <button type="submit" class="btn btn-primary" style="width:100%; margin-top:15px; padding:12px;">
                         <i class="fa-solid fa-user-plus"></i> <span data-tr="btn_register">طلب كود التحقق بالواتساب (OTP)</span>
@@ -1099,30 +1173,6 @@
     }
 
 
-
-    async function claimBirthdayReward() {
-        const tierName = '{{ tier }}';
-        let giftName = "هدية عيد ميلاد برونزية";
-        if (tierName === 'Gold') giftName = "هدية عيد ميلاد ذهبية (مشروب + حلى مجاني)";
-        else if (tierName === 'Silver') giftName = "هدية عيد ميلاد فضية (مشروب مجاني)";
-
-        const formData = new FormData();
-        formData.append('points_cost', 0);
-        formData.append('reward_details', giftName);
-
-        try {
-            const res = await fetch('/api/customer/redeem-voucher/', { method: 'POST', body: formData });
-            const data = await res.json();
-            if (data.status === 'success') {
-                showToast('كل عام وأنت بخير! تم توليد كوبون عيد ميلادك 🎂', 'success');
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                showToast(data.message, 'danger');
-            }
-        } catch (err) {
-            showToast('خطأ في الشبكة', 'danger');
-        }
-    }
 
     // Raffle draw countdown timer
     const raffleEnd = '{{ config.raffle_end_date|date:"Y-m-d H:i:s" }}';
