@@ -24,6 +24,7 @@ urlpatterns = [
     path('staff/settings/', views.staff_settings_view, name='staff_settings'),
     path('staff/app/', views.staff_app_view, name='staff_app'),
     path('staff/download-app/', views.staff_download_apk, name='staff_download_apk'),
+    path('staff/sw.js', views.staff_service_worker, name='staff_service_worker'),
     path('api/staff/table-calls/status/', views.staff_table_calls_status, name='staff_table_calls_status'),
     path('api/staff/table-calls/accept/', views.staff_table_calls_accept, name='staff_table_calls_accept'),
     path('api/staff/table-calls/arrived/', views.staff_table_calls_arrived, name='staff_table_calls_arrived'),

@@ -1,4 +1,5 @@
 import datetime
+import os
 import random
 import secrets
 import jwt
@@ -7,7 +8,7 @@ from django.conf import settings
 from django.contrib.auth.hashers import make_password, check_password
 
 logger = logging.getLogger(__name__)
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
@@ -575,6 +576,15 @@ def staff_push_subscribe(request):
     except Exception as e:
         logger.error(f"Error saving push subscription: {e}")
         return JsonResponse({"status": "error", "message": "Could not save subscription"}, status=500)
+
+
+def staff_service_worker(request):
+    """Serves the staff app service worker from /staff/ so it controls the staff pages."""
+    path = os.path.join(os.path.dirname(__file__), "staff_sw.js")
+    with open(path, encoding="utf-8") as f:
+        response = HttpResponse(f.read(), content_type="application/javascript")
+    response["Cache-Control"] = "no-cache"
+    return response
 
 
 def staff_download_apk(request):
