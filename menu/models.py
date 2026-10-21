@@ -43,6 +43,7 @@ class MenuItem(models.Model):
     display_name = models.CharField(max_length=255, help_text="Premium display name for customers")
     description = models.TextField(blank=True, null=True, help_text="Marketing food/drink description")
     price = models.DecimalField(max_digits=10, decimal_places=3)
+    price_locked = models.BooleanField(default=False, help_text="Price was set on the website; Loyverse sync leaves it alone")
     image = models.URLField(blank=True, null=True)
     category = models.ForeignKey(MenuCategory, on_delete=models.CASCADE, related_name="items")
     custom_section = models.ForeignKey(MenuSection, on_delete=models.SET_NULL, blank=True, null=True, related_name="items")

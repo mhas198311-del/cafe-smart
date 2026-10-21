@@ -1457,7 +1457,8 @@ def staff_loyverse_sync_live(request):
             if existing_item:
                 # SAFE UPDATE: Update POS name, price and category only, DO NOT touch overrides!
                 existing_item.pos_name = item_name
-                existing_item.price = price
+                if not existing_item.price_locked:
+                    existing_item.price = price
                 existing_item.category = category
                 if not existing_item.display_name:
                     existing_item.display_name = item_name

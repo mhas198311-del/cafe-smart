@@ -456,6 +456,7 @@
                                 </td>
                                 <td>
                                     <b style="color:var(--primary);">{{ item.price }} د.أ</b>
+                                    {% if item.price_locked %}<div style="font-size:10.5px; color:#e6995c;" title="سعر معدّل من الموقع ولا تغيّره المزامنة"><i class="fa-solid fa-lock"></i> سعر الموقع</div>{% endif %}
                                 </td>
                                 <td>
                                     <div style="display:flex; flex-wrap:wrap; gap:3px;">
@@ -477,7 +478,7 @@
                                     {% if staff_role == 'ADMIN' %}
                                         <div style="display:flex; gap:5px;">
                                             <button class="btn btn-secondary btn-sm" style="padding:5px 9px; font-size:11.5px; border-color:rgba(212,175,55,0.4); color:var(--primary);" title="تعديل الفلاتر والاسم والتصنيف"
-                                                    onclick="openOverrideModal('{{ item.id }}', '{{ item.display_name|escapejs }}', '{{ item.description|default_if_none:''|escapejs }}', '{{ item.image|default_if_none:''|escapejs }}', '{{ item.status_override|default:item.status }}', '{{ item.price }}', '{{ item.order_index|default:0 }}', '{{ item.custom_section_id|default_if_none:'' }}', '{{ item.is_hot|lower }}', '{{ item.is_cold|lower }}', '{{ item.is_coffee|lower }}', '{{ item.is_milky|lower }}', '{{ item.is_dairy_free|lower }}', '{{ item.is_caffeine_free|lower }}', '{{ item.show_fresh_badge|lower }}')">
+                                                    onclick="openOverrideModal('{{ item.id }}', '{{ item.display_name|escapejs }}', '{{ item.description|default_if_none:''|escapejs }}', '{{ item.image|default_if_none:''|escapejs }}', '{{ item.status_override|default:item.status }}', '{{ item.price }}', '{{ item.order_index|default:0 }}', '{{ item.custom_section_id|default_if_none:'' }}', '{{ item.is_hot|lower }}', '{{ item.is_cold|lower }}', '{{ item.is_coffee|lower }}', '{{ item.is_milky|lower }}', '{{ item.is_dairy_free|lower }}', '{{ item.is_caffeine_free|lower }}', '{{ item.show_fresh_badge|lower }}', '{{ item.price_locked|lower }}')">
                                                 <i class="fa-solid fa-tags"></i> الفلاتر
                                             </button>
                                             <button class="btn btn-secondary btn-sm" style="padding:5px 8px; font-size:11.5px;" title="تعيين القسم" onclick="openAssignGroupModal('{{ item.id }}', '{{ item.pos_name|escapejs }}')">
@@ -578,7 +579,7 @@
                                                                 <div class="cms-item-row" id="assigned-item-{{ item.id }}">
                                                                     <span style="font-size:13px; color:#fff;">{{ item.display_name }}</span>
                                                                     <div style="display:flex; gap:5px;">
-                                                                        <button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:10.5px; color:var(--primary);" onclick="openOverrideModal('{{ item.id }}', '{{ item.display_name|escapejs }}', '{{ item.description|default_if_none:''|escapejs }}', '{{ item.image|default_if_none:''|escapejs }}', '{{ item.status_override|default:item.status }}', '{{ item.price }}', '{{ item.order_index|default:0 }}', '{{ item.custom_section_id|default_if_none:'' }}', '{{ item.is_hot|lower }}', '{{ item.is_cold|lower }}', '{{ item.is_coffee|lower }}', '{{ item.is_milky|lower }}', '{{ item.is_dairy_free|lower }}', '{{ item.is_caffeine_free|lower }}')">
+                                                                        <button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:10.5px; color:var(--primary);" onclick="openOverrideModal('{{ item.id }}', '{{ item.display_name|escapejs }}', '{{ item.description|default_if_none:''|escapejs }}', '{{ item.image|default_if_none:''|escapejs }}', '{{ item.status_override|default:item.status }}', '{{ item.price }}', '{{ item.order_index|default:0 }}', '{{ item.custom_section_id|default_if_none:'' }}', '{{ item.is_hot|lower }}', '{{ item.is_cold|lower }}', '{{ item.is_coffee|lower }}', '{{ item.is_milky|lower }}', '{{ item.is_dairy_free|lower }}', '{{ item.is_caffeine_free|lower }}', '{{ item.show_fresh_badge|lower }}', '{{ item.price_locked|lower }}')">
                                                                             <i class="fa-solid fa-tags"></i>
                                                                         </button>
                                                                         <button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:10.5px; border-color:var(--danger); color:var(--danger);" onclick="removeItemFromGroup('{{ item.id }}')">
@@ -671,6 +672,9 @@
                 <div class="form-group">
                     <label class="form-label">السعر (JOD)</label>
                     <input type="number" id="overridePrice" name="price" class="form-input" step="0.001" required>
+                    <label id="overrideFollowLoyverseWrap" style="display:none; font-size:11.5px; color:var(--text-muted); margin-top:6px; cursor:pointer;">
+                        <input type="checkbox" id="overrideFollowLoyverse" name="follow_loyverse_price"> إرجاع سعر لويفيرس (يتحدّث بالمزامنة القادمة)
+                    </label>
                 </div>
                 <div class="form-group">
                     <label class="form-label">القسم التابع له (Custom Section)</label>
@@ -867,12 +871,14 @@ function closeModal(id) {
     if (modal) modal.style.display = 'none';
 }
 
-function openOverrideModal(id, name, desc, image, status, price, orderIndex, customSecId, isHot, isCold, isCoffee, isMilky, isDairyFree, isCaffFree, showFreshBadge) {
+function openOverrideModal(id, name, desc, image, status, price, orderIndex, customSecId, isHot, isCold, isCoffee, isMilky, isDairyFree, isCaffFree, showFreshBadge, priceLocked) {
     document.getElementById('overrideItemId').value = id;
     document.getElementById('overrideDisplayName').value = name || '';
     document.getElementById('overrideDesc').value = desc || '';
     document.getElementById('overrideImage').value = image || '';
     document.getElementById('overridePrice').value = price || '';
+    document.getElementById('overrideFollowLoyverse').checked = false;
+    document.getElementById('overrideFollowLoyverseWrap').style.display = (priceLocked === 'true') ? 'block' : 'none';
     document.getElementById('overrideCustomSection').value = customSecId || '';
     
     document.getElementById('overrideIsHot').checked = (isHot === 'true');

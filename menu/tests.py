@@ -136,6 +136,39 @@ class MenuTests(TestCase):
         self.assertEqual(msg.contact, "jane@example.com")
         self.assertEqual(msg.message, "Hello, I love your coffee!")
 
+    def test_price_set_on_website_survives_loyverse_sync(self):
+        from django.contrib.auth.hashers import make_password
+        from accounts.models import StaffUser
+        from accounts.views import loyverse_webhook_key
+        StaffUser.objects.create(username="boss", password_hash=make_password("boss-pass1"), employee_name="B", role="ADMIN")
+        staff = Client()
+        staff.post(reverse('accounts:staff_login_api'), {"username": "boss", "password": "boss-pass1"})
+
+        def edit(**extra):
+            data = {"item_id": self.item_avail.id, "price": "2.500", "custom_section_id": self.section.id, **extra}
+            self.assertEqual(staff.post(reverse('menu:staff_menu_edit'), data).status_code, 200)
+            self.item_avail.refresh_from_db()
+
+        def sync(price):
+            Client().post(reverse('menu:loyverse_webhook') + f"?key={loyverse_webhook_key()}", content_type="application/json",
+                          data=json.dumps({"event_type": "items.update", "items": [
+                              {"id": "item-001", "name": "Espresso", "category_id": "cat-001", "price": price, "stock": 5}]}))
+            self.item_avail.refresh_from_db()
+
+        # Saving other fields with the same price doesn't lock it
+        edit()
+        self.assertFalse(self.item_avail.price_locked)
+
+        edit(price="1.750")
+        self.assertTrue(self.item_avail.price_locked)
+        sync(3.000)
+        self.assertEqual(float(self.item_avail.price), 1.750)
+
+        # Back to following Loyverse
+        edit(price="1.750", follow_loyverse_price="on")
+        self.assertFalse(self.item_avail.price_locked)
+        sync(3.000)
+        self.assertEqual(float(self.item_avail.price), 3.000)
 
 
 class SeoTests(TestCase):
@@ -162,3 +195,4 @@ class SeoTests(TestCase):
         self.assertEqual(data["@type"], "Menu")
         staff = client.get('/staff/login/').content.decode()
         self.assertIn('content="noindex, nofollow"', staff)
+

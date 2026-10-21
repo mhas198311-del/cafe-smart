@@ -550,6 +550,21 @@
     .item-footer {
         padding-top: 6px;
     }
+
+    /* No photo: skip the placeholder and let the text use the full row */
+    .menu-item-card.glass-card.no-photo {
+        grid-template-columns: 1fr;
+    }
+
+    .menu-item-card.no-photo .item-img-container {
+        display: none;
+    }
+
+    .menu-item-card.no-photo .item-header,
+    .menu-item-card.no-photo .item-desc,
+    .menu-item-card.no-photo .item-footer {
+        grid-column: 1;
+    }
 }
 {% endblock %}
 
@@ -687,7 +702,7 @@
                         <div class="section-body" id="section-body-{{ tab_info.tab.id }}-{{ forloop.counter }}">
                             <div class="menu-grid">
                                 {% for item in sec_info.items %}
-                                    <div class="menu-item-card glass-card" 
+                                    <div class="menu-item-card glass-card{% if not item.image %} no-photo{% endif %}" 
                                          data-item-name="{{ item.display_name|lower }} {{ item.description|lower }}"
                                          data-is-hot="{{ item.is_hot|yesno:'true,false' }}"
                                          data-is-cold="{{ item.is_cold|yesno:'true,false' }}"
