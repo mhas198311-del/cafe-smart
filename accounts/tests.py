@@ -412,3 +412,69 @@ class AccountsTests(TestCase):
         self.assertNotIn("لاتيه", Client().get(reverse('menu:client_menu')).content.decode())
         staff.post(reverse('accounts:staff_menu_toggle_status'), {"item_id": latte.id, "status": "AVAILABLE"})
         self.assertIn("لاتيه", Client().get(reverse('menu:client_menu')).content.decode())
+
+    def test_table_call_log_accept_arrive_and_dashboard(self):
+        import json as _json
+        from accounts.models import TableCall
+        for name in ("sami", "rami"):
+            StaffUser.objects.create(username=name, password_hash=make_password("waiter-pass"), employee_name=name.title(), role="WAITER")
+        StaffUser.objects.create(username="boss", password_hash=make_password("boss-pass1"), employee_name="Boss", role="ADMIN")
+
+        def login(name, pw="waiter-pass"):
+            c = Client()
+            c.post(reverse('accounts:staff_login_api'), {"username": name, "password": pw})
+            return c
+
+        def post(client, url, **body):
+            return client.post(reverse(url), data=_json.dumps(body), content_type="application/json")
+
+        sami, rami, boss = login("sami"), login("rami"), login("boss", "boss-pass1")
+        call = TableCall.objects.create(table_number="7", call_type="call")
+        bill = TableCall.objects.create(table_number="7", call_type="bill")
+
+        # Not logged in: refused
+        self.assertEqual(post(Client(), 'accounts:staff_table_calls_accept', call_id=call.id).status_code, 401)
+        # Open calls show up when the staff app loads
+        self.assertIn(f'"id": {call.id}', sami.get(reverse('accounts:staff_app')).content.decode())
+
+        self.assertEqual(post(sami, 'accounts:staff_table_calls_accept', call_id=call.id).status_code, 200)
+        # Second waiter loses, and is told who took it
+        lost = post(rami, 'accounts:staff_table_calls_accept', call_id=call.id)
+        self.assertEqual(lost.status_code, 409)
+        self.assertIn("Sami", lost.json()["message"])
+        # The bill from the same table went with the same visit
+        bill.refresh_from_db()
+        self.assertEqual(bill.accepted_by.username, "sami")
+
+        # Only the waiter who took it can confirm arrival
+        self.assertEqual(post(rami, 'accounts:staff_table_calls_arrived', call_id=call.id).status_code, 404)
+        self.assertEqual(post(sami, 'accounts:staff_table_calls_arrived', call_id=call.id).status_code, 200)
+        call.refresh_from_db()
+        self.assertIsNotNone(call.arrived_at)
+
+        self.assertEqual(sami.get(reverse('accounts:staff_table_calls_log')).status_code, 401)
+        log = boss.get(reverse('accounts:staff_table_calls_log')).json()
+        self.assertEqual(len(log["calls"]), 2)
+        self.assertEqual(log["waiters"][0]["waiter"], "Sami")
+        self.assertEqual(log["waiters"][0]["calls"], 2)
+        self.assertEqual(log["waiters"][0]["not_confirmed"], 0)
+
+    def test_arrival_needs_table_qr_when_enabled(self):
+        import json as _json
+        from django.utils import timezone
+        from accounts.models import TableCall
+        sami = StaffUser.objects.create(username="sami", password_hash=make_password("waiter-pass"), employee_name="Sami", role="WAITER")
+        CafeConfiguration.objects.create(arrival_qr_required=True)
+        call = TableCall.objects.create(table_number="7", call_type="call", accepted_by=sami, accepted_at=timezone.now())
+        client = Client()
+        client.post(reverse('accounts:staff_login_api'), {"username": "sami", "password": "waiter-pass"})
+
+        def arrive(scanned):
+            return client.post(reverse('accounts:staff_table_calls_arrived'), content_type="application/json",
+                               data=_json.dumps({"call_id": call.id, "scanned": scanned}))
+
+        self.assertEqual(arrive("").status_code, 400)
+        self.assertEqual(arrive("https://whitebirdcafe.com/table/3/?auth=x").status_code, 400)
+        self.assertEqual(arrive("https://whitebirdcafe.com/table/7/?auth=x").status_code, 200)
+        call.refresh_from_db()
+        self.assertIsNotNone(call.arrived_at)

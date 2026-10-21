@@ -382,14 +382,17 @@
         </div>
     </div>
 
-    <!-- Active Table Calls Monitor -->
+    <!-- Table calls log -->
     <div class="glass-card" style="margin-bottom:25px; padding:20px;">
-        <h3 class="section-title"><i class="fa-solid fa-desktop"></i> مراقبة نداءات الطاولات المباشرة</h3>
-        <div class="calls-list" id="activeCallsList">
-            <div id="noActiveCalls" style="text-align:center; padding: 25px 10px; color: var(--text-muted);">
-                <i class="fa-solid fa-mug-saucer" style="font-size: 32px; margin-bottom: 8px; opacity:0.25;"></i>
-                <p style="margin:0; font-size:14px;">لا توجد نداءات طاولات أو طلبات فواتير نشطة حالياً ☕</p>
-            </div>
+        <h3 class="section-title"><i class="fa-solid fa-bell-concierge"></i> نداءات الطاولات اليوم</h3>
+        <div id="callWaiterStats" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px;"></div>
+        <div style="max-height:360px; overflow-y:auto; border-radius:12px; border:1px solid rgba(255,255,255,0.06);">
+            <table class="override-table">
+                <thead><tr><th>الوقت</th><th>الطاولة</th><th>النوع</th><th>الموظف</th><th>وقت القبول</th><th>وقت الوصول</th></tr></thead>
+                <tbody id="callLogBody">
+                    <tr><td colspan="6" style="text-align:center; color:var(--text-muted);">لا توجد نداءات اليوم ☕</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -1063,6 +1066,61 @@ function openTabModal(btnOrMode) {
     document.querySelector('#tabModalForm input[type=file]').value = '';
     document.getElementById('tabModal').style.display = 'flex';
 }
+
+// =================== Table calls log ===================
+function fmtSecs(n) {
+    if (n === null || n === undefined) return null;
+    return n < 60 ? n + ' ث' : Math.floor(n / 60) + ' د ' + (n % 60) + ' ث';
+}
+
+function callCell(text, color) {
+    var td = document.createElement('td');
+    td.textContent = text;
+    if (color) td.style.color = color;
+    return td;
+}
+
+async function loadCallLog() {
+    try {
+        const res = await fetch('/api/staff/table-calls/log/');
+        const d = await res.json();
+        if (d.status !== 'success') return;
+        const names = {call: 'نداء نادل', bill: 'فاتورة', hookah: 'أرجيلة'};
+        const body = document.getElementById('callLogBody');
+        body.innerHTML = '';
+        if (!d.calls.length) {
+            body.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">لا توجد نداءات اليوم ☕</td></tr>';
+        }
+        d.calls.forEach(function(c) {
+            const tr = document.createElement('tr');
+            tr.appendChild(callCell(new Date(c.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})));
+            tr.appendChild(callCell(c.table));
+            tr.appendChild(callCell(names[c.type] || c.type));
+            tr.appendChild(callCell(c.waiter || '⏳ بانتظار موظف', c.waiter ? null : '#e6995c'));
+            tr.appendChild(callCell(fmtSecs(c.accept_seconds) || '—', c.accept_seconds > 120 ? '#ef4444' : null));
+            const arrive = c.arrived ? fmtSecs(c.arrive_seconds) : (c.waiter ? 'ما أكّد الوصول' : '—');
+            tr.appendChild(callCell(arrive, (!c.arrived && c.waiter) ? '#e6995c' : null));
+            body.appendChild(tr);
+        });
+        const stats = document.getElementById('callWaiterStats');
+        stats.innerHTML = '';
+        d.waiters.forEach(function(w) {
+            const box = document.createElement('div');
+            box.style.cssText = 'padding:10px 14px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(212,175,55,0.25); font-size:12.5px;';
+            const name = document.createElement('b');
+            name.textContent = w.waiter;
+            name.style.cssText = 'display:block; color:#fff; font-size:14px; margin-bottom:4px;';
+            box.appendChild(name);
+            box.appendChild(document.createTextNode(
+                w.calls + ' نداء · قبول ' + fmtSecs(w.avg_accept) +
+                (w.avg_arrive !== null ? ' · وصول ' + fmtSecs(w.avg_arrive) : '') +
+                (w.not_confirmed ? ' · ' + w.not_confirmed + ' بدون تأكيد' : '')));
+            stats.appendChild(box);
+        });
+    } catch (e) {}
+}
+loadCallLog();
+setInterval(loadCallLog, 15000);
 
 function showModalPreview(id, url) {
     const img = document.getElementById(id);
