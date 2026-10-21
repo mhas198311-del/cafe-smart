@@ -122,9 +122,13 @@ STATICFILES_DIRS = [
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 WHITENOISE_MANIFEST_STRICT = False
+# Serve files straight from static/ so the site works even when the build
+# command does not run collectstatic
+WHITENOISE_USE_FINDERS = True
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# On Render point this at a persistent disk (e.g. /var/data/media) so uploads survive deploys
+MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", BASE_DIR / 'media'))
 
 # The fallback pair is the one already used by installed staff phones; it was
 # committed publicly, so set new keys in the environment when convenient.
