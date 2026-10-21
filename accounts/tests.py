@@ -311,3 +311,54 @@ class AccountsTests(TestCase):
         posts = [c for c in calls if c[0] == "POST"]
         self.assertEqual(len(posts), 1)
         self.assertEqual(posts[0][2]["json"]["id"], "lv-9")
+
+    def test_live_sync_reads_every_page_and_parks_new_items(self):
+        from menu.models import MenuCategory, MenuItem, MenuTab, MenuSection
+        StaffUser.objects.create(username="boss", password_hash=make_password("boss-pass1"), employee_name="B", role="ADMIN")
+        CafeConfiguration.objects.create(loyverse_api_token="tok")
+        cat = MenuCategory.objects.create(loyverse_category_id="c1", pos_category_name="Coffee", display_category_name="Coffee")
+        section = MenuSection.objects.create(tab=MenuTab.objects.create(name_en="Hot", name_ar="ساخن"), name_en="Espresso", name_ar="اسبريسو")
+        placed = MenuItem.objects.create(loyverse_id="old", pos_name="Old", display_name="My Name", price=1, category=cat,
+                                         custom_section=section, image="https://example.com/mine.jpg")
+
+        def item(i, name):
+            return {"id": i, "item_name": name, "category_id": "c1",
+                    "variants": [{"stores": [{"available_for_sale": True, "price": 2.5}]}]}
+
+        pages = {
+            ("categories", None): {"categories": [{"id": "c1", "name": "Coffee"}]},
+            ("items", None): {"items": [item("old", "Old POS"), item("new1", "Latte")], "cursor": "p2"},
+            ("items", "p2"): {"items": [item("new2", "Mocha")]},
+        }
+
+        def fake_get(url, headers=None, params=None, timeout=None):
+            res = mock.Mock(status_code=200)
+            res.json.return_value = pages[(url.rsplit("/", 1)[1], (params or {}).get("cursor"))]
+            return res
+
+        client = Client()
+        client.post(reverse('accounts:staff_login_api'), {"username": "boss", "password": "boss-pass1"})
+        with mock.patch("requests.get", side_effect=fake_get):
+            response = client.post(reverse('accounts:staff_loyverse_sync_live'))
+        self.assertEqual(response.status_code, 200)
+
+        # Second page was read, and new items wait without a group
+        self.assertEqual(set(MenuItem.objects.filter(custom_section__isnull=True).values_list("loyverse_id", flat=True)), {"new1", "new2"})
+        # The item already placed keeps its group, name and image; only POS data changes
+        placed.refresh_from_db()
+        self.assertEqual((placed.custom_section, placed.display_name, placed.image, placed.pos_name),
+                         (section, "My Name", "https://example.com/mine.jpg", "Old POS"))
+        # Pending items are hidden from customers
+        menu = Client().get(reverse('menu:client_menu')).content.decode()
+        self.assertIn("My Name", menu)
+        self.assertNotIn("Mocha", menu)
+
+    def test_live_sync_reports_rejected_token(self):
+        StaffUser.objects.create(username="boss", password_hash=make_password("boss-pass1"), employee_name="B", role="ADMIN")
+        CafeConfiguration.objects.create(loyverse_api_token="bad")
+        client = Client()
+        client.post(reverse('accounts:staff_login_api'), {"username": "boss", "password": "boss-pass1"})
+        with mock.patch("requests.get", return_value=mock.Mock(status_code=401)):
+            response = client.post(reverse('accounts:staff_loyverse_sync_live'))
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("غير صحيح", response.json()["message"])

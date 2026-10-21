@@ -431,7 +431,10 @@ def staff_dashboard_view(request):
     # Import inside to avoid circular import issues
     from menu.models import MenuItem, MenuTab, MenuSection
     from accounts.models import ContactMessage, CafeConfiguration
-    items = MenuItem.objects.all().order_by("category__order_index", "order_index")
+    from django.db.models import F
+    items = MenuItem.objects.select_related("custom_section").order_by(
+        F("custom_section").asc(nulls_first=True), "category__order_index", "order_index"
+    )
     messages = ContactMessage.objects.all().order_by("-created_at")
     config = CafeConfiguration.objects.first()
     if not config:
@@ -446,6 +449,7 @@ def staff_dashboard_view(request):
         "staff_name": request.session.get("staff_name"),
         "staff_role": request.session.get("staff_role"),
         "menu_items": items,
+        "pending_items_count": sum(1 for i in items if i.custom_section_id is None),
         "contact_messages": messages,
         "config": config,
         "tabs": tabs,
@@ -1387,108 +1391,120 @@ def staff_loyverse_sync_live(request):
 
     try:
         # 1. Sync Categories
-        cat_res = requests.get("https://api.loyverse.com/v1.0/categories", headers=headers, timeout=15)
+        def fetch_all(resource):
+            """Loyverse pages its lists (50 by default), so follow the cursor."""
+            results, cursor = [], None
+            while True:
+                params = {"limit": 250}
+                if cursor:
+                    params["cursor"] = cursor
+                res = requests.get(f"https://api.loyverse.com/v1.0/{resource}", headers=headers, params=params, timeout=15)
+                if res.status_code == 401:
+                    raise PermissionError("invalid token")
+                res.raise_for_status()
+                data = res.json()
+                results.extend(data.get(resource, []))
+                cursor = data.get("cursor")
+                if not cursor:
+                    return results
+
         synced_cats = 0
-        if cat_res.status_code == 200:
-            categories_data = cat_res.json().get("categories", [])
-            for cat in categories_data:
-                cat_id = cat.get("id")
-                name = cat.get("name", "General")
-                cat_obj, _ = MenuCategory.objects.get_or_create(loyverse_category_id=cat_id, defaults={
-                    "pos_category_name": name,
-                    "display_category_name": name,
-                    "is_active": not cat.get("deleted", False)
-                })
-                cat_obj.pos_category_name = name
-                cat_obj.is_active = not cat.get("deleted", False)
-                cat_obj.save()
-                synced_cats += 1
+        categories_data = fetch_all("categories")
+        for cat in categories_data:
+            cat_id = cat.get("id")
+            name = cat.get("name", "General")
+            cat_obj, _ = MenuCategory.objects.get_or_create(loyverse_category_id=cat_id, defaults={
+                "pos_category_name": name,
+                "display_category_name": name,
+                "is_active": not cat.get("deleted", False)
+            })
+            cat_obj.pos_category_name = name
+            cat_obj.is_active = not cat.get("deleted", False)
+            cat_obj.save()
+            synced_cats += 1
 
         # 2. Sync Items (ONLY items with available_for_sale == True)
-        items_res = requests.get("https://api.loyverse.com/v1.0/items", headers=headers, timeout=15)
         synced_items = 0
         valid_for_sale_item_ids = []
-        if items_res.status_code == 200:
-            items_data = items_res.json().get("items", [])
-            default_cat = MenuCategory.objects.first()
-            for item in items_data:
-                item_id = item.get("id")
-                item_name = item.get("item_name", "Item")
-                cat_id = item.get("category_id")
-                category = MenuCategory.objects.filter(loyverse_category_id=cat_id).first() or default_cat
+        items_data = fetch_all("items")
+        default_cat = MenuCategory.objects.first()
+        for item in items_data:
+            item_id = item.get("id")
+            item_name = item.get("item_name", "Item")
+            cat_id = item.get("category_id")
+            category = MenuCategory.objects.filter(loyverse_category_id=cat_id).first() or default_cat
                 
-                # Check if item has any variant available for sale
-                variants = item.get("variants", [])
-                is_for_sale = False
-                price = 0.0
-                for v in variants:
-                    for s in v.get("stores", []):
-                        if s.get("available_for_sale") is True:
-                            is_for_sale = True
-                            if s.get("price") is not None:
-                                price = float(s.get("price"))
-                            break
-                    if is_for_sale:
+            # Check if item has any variant available for sale
+            variants = item.get("variants", [])
+            is_for_sale = False
+            price = 0.0
+            for v in variants:
+                for s in v.get("stores", []):
+                    if s.get("available_for_sale") is True:
+                        is_for_sale = True
+                        if s.get("price") is not None:
+                            price = float(s.get("price"))
                         break
+                if is_for_sale:
+                    break
 
-                if not is_for_sale:
-                    continue
+            if not is_for_sale:
+                continue
 
-                valid_for_sale_item_ids.append(item_id)
+            valid_for_sale_item_ids.append(item_id)
                 
-                existing_item = MenuItem.objects.filter(loyverse_id=item_id).first()
-                if existing_item:
-                    # SAFE UPDATE: Update POS name, price and category only, DO NOT touch overrides!
-                    existing_item.pos_name = item_name
-                    existing_item.price = price
-                    existing_item.category = category
-                    if not existing_item.display_name:
-                        existing_item.display_name = item_name
-                    existing_item.save()
-                else:
-                    # Brand New Item -> Smart Tag & Assign
-                    is_coffee = False
-                    is_hot = False
-                    is_cold = False
-                    is_milky = False
-                    full_text = f"{item_name.lower()} {(category.pos_category_name if category else '').lower()}"
-                    if any(k in full_text for k in ['قهوة', 'اسبريسو', 'إسبريسو', 'لاتيه', 'كابتشينو', 'فلات وايت', 'أمريكانو', 'امريكانو', 'مكياتو', 'كورتادو', 'v60', 'كيمكس', 'دبل', 'كوفي', 'coffee', 'espresso', 'latte', 'cappuccino', 'flat white', 'americano']):
-                        is_coffee = True
-                    if any(k in full_text for k in ['بارد', 'مثلج', 'ايس', 'آيس', 'موهيتو', 'سموذي', 'عصير', 'فريش', 'غازي', 'ريدبول', 'مكس', 'iced', 'cold', 'smoothie', 'mojito', 'juice']):
-                        is_cold = True
-                    if any(k in full_text for k in ['ساخن', 'شاي', 'أعشاب', 'ينسون', 'بابونج', 'كركديه', 'زنجبيل', 'سحلب', 'هوت', 'hot', 'tea']):
-                        is_hot = True
-                    elif is_coffee and not is_cold:
-                        is_hot = True
-                    if any(k in full_text for k in ['لاتيه', 'كابتشينو', 'فلات وايت', 'مكياتو', 'حليب', 'سحلب', 'latte', 'cappuccino', 'milk']):
-                        is_milky = True
+            existing_item = MenuItem.objects.filter(loyverse_id=item_id).first()
+            if existing_item:
+                # SAFE UPDATE: Update POS name, price and category only, DO NOT touch overrides!
+                existing_item.pos_name = item_name
+                existing_item.price = price
+                existing_item.category = category
+                if not existing_item.display_name:
+                    existing_item.display_name = item_name
+                existing_item.save()
+            else:
+                # Brand New Item -> Smart Tag & Assign
+                is_coffee = False
+                is_hot = False
+                is_cold = False
+                is_milky = False
+                full_text = f"{item_name.lower()} {(category.pos_category_name if category else '').lower()}"
+                if any(k in full_text for k in ['قهوة', 'اسبريسو', 'إسبريسو', 'لاتيه', 'كابتشينو', 'فلات وايت', 'أمريكانو', 'امريكانو', 'مكياتو', 'كورتادو', 'v60', 'كيمكس', 'دبل', 'كوفي', 'coffee', 'espresso', 'latte', 'cappuccino', 'flat white', 'americano']):
+                    is_coffee = True
+                if any(k in full_text for k in ['بارد', 'مثلج', 'ايس', 'آيس', 'موهيتو', 'سموذي', 'عصير', 'فريش', 'غازي', 'ريدبول', 'مكس', 'iced', 'cold', 'smoothie', 'mojito', 'juice']):
+                    is_cold = True
+                if any(k in full_text for k in ['ساخن', 'شاي', 'أعشاب', 'ينسون', 'بابونج', 'كركديه', 'زنجبيل', 'سحلب', 'هوت', 'hot', 'tea']):
+                    is_hot = True
+                elif is_coffee and not is_cold:
+                    is_hot = True
+                if any(k in full_text for k in ['لاتيه', 'كابتشينو', 'فلات وايت', 'مكياتو', 'حليب', 'سحلب', 'latte', 'cappuccino', 'milk']):
+                    is_milky = True
 
-                    target_sec = None
-                    if is_cold:
-                        target_sec = MenuSection.objects.filter(tab_id=2).first()
-                    else:
-                        target_sec = MenuSection.objects.filter(tab_id=1).first()
-
-                    MenuItem.objects.create(
-                        loyverse_id=item_id,
-                        pos_name=item_name,
-                        display_name=item_name,
-                        price=price,
-                        category=category,
-                        custom_section=target_sec,
-                        is_coffee=is_coffee,
-                        is_hot=is_hot,
-                        is_cold=is_cold,
-                        is_milky=is_milky,
-                        image=item.get("image_url", ""),
-                        status="AVAILABLE"
-                    )
-                synced_items += 1
+                MenuItem.objects.create(
+                    loyverse_id=item_id,
+                    pos_name=item_name,
+                    display_name=item_name,
+                    price=price,
+                    category=category,
+                    custom_section=None,  # waits in "pending" until staff place it
+                    is_coffee=is_coffee,
+                    is_hot=is_hot,
+                    is_cold=is_cold,
+                    is_milky=is_milky,
+                    image=item.get("image_url", ""),
+                    status="AVAILABLE"
+                )
+            synced_items += 1
 
         return JsonResponse({
             "status": "success",
             "message": f"تمت المزامنة الحية بأمان! تم تحديث {synced_items} صنفاً دون المساس بتخصيصاتك وفلاترك السابقة."
         })
+    except PermissionError:
+        return JsonResponse({
+            "status": "error",
+            "message": "رمز الوصول لـ Loyverse غير صحيح أو منتهي. أنشئ رمزاً جديداً من Loyverse وأدخله في الإعدادات."
+        }, status=400)
     except Exception as e:
         logger.error(f"Loyverse live sync failed: {e}")
         return JsonResponse({

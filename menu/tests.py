@@ -1,7 +1,7 @@
 import json
 from django.test import TestCase, Client
 from django.urls import reverse
-from menu.models import MenuCategory, MenuItem
+from menu.models import MenuCategory, MenuItem, MenuTab, MenuSection
 
 class MenuTests(TestCase):
     def setUp(self):
@@ -11,12 +11,17 @@ class MenuTests(TestCase):
             pos_category_name="Beverages",
             display_category_name="Premium Beverages"
         )
+        self.section = MenuSection.objects.create(
+            tab=MenuTab.objects.create(name_en="General", name_ar="عام"),
+            name_en="Coffee", name_ar="قهوة"
+        )
         self.item_avail = MenuItem.objects.create(
             loyverse_id="item-001",
             pos_name="Espresso",
             display_name="Double Espresso Shot",
             price=2.500,
             category=self.category,
+            custom_section=self.section,
             status="AVAILABLE",
             loyverse_stock=5
         )
@@ -26,6 +31,7 @@ class MenuTests(TestCase):
             display_name="Golden Latte",
             price=3.500,
             category=self.category,
+            custom_section=self.section,
             status="OUT_OF_STOCK",
             loyverse_stock=10
         )
@@ -35,6 +41,7 @@ class MenuTests(TestCase):
             display_name="Fluffy Cappuccino",
             price=3.000,
             category=self.category,
+            custom_section=self.section,
             status="AUTOMATIC",
             loyverse_stock=2
         )
@@ -44,6 +51,7 @@ class MenuTests(TestCase):
             display_name="White Chocolate Mocha",
             price=4.000,
             category=self.category,
+            custom_section=self.section,
             status="AUTOMATIC",
             loyverse_stock=0
         )
