@@ -392,3 +392,23 @@ class AccountsTests(TestCase):
             bad = client.post(reverse('accounts:staff_tab_manage'), {"action": "create", "name_en": "X", "name_ar": "س",
                               "image_file": SimpleUploadedFile("x.txt", b"hi", content_type="text/plain")})
             self.assertEqual(bad.status_code, 400)
+
+    def test_waiter_marks_item_sold_out_and_it_leaves_the_menu(self):
+        from menu.models import MenuCategory, MenuItem, MenuTab, MenuSection
+        cat = MenuCategory.objects.create(loyverse_category_id="c1", pos_category_name="Coffee", display_category_name="Coffee")
+        section = MenuSection.objects.create(tab=MenuTab.objects.create(name_en="Hot", name_ar="ساخن"), name_en="Espresso", name_ar="اسبريسو")
+        latte = MenuItem.objects.create(loyverse_id="a", pos_name="Latte", display_name="لاتيه", price=2, category=cat, custom_section=section)
+        MenuItem.objects.create(loyverse_id="b", pos_name="Pending", display_name="صنف بالانتظار", price=2, category=cat)
+        StaffUser.objects.create(username="w", password_hash=make_password("waiter-pass"), employee_name="W", role="WAITER")
+        staff = Client()
+        staff.post(reverse('accounts:staff_login_api'), {"username": "w", "password": "waiter-pass"})
+
+        page = staff.get(reverse('accounts:staff_app')).content.decode()
+        self.assertIn("لاتيه", page)
+        self.assertIn("اسبريسو", page)
+        self.assertNotIn("صنف بالانتظار", page)  # not on the menu, nothing to toggle
+
+        staff.post(reverse('accounts:staff_menu_toggle_status'), {"item_id": latte.id, "status": "OUT_OF_STOCK"})
+        self.assertNotIn("لاتيه", Client().get(reverse('menu:client_menu')).content.decode())
+        staff.post(reverse('accounts:staff_menu_toggle_status'), {"item_id": latte.id, "status": "AVAILABLE"})
+        self.assertIn("لاتيه", Client().get(reverse('menu:client_menu')).content.decode())
