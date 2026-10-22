@@ -68,6 +68,26 @@
     border-color: var(--primary);
     box-shadow: 0 0 10px rgba(212, 175, 55, 0.1);
 }
+
+.password-wrap { position: relative; }
+.password-wrap .form-input { padding-left: 48px; }
+.password-toggle {
+    position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--text-muted, #aaa);
+    font-size: 15px; padding: 8px 10px; cursor: pointer;
+}
+.forgot-link {
+    display: block; margin: 14px auto 0; background: none; border: none;
+    color: var(--primary); font-size: 13px; cursor: pointer; text-decoration: underline;
+}
+.forgot-box {
+    display: none; margin-top: 12px; padding: 14px; border-radius: 10px;
+    background: rgba(212, 175, 55, 0.06); border: 1px solid var(--border-light);
+    font-size: 13px; line-height: 1.8; text-align: start;
+}
+.forgot-box.open { display: block; }
+.forgot-box b { color: var(--primary); }
+.forgot-box code { direction: ltr; unicode-bidi: isolate; font-size: 12px; }
 {% endblock %}
 
 {% block content %}
@@ -81,16 +101,36 @@
         <form id="staffLoginForm" onsubmit="handleStaffLogin(event)">
             <div class="form-group">
                 <label class="form-label" data-tr="staff_username">اسم المستخدم / Username</label>
-                <input type="text" name="username" class="form-input" placeholder="أدخل اسم المستخدم" required>
+                <input type="text" name="username" class="form-input" placeholder="أدخل اسم المستخدم" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
             </div>
             <div class="form-group">
                 <label class="form-label" data-tr="staff_password">كلمة المرور / Password</label>
-                <input type="password" name="password" class="form-input" placeholder="••••••••" required>
+                <div class="password-wrap">
+                    <input type="password" name="password" id="staffPassword" class="form-input" placeholder="••••••••" autocomplete="current-password" required>
+                    <button type="button" class="password-toggle" onclick="togglePassword(this)" aria-label="إظهار كلمة المرور" title="إظهار كلمة المرور">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
             </div>
             <button type="submit" class="btn btn-primary" style="width:100%; margin-top:10px;">
                 <i class="fa-solid fa-right-to-bracket"></i> <span data-tr="btn_staff_login">الدخول إلى النظام</span>
             </button>
         </form>
+
+        <button type="button" class="forgot-link" onclick="document.getElementById('forgotBox').classList.toggle('open')">
+            <span class="lang-ar">نسيت اسم المستخدم أو كلمة المرور؟</span>
+            <span class="lang-en">Forgot username or password?</span>
+        </button>
+        <div class="forgot-box" id="forgotBox">
+            <div class="lang-ar">
+                <p><b>موظف:</b> اطلب من المدير يعيّن لك كلمة مرور جديدة من الإعدادات ← الموظفين، وبيقدر يشوفلك اسم المستخدم من نفس المكان.</p>
+                <p><b>المدير:</b> من لوحة Render ← Environment: اسم الدخول هو قيمة <code>INITIAL_ADMIN_USERNAME</code>. ولتعيين كلمة مرور جديدة أضف <code>ADMIN_RESET_PASSWORD</code> بكلمة جديدة (8 أحرف أو أكثر) واحفظ، وبعد دقيقتين ادخل فيها.</p>
+            </div>
+            <div class="lang-en">
+                <p><b>Staff:</b> ask the manager to set a new password from Settings → Staff, where your username is listed too.</p>
+                <p><b>Manager:</b> in Render → Environment your username is <code>INITIAL_ADMIN_USERNAME</code>. To set a new password add <code>ADMIN_RESET_PASSWORD</code> (8+ characters), save, and log in with it after about two minutes.</p>
+            </div>
+        </div>
 
         <div style="margin-top: 22px; text-align: center;">
             <button type="button" data-install-app onclick="installStaffApp()" class="btn btn-secondary" style="width: 100%; font-size: 13px; padding: 10px; gap: 8px; justify-content: center;">
@@ -105,6 +145,14 @@
 
 {% block extra_js %}
 <script>
+    function togglePassword(btn) {
+        const input = document.getElementById('staffPassword');
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        btn.querySelector('i').className = show ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+        btn.title = show ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور';
+    }
+
     async function handleStaffLogin(e) {
         e.preventDefault();
         const formData = new FormData(e.target);

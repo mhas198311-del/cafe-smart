@@ -269,7 +269,7 @@ def staff_login(request):
     if is_limited(limit_key, 5) or hit_limit(f"login:staff-ip:{client_ip(request)}", 20, 900):
         return JsonResponse({"status": "error", "message": "محاولات كثيرة، حاول بعد 15 دقيقة / Too many attempts, try again in 15 minutes"}, status=429)
 
-    staff = StaffUser.objects.filter(username=username).first()
+    staff = StaffUser.objects.filter(username__iexact=username).first()
     if not staff or not staff.is_active or not check_password(password, staff.password_hash):
         hit_limit(limit_key, 5, 900)
         return JsonResponse({"status": "error", "message": "Invalid credentials"}, status=401)

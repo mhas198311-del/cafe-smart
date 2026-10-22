@@ -6,6 +6,7 @@ Prepares a fresh database. Safe to run on every deploy:
 Existing data is never deleted.
 """
 import os
+from pathlib import Path
 import django
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')
@@ -198,3 +199,29 @@ else:
     else:
         print("Seed: WARNING no staff account exists. Set INITIAL_ADMIN_USERNAME and "
               "INITIAL_ADMIN_PASSWORD (8+ characters) and redeploy to create the manager account.")
+
+# Manager password recovery: set ADMIN_RESET_PASSWORD on the host and redeploy.
+# Each value is applied once (a hashed marker on the data disk), so changing the
+# password later from the site is not undone by the next deploy.
+reset_password = os.environ.get("ADMIN_RESET_PASSWORD", "")
+if reset_password:
+    from django.conf import settings
+    from django.contrib.auth.hashers import check_password
+    marker = Path(settings.MEDIA_ROOT).parent / ".admin_password_reset"
+    already = marker.exists() and check_password(reset_password, marker.read_text().strip())
+    admin = (StaffUser.objects.filter(username=os.environ.get("INITIAL_ADMIN_USERNAME", "").strip()).first()
+             or StaffUser.objects.filter(role="ADMIN").order_by("id").first())
+    if already:
+        print("Seed: ADMIN_RESET_PASSWORD was already applied; remove it from the environment.")
+    elif len(reset_password) < 8:
+        print("Seed: WARNING ADMIN_RESET_PASSWORD must be 8+ characters, nothing changed.")
+    elif not admin:
+        print("Seed: WARNING no manager account found to reset.")
+    else:
+        admin.password_hash = make_password(reset_password)
+        admin.role = "ADMIN"
+        admin.is_active = True
+        admin.save(update_fields=["password_hash", "role", "is_active"])
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(make_password(reset_password))
+        print(f"Seed: password reset for manager account '{admin.username}'.")
