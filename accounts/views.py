@@ -128,7 +128,8 @@ def customer_register_request(request):
         request.session["reg_otp"] = otp_code
 
     # Trigger WhatsApp Message
-    WhatsAppClient.send_otp(phone_number, otp_code)
+    if not WhatsAppClient.send_otp(phone_number, otp_code) and WhatsAppClient.is_configured():
+        return JsonResponse({"status": "error", "message": "تعذر إرسال رمز التحقق على الواتساب، تأكد من الرقم وحاول مرة ثانية / Could not send the WhatsApp code"}, status=502)
 
     return JsonResponse({"status": "success", "message": "OTP sent via WhatsApp"})
 
@@ -473,6 +474,9 @@ def staff_settings_view(request):
     config = CafeConfiguration.objects.first()
     if not config:
         config = CafeConfiguration.objects.create()
+    if not config.wa_verify_token:
+        config.wa_verify_token = secrets.token_urlsafe(24)
+        config.save(update_fields=["wa_verify_token"])
 
     staff_users = StaffUser.objects.all().order_by("-role", "employee_name")
 
@@ -485,6 +489,7 @@ def staff_settings_view(request):
         "rewards": LoyaltyReward.objects.all(),
         "loyverse_webhook_url": request.build_absolute_uri(f"/integrations/loyverse-webhook/?key={loyverse_webhook_key()}"),
         "current_network_ip": network_ip(request),
+        "whatsapp_webhook_url": f"https://{request.get_host()}/api/whatsapp/webhook/",
     })
 
 
@@ -576,6 +581,62 @@ def staff_push_subscribe(request):
     except Exception as e:
         logger.error(f"Error saving push subscription: {e}")
         return JsonResponse({"status": "error", "message": "Could not save subscription"}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def staff_forgot_password_request(request):
+    """
+    Sends a WhatsApp code to the phone saved on a staff account. The answer is
+    the same whether or not the account exists, so usernames can't be probed.
+    """
+    username = (request.POST.get("username") or "").strip()
+    if hit_limit(f"staff-forgot-ip:{client_ip(request)}", 5, 900) or hit_limit(f"staff-forgot:{username.lower()}", 3, 900):
+        return JsonResponse({"status": "error", "message": "محاولات كثيرة، حاول بعد ربع ساعة"}, status=429)
+    reply = {"status": "success", "message": "إذا كان للحساب رقم واتساب مسجّل، وصلك رمز عليه"}
+
+    staff = StaffUser.objects.filter(username__iexact=username, is_active=True).first()
+    if not staff or not staff.phone_number:
+        return JsonResponse(reply)
+    otp_code = "".join(secrets.choice("0123456789") for _ in range(6))
+    request.session["staff_reset"] = {
+        "id": staff.id,
+        "otp": make_password(otp_code),
+        "expires": (datetime.datetime.now() + datetime.timedelta(minutes=5)).timestamp(),
+        "attempts": 0,
+    }
+    WhatsAppClient.send_otp(staff.phone_number, otp_code)
+    return JsonResponse(reply)
+
+
+@csrf_exempt
+@require_POST
+def staff_forgot_password_reset(request):
+    """Checks the WhatsApp code and sets the staff member's new password."""
+    pending = request.session.get("staff_reset")
+    otp = (request.POST.get("otp") or "").strip()
+    new_password = request.POST.get("new_password") or ""
+    if not pending or datetime.datetime.now().timestamp() > pending["expires"]:
+        request.session.pop("staff_reset", None)
+        return JsonResponse({"status": "error", "message": "انتهت صلاحية الرمز، اطلب رمز جديد"}, status=400)
+    if len(new_password) < 8:
+        return JsonResponse({"status": "error", "message": "كلمة المرور لازم تكون 8 أحرف أو أكثر"}, status=400)
+    pending["attempts"] += 1
+    request.session["staff_reset"] = pending
+    if pending["attempts"] > 5:
+        request.session.pop("staff_reset", None)
+        return JsonResponse({"status": "error", "message": "محاولات كثيرة، اطلب رمز جديد"}, status=429)
+    if not check_password(otp, pending["otp"]):
+        return JsonResponse({"status": "error", "message": "الرمز غير صحيح"}, status=400)
+
+    staff = StaffUser.objects.filter(id=pending["id"], is_active=True).first()
+    request.session.pop("staff_reset", None)
+    if not staff:
+        return JsonResponse({"status": "error", "message": "الحساب غير موجود"}, status=404)
+    staff.password_hash = make_password(new_password)
+    staff.save(update_fields=["password_hash"])
+    reset_limit(f"login:staff:{staff.username.lower()}")
+    return JsonResponse({"status": "success", "message": f"تم تغيير كلمة المرور. اسم المستخدم: {staff.username}"})
 
 
 def staff_service_worker(request):
@@ -874,8 +935,13 @@ def staff_config_edit(request):
     config.instagram_url = request.POST.get("instagram_url", config.instagram_url)
     config.facebook_url = request.POST.get("facebook_url", config.facebook_url)
     config.tiktok_url = request.POST.get("tiktok_url", config.tiktok_url)
-    config.ultramsg_instance_id = request.POST.get("ultramsg_instance_id", config.ultramsg_instance_id)
-    config.ultramsg_token = request.POST.get("ultramsg_token", config.ultramsg_token)
+    config.wa_phone_number_id = request.POST.get("wa_phone_number_id", config.wa_phone_number_id).strip()
+    config.wa_business_account_id = request.POST.get("wa_business_account_id", config.wa_business_account_id).strip()
+    # Secrets are never sent back to the page, so an empty field keeps the saved value
+    if request.POST.get("wa_access_token", "").strip():
+        config.wa_access_token = request.POST["wa_access_token"].strip()
+    if request.POST.get("wa_app_secret", "").strip():
+        config.wa_app_secret = request.POST["wa_app_secret"].strip()
     config.loyverse_api_token = request.POST.get("loyverse_api_token", config.loyverse_api_token)
 
     if request.POST.get("clear_menu_cover_image") == "on":
@@ -1033,49 +1099,148 @@ def staff_menu_toggle_status(request):
 @require_GET
 def get_whatsapp_logs(request):
     """
-    Returns the outgoing WhatsApp logs sent during the server's execution session.
+    Returns the latest WhatsApp messages sent and received, with Meta's delivery status.
     """
     if not staff_is_admin(request):
         return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
-    
-    from cafe_smart.integrations import WhatsAppClient
-    return JsonResponse({
-        "status": "success",
-        "logs": WhatsAppClient.sent_messages
-    })
+
+    from .models import WhatsAppMessage
+    from django.utils import timezone
+    logs = [{
+        "phone_number": m.phone,
+        "direction": m.direction,
+        "type": m.kind,
+        "message": m.text,
+        "status": m.status,
+        "error": m.error,
+        "time": timezone.localtime(m.created_at).strftime("%Y-%m-%d %H:%M"),
+    } for m in WhatsAppMessage.objects.all()[:50]]
+    return JsonResponse({"status": "success", "logs": logs})
 
 @csrf_exempt
 @require_POST
 def whatsapp_test_send(request):
     """
-    Triggers a test message using the configured WhatsApp UltraMsg gateway.
+    Sends the welcome template to a test number, to check the connection end to end.
     """
     if not staff_is_admin(request):
         return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
-        
+
     phone_number = request.POST.get("phone_number")
-    message = request.POST.get("message", "This is a test message from 26 Cafe Smart System!")
-    
     if not phone_number:
-        return JsonResponse({"status": "error", "message": "Phone number is required"}, status=400)
-        
-    from cafe_smart.integrations import WhatsAppClient
-    is_sent = WhatsAppClient.send_via_ultramsg(phone_number, message)
-    status = "Sent (Real)" if is_sent else "Logged (Mock)"
-    
-    # Store in logs
-    WhatsAppClient.sent_messages.append({
-        "phone_number": phone_number,
-        "type": "TEST",
-        "message": message,
-        "status": status
-    })
-    
-    return JsonResponse({
-        "status": "success",
-        "message": f"WhatsApp message triggered successfully.",
-        "message_status": status
-    })
+        return JsonResponse({"status": "error", "message": "أدخل رقم الهاتف"}, status=400)
+    if not WhatsAppClient.is_configured():
+        return JsonResponse({"status": "error", "message": "احفظ بيانات الواتساب أولاً"}, status=400)
+
+    if WhatsAppClient.send_welcome_loyalty(phone_number, "تجربة"):
+        return JsonResponse({"status": "success", "message": "تم الإرسال، تابع حالة الرسالة بالسجل"})
+    from .models import WhatsAppMessage
+    last = WhatsAppMessage.objects.filter(direction="OUT").first()
+    return JsonResponse({"status": "error", "message": f"فشل الإرسال: {last.error if last else ''}"}, status=502)
+
+
+@require_GET
+def whatsapp_templates_status(request):
+    """Approval status of the cafe's message templates on Meta."""
+    if not staff_is_admin(request):
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+    from cafe_smart.integrations import TEMPLATES
+    try:
+        statuses = WhatsAppClient.template_statuses()
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    return JsonResponse({"status": "success", "templates": [
+        {"name": t["name"], "category": t["category"], "status": statuses.get(t["name"], "NOT_SUBMITTED")}
+        for t in TEMPLATES.values()]})
+
+
+@csrf_exempt
+@require_POST
+def whatsapp_templates_submit(request):
+    """Sends the cafe's message templates to Meta for approval."""
+    if not staff_is_admin(request):
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+    try:
+        result = WhatsAppClient.submit_templates()
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    return JsonResponse({"status": "success", "templates": result})
+
+
+def _broadcast_contact_message(msg):
+    """Shows a new message in the staff app and dashboard right away."""
+    from asgiref.sync import async_to_sync
+    from channels.layers import get_channel_layer
+    channel_layer = get_channel_layer()
+    if channel_layer:
+        async_to_sync(channel_layer.group_send)("staff_dashboard", {
+            "type": "broadcast_contact_message",
+            "message": {
+                "id": msg.id, "name": msg.name, "contact": msg.contact, "inquiry_type": msg.inquiry_type,
+                "message": msg.message, "created_at": msg.created_at.strftime("%I:%M %p"),
+            },
+        })
+
+
+@csrf_exempt
+def whatsapp_webhook(request):
+    """
+    Meta calls this with incoming customer messages and delivery updates.
+    GET is Meta's one-time subscription check against the verify token.
+    """
+    import hashlib
+    import hmac
+    import json
+    from django.http import HttpResponse, HttpResponseForbidden
+    from .models import CafeConfiguration, ContactMessage, WhatsAppMessage
+
+    config = CafeConfiguration.objects.first()
+    if request.method == "GET":
+        token = request.GET.get("hub.verify_token", "")
+        if config and config.wa_verify_token and request.GET.get("hub.mode") == "subscribe" \
+                and hmac.compare_digest(token, config.wa_verify_token):
+            return HttpResponse(request.GET.get("hub.challenge", ""))
+        return HttpResponseForbidden("verify token mismatch")
+    if request.method != "POST":
+        return HttpResponse(status=405)
+
+    if config and config.wa_app_secret:
+        expected = "sha256=" + hmac.new(config.wa_app_secret.encode(), request.body, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, request.headers.get("X-Hub-Signature-256", "")):
+            return HttpResponseForbidden("bad signature")
+
+    try:
+        body = json.loads(request.body or b"{}")
+    except ValueError:
+        return JsonResponse({"status": "ignored"})
+
+    for entry in body.get("entry", []):
+        for change in entry.get("changes", []):
+            value = change.get("value", {})
+            names = {c.get("wa_id"): c.get("profile", {}).get("name", "") for c in value.get("contacts", [])}
+            for msg in value.get("messages", []):
+                phone = msg.get("from", "")
+                kind = msg.get("type", "")
+                if kind == "text":
+                    text = msg.get("text", {}).get("body", "")
+                elif kind == "button":
+                    text = msg.get("button", {}).get("text", "")
+                else:
+                    text = f"[{kind}]"
+                if WhatsAppMessage.objects.filter(wa_message_id=msg.get("id", "-")).exists():
+                    continue
+                WhatsAppMessage.objects.create(direction="IN", phone=phone, kind="incoming", text=text[:1000],
+                                               status="received", wa_message_id=msg.get("id", ""))
+                contact_msg = ContactMessage.objects.create(name=names.get(phone) or phone, contact=f"+{phone}",
+                                                            inquiry_type="WhatsApp", message=text)
+                _broadcast_contact_message(contact_msg)
+            for st in value.get("statuses", []):
+                errors = st.get("errors") or [{}]
+                WhatsAppMessage.objects.filter(wa_message_id=st.get("id", "-")).update(
+                    status=st.get("status", ""),
+                    error=(errors[0].get("error_data", {}).get("details") or errors[0].get("title") or "")[:500]
+                    if st.get("status") == "failed" else "")
+    return JsonResponse({"status": "ok"})
 
 def loyverse_webhook_key():
     """
@@ -1526,10 +1691,8 @@ def customer_forgot_password_request(request):
         request.session["reset_otp"] = otp_code
     
     # Send via WhatsApp
-    msg = f"كود إعادة تعيين كلمة المرور الخاص بك في وايت بيرد كافيه هو: {otp_code}. صالح لمدة 5 دقائق."
-    WhatsAppClient.send_via_ultramsg(phone_number, msg)
-    logger.info(f"[Forgot Password OTP] Sent to {phone_number}")
-    print(f"\n========================================\n[FORGOT PASSWORD OTP SENT]\nTo: {phone_number}\nStatus: Logged\n========================================\n")
+    if not WhatsAppClient.send_otp(phone_number, otp_code) and WhatsAppClient.is_configured():
+        return JsonResponse({"status": "error", "message": "تعذر إرسال رمز التحقق على الواتساب / Could not send the WhatsApp code"}, status=502)
     
     return JsonResponse({"status": "success", "message": "تم إرسال رمز التحقق بالواتساب / OTP has been sent via WhatsApp"})
 
@@ -1810,6 +1973,7 @@ def staff_user_manage(request):
     employee_name = request.POST.get("employee_name", "").strip()
     role = request.POST.get("role", "WAITER").strip()
     password = request.POST.get("password", "").strip()
+    phone_number = clean_phone_number(request.POST.get("phone_number", "").strip())
 
     if not username or not employee_name:
         return JsonResponse({"status": "error", "message": "اسم المستخدم واسم الموظف مطلوبان"}, status=400)
@@ -1824,6 +1988,7 @@ def staff_user_manage(request):
             user.username = username
             user.employee_name = employee_name
             user.role = role
+            user.phone_number = phone_number
             if password:
                 user.password_hash = make_password(password)
             user.save()
@@ -1840,6 +2005,7 @@ def staff_user_manage(request):
             username=username,
             employee_name=employee_name,
             role=role,
+            phone_number=phone_number,
             password_hash=make_password(password),
             is_active=True
         )

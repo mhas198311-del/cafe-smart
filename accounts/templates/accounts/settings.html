@@ -254,7 +254,7 @@
             <i class="fa-solid fa-cash-register"></i> ربط كاشير Loyverse POS
         </button>
         <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('whatsapp', this)">
-            <i class="fa-brands fa-whatsapp"></i> بوابة الواتساب والمحاكاة
+            <i class="fa-brands fa-whatsapp"></i> الواتساب
         </button>
         <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('loyalty', this)">
             <i class="fa-solid fa-gift"></i> نادي الولاء وسحوبات الجوائز
@@ -480,7 +480,7 @@
                         {% for u in staff_users %}
                         <tr id="staff-row-{{ u.id }}">
                             <td><b style="color:#fff;">{{ u.employee_name }}</b></td>
-                            <td><code>{{ u.username }}</code></td>
+                            <td><code>{{ u.username }}</code>{% if u.phone_number %}<div style="font-size:11px; color:var(--text-muted);" class="ltr-text">{{ u.phone_number }}</div>{% endif %}</td>
                             <td>
                                 {% if u.role == 'ADMIN' %}
                                     <span style="background:rgba(212,175,55,0.15); color:var(--primary); padding:3px 10px; border-radius:6px; font-weight:700; font-size:11px;">👑 مدير (Admin)</span>
@@ -494,7 +494,7 @@
                                     <button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" title="تغيير كلمة المرور" onclick="openChangePasswordModal('{{ u.id }}', '{{ u.employee_name|escapejs }}')">
                                         <i class="fa-solid fa-key"></i> كلمة السر
                                     </button>
-                                    <button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" title="تعديل البيانات" onclick="openStaffUserModal('edit', '{{ u.id }}', '{{ u.username|escapejs }}', '{{ u.employee_name|escapejs }}', '{{ u.role }}')">
+                                    <button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" title="تعديل البيانات" onclick="openStaffUserModal('edit', '{{ u.id }}', '{{ u.username|escapejs }}', '{{ u.employee_name|escapejs }}', '{{ u.role }}', '{{ u.phone_number|escapejs }}')">
                                         <i class="fa-solid fa-pen"></i>
                                     </button>
                                     <button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px; border-color:var(--danger); color:var(--danger);" title="حذف الموظف" onclick="deleteStaffUser('{{ u.id }}', '{{ u.employee_name|escapejs }}')">
@@ -550,24 +550,62 @@
         <!-- PANEL 5: WhatsApp & Simulator -->
         <div class="settings-panel" id="panel-whatsapp" style="display:none;">
             <div class="settings-section-title">
-                <i class="fa-brands fa-whatsapp" style="color:#25d366;"></i> بوابة رسائل الواتساب (UltraMsg API & المحاكاة)
+                <i class="fa-brands fa-whatsapp" style="color:#25d366;"></i> واتساب الرسمي (Meta)
             </div>
+            <p style="font-size:13px; color:var(--text-muted); margin:-6px 0 14px;">
+                {% if config.wa_phone_number_id and config.wa_access_token %}
+                    <span style="color:#22c55e;">● مربوط</span> — الرسائل بتنبعت من رقم الكافيه الرسمي.
+                {% else %}
+                    <span style="color:var(--danger);">● غير مربوط</span> — أكواد التسجيل ورسائل النقاط ما بتنبعت لحد ما تعبّي البيانات تحت وتحفظ.
+                {% endif %}
+            </p>
             <div class="settings-grid-2">
                 <div class="form-group">
-                    <label class="form-label">UltraMsg Instance ID (معرف الحساب)</label>
-                    <input type="text" name="ultramsg_instance_id" dir="ltr" class="form-input" value="{{ config.ultramsg_instance_id|default_if_none:'' }}" placeholder="e.g. instance12345">
+                    <label class="form-label">Phone number ID</label>
+                    <input type="text" name="wa_phone_number_id" dir="ltr" class="form-input" value="{{ config.wa_phone_number_id }}" placeholder="من WhatsApp ← API Setup">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">UltraMsg API Token (رمز الحساب)</label>
-                    <input type="text" name="ultramsg_token" dir="ltr" class="form-input" value="{{ config.ultramsg_token|default_if_none:'' }}" placeholder="e.g. tokensecret">
+                    <label class="form-label">WhatsApp Business Account ID</label>
+                    <input type="text" name="wa_business_account_id" dir="ltr" class="form-input" value="{{ config.wa_business_account_id }}" placeholder="من WhatsApp ← API Setup">
                 </div>
+                <div class="form-group">
+                    <label class="form-label">المفتاح الدائم (Access token)</label>
+                    <input type="password" name="wa_access_token" dir="ltr" class="form-input" autocomplete="off" placeholder="{% if config.wa_access_token %}محفوظ ✓ — اتركه فاضي إذا ما بدك تغيّره{% else %}الصق المفتاح هون{% endif %}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">App secret (اختياري، لحماية الـWebhook)</label>
+                    <input type="password" name="wa_app_secret" dir="ltr" class="form-input" autocomplete="off" placeholder="{% if config.wa_app_secret %}محفوظ ✓{% else %}من App settings ← Basic{% endif %}">
+                </div>
+            </div>
+
+            <div style="margin-top:18px; padding:16px; background:rgba(0,0,0,0.25); border-radius:12px; border:1px solid rgba(255,255,255,0.06);">
+                <h4 style="font-size:14px; color:var(--primary); margin:0 0 6px;">استقبال رسائل الزبائن (Webhook)</h4>
+                <p style="font-size:12.5px; color:var(--text-muted); margin:0 0 10px;">بالتطبيق على Meta: WhatsApp ← Configuration ← Edit، الصق القيمتين واشترك بـ messages.</p>
+                <div class="form-group">
+                    <label class="form-label">Callback URL</label>
+                    <input type="text" readonly dir="ltr" class="form-input" value="{{ whatsapp_webhook_url }}" onclick="this.select()">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Verify token</label>
+                    <input type="text" readonly dir="ltr" class="form-input" value="{{ config.wa_verify_token }}" onclick="this.select()">
+                </div>
+            </div>
+
+            <div style="margin-top:18px; padding:16px; background:rgba(0,0,0,0.25); border-radius:12px; border:1px solid rgba(255,255,255,0.06);">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
+                    <h4 style="font-size:14px; color:var(--primary); margin:0;">قوالب الرسائل وموافقة Meta</h4>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="submitWhatsAppTemplates()" style="padding:6px 12px; font-size:12px;">
+                        إرسال القوالب للموافقة
+                    </button>
+                </div>
+                <div id="waTemplatesBox" style="font-size:13px; color:var(--text-muted);">احفظ البيانات أولاً، بعدين بتظهر حالة القوالب هون.</div>
             </div>
 
             <!-- Simulation & Test Box -->
             <div style="margin-top:25px; padding:20px; background:rgba(0,0,0,0.35); border-radius:14px; border:1px solid rgba(255,255,255,0.06);">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                     <h4 style="font-size:14px; color:var(--primary); margin:0;">
-                        <i class="fa-solid fa-terminal"></i> سجل محاكاة رسائل الواتساب الصادرة (Live Messages Log)
+                        <i class="fa-solid fa-list"></i> آخر رسائل الواتساب
                     </h4>
                     <button type="button" class="btn btn-secondary btn-sm" onclick="refreshSettingsWhatsAppLogs()" style="padding:4px 10px; font-size:11px;">
                         <i class="fa-solid fa-rotate-right"></i> تحديث السجل
@@ -579,7 +617,7 @@
 
                 <!-- Test Sender -->
                 <div style="display:flex; gap:10px; margin-top:14px; align-items:center;">
-                    <input type="tel" dir="ltr" id="testPhoneInput" class="form-input" placeholder="رقم هاتف تجريبي (e.g. 0791112233)" style="flex:1;">
+                    <input type="tel" dir="ltr" id="testPhoneInput" class="form-input" placeholder="رقمك للتجربة (e.g. 0791112233)" style="flex:1;">
                     <button type="button" class="btn btn-secondary" onclick="sendTestWhatsApp()" style="padding:10px 16px; font-size:12.5px; white-space:nowrap;">
                         <i class="fa-brands fa-whatsapp"></i> إرسال رسالة اختبار
                     </button>
@@ -756,6 +794,11 @@
                 </select>
             </div>
 
+            <div class="form-group">
+                <label class="form-label">رقم الواتساب (لاستعادة كلمة المرور)</label>
+                <input type="tel" id="staffPhone" name="phone_number" dir="ltr" class="form-input" placeholder="مثال: 0791234567">
+            </div>
+
             <div class="form-group" id="staffPasswordGroup">
                 <label class="form-label" id="staffPasswordLabel">كلمة المرور</label>
                 <input type="password" id="staffPassword" name="password" class="form-input" placeholder="8 أحرف على الأقل" minlength="8" autocomplete="new-password">
@@ -843,6 +886,7 @@ function switchSettingsTab(tabKey, btn) {
 
     if (tabKey === 'whatsapp') {
         refreshSettingsWhatsAppLogs();
+        loadWhatsAppTemplates();
     }
 }
 
@@ -906,7 +950,8 @@ async function triggerLoyverseSyncFromSettings() {
 }
 
 // Staff Management
-function openStaffUserModal(mode, id, username, empName, role) {
+function openStaffUserModal(mode, id, username, empName, role, phone) {
+    document.getElementById('staffPhone').value = phone || '';
     if (mode === 'create') {
         document.getElementById('staffModalTitle').innerText = 'إضافة موظف / مدير جديد';
         document.getElementById('staffUserId').value = '';
@@ -1066,6 +1111,41 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btn) switchSettingsTab(tab, btn);
 });
 
+// WhatsApp templates
+const WA_TEMPLATE_STATUS = {APPROVED: ['موافق عليه', '#22c55e'], PENDING: ['بانتظار Meta', 'var(--primary)'], IN_APPEAL: ['بانتظار Meta', 'var(--primary)'], REJECTED: ['مرفوض', '#ef4444'], NOT_SUBMITTED: ['لم يُرسل بعد', 'var(--text-muted)']};
+function renderWhatsAppTemplates(rows) {
+    const box = document.getElementById('waTemplatesBox');
+    box.innerHTML = rows.map(t => {
+        const [label, color] = WA_TEMPLATE_STATUS[t.status] || [t.status, '#ef4444'];
+        return `<div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+            <span class="ltr-text">${t.name}</span><span style="color:${color};">${label}</span></div>`;
+    }).join('');
+}
+async function loadWhatsAppTemplates() {
+    const box = document.getElementById('waTemplatesBox');
+    if (!box) return;
+    try {
+        const res = await fetch('/api/staff/whatsapp/templates/');
+        const data = await res.json();
+        if (data.status === 'success') renderWhatsAppTemplates(data.templates);
+        else box.textContent = data.message;
+    } catch (e) { box.textContent = 'تعذر تحميل حالة القوالب'; }
+}
+async function submitWhatsAppTemplates() {
+    const box = document.getElementById('waTemplatesBox');
+    box.textContent = 'جاري الإرسال...';
+    try {
+        const res = await fetch('/api/staff/whatsapp/templates/submit/', {method: 'POST', headers: {'X-CSRFToken': getCookie('csrftoken') || ''}});
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast('انبعتت القوالب لـMeta، الموافقة عادة خلال دقائق لساعات', 'success');
+            loadWhatsAppTemplates();
+        } else {
+            box.textContent = data.message;
+        }
+    } catch (e) { box.textContent = 'تعذر الإرسال'; }
+}
+
 // WhatsApp Logs
 async function refreshSettingsWhatsAppLogs() {
     const box = document.getElementById('settingsWhatsAppLogBox');
@@ -1078,15 +1158,18 @@ async function refreshSettingsWhatsAppLogs() {
                 box.innerHTML = '<p style="color:var(--text-muted); text-align:center;">لا توجد رسائل واتساب مسجلة حالياً.</p>';
             } else {
                 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+                const statusAr = {pending: 'قيد الإرسال', sent: 'انبعتت', delivered: 'وصلت', read: 'انقرأت', failed: 'فشلت', received: 'واردة'};
+                const ok = s => ['sent', 'delivered', 'read', 'received'].includes(s);
                 box.innerHTML = data.logs.map(log => `
                     <div style="background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; margin-bottom:6px; border:1px solid rgba(255,255,255,0.05);">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                            <span style="font-weight:700; color:#25d366;" class="ltr-text">${esc(log.phone_number)}</span>
-                            <span style="font-size:10px; color:${String(log.status || '').includes('Real') ? '#22c55e' : 'var(--primary)'};">${esc(log.status)}</span>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:4px; gap:8px;">
+                            <span style="font-weight:700; color:#25d366;" class="ltr-text">${log.direction === 'IN' ? '⬇' : '⬆'} +${esc(log.phone_number)}</span>
+                            <span style="font-size:11px; color:${ok(log.status) ? '#22c55e' : (log.status === 'failed' ? '#ef4444' : 'var(--primary)')};">${esc(statusAr[log.status] || log.status)} · ${esc(log.time)}</span>
                         </div>
                         <div style="color:#ddd; line-height:1.4; white-space:pre-wrap;">${esc(log.message)}</div>
+                        ${log.error ? `<div style="color:#ef4444; font-size:11.5px; margin-top:4px;">${esc(log.error)}</div>` : ''}
                     </div>
-                `).reverse().join('');
+                `).join('');
             }
         }
     } catch(err) {
@@ -1102,7 +1185,6 @@ async function sendTestWhatsApp() {
     }
     const formData = new FormData();
     formData.append('phone_number', phone);
-    formData.append('message', 'تجربة إرسال رسالة من نظام وايت بيرد كافيه الذكي ☕✨');
 
     try {
         const res = await fetch('/api/staff/whatsapp/test-send/', {

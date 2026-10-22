@@ -6,6 +6,7 @@ class StaffUser(models.Model):
     password_hash = models.CharField(max_length=255, help_text="Argon2 or BCrypt hash")
     employee_name = models.CharField(max_length=255)
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='WAITER')
+    phone_number = models.CharField(max_length=20, blank=True, default="", help_text="WhatsApp number for password recovery")
     is_active = models.BooleanField(default=True)
     last_login = models.DateTimeField(auto_now=True)
 
@@ -43,7 +44,14 @@ class CafeConfiguration(models.Model):
     facebook_url = models.URLField(default="https://facebook.com/26cafe", blank=True, null=True)
     tiktok_url = models.URLField(default="https://tiktok.com/@26cafe", blank=True, null=True)
     
-    # UltraMsg WhatsApp Credentials
+    # WhatsApp Business Platform (Meta Cloud API)
+    wa_phone_number_id = models.CharField(max_length=50, blank=True, default="", help_text="Phone number ID from WhatsApp → API Setup")
+    wa_business_account_id = models.CharField(max_length=50, blank=True, default="", help_text="WhatsApp Business Account ID")
+    wa_access_token = models.TextField(blank=True, default="", help_text="Permanent system user token")
+    wa_app_secret = models.CharField(max_length=100, blank=True, default="", help_text="App secret, used to check that webhook calls come from Meta")
+    wa_verify_token = models.CharField(max_length=64, blank=True, default="", help_text="Webhook verify token entered in the Meta app")
+
+    # UltraMsg WhatsApp Credentials (no longer used)
     ultramsg_instance_id = models.CharField(max_length=50, blank=True, null=True, help_text="UltraMsg Instance ID (e.g. instance12345)")
     ultramsg_token = models.CharField(max_length=100, blank=True, null=True, help_text="UltraMsg API Token")
 
@@ -208,3 +216,21 @@ class StaffShift(models.Model):
 
     def __str__(self):
         return f"{self.staff.employee_name} {self.started_at:%Y-%m-%d %H:%M}"
+
+
+class WhatsAppMessage(models.Model):
+    """Every WhatsApp message the cafe sends or receives, with Meta's delivery status."""
+    direction = models.CharField(max_length=3, choices=[("OUT", "Sent"), ("IN", "Received")])
+    phone = models.CharField(max_length=20, db_index=True)
+    kind = models.CharField(max_length=20, help_text="otp, welcome, points, winner, reply, incoming")
+    text = models.TextField(blank=True, default="")
+    status = models.CharField(max_length=20, default="pending", help_text="pending, sent, delivered, read, failed, received")
+    error = models.CharField(max_length=500, blank=True, default="")
+    wa_message_id = models.CharField(max_length=128, blank=True, default="", db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.direction} {self.kind} {self.phone} ({self.status})"

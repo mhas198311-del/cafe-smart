@@ -122,12 +122,27 @@
             <span class="lang-en">Forgot username or password?</span>
         </button>
         <div class="forgot-box" id="forgotBox">
-            <div class="lang-ar">
-                <p><b>موظف:</b> اطلب من المدير يعيّن لك كلمة مرور جديدة من الإعدادات ← الموظفين، وبيقدر يشوفلك اسم المستخدم من نفس المكان.</p>
-                <p><b>المدير:</b> من لوحة Render ← Environment: اسم الدخول هو قيمة <code>INITIAL_ADMIN_USERNAME</code>. ولتعيين كلمة مرور جديدة أضف <code>ADMIN_RESET_PASSWORD</code> بكلمة جديدة (8 أحرف أو أكثر) واحفظ، وبعد دقيقتين ادخل فيها.</p>
+            <form id="forgotStep1" onsubmit="requestStaffReset(event)">
+                <p class="lang-ar" style="margin-top:0;">اكتب اسم المستخدم، وبيوصلك رمز على رقم الواتساب المسجّل على حسابك.</p>
+                <p class="lang-en" style="margin-top:0;">Enter your username and we'll send a code to the WhatsApp number on your account.</p>
+                <input type="text" name="username" class="form-input" placeholder="اسم المستخدم / Username" autocomplete="username" autocapitalize="none" required>
+                <button type="submit" class="btn btn-secondary" style="width:100%; margin-top:8px;">
+                    <span class="lang-ar">أرسل الرمز على الواتساب</span><span class="lang-en">Send WhatsApp code</span>
+                </button>
+            </form>
+            <form id="forgotStep2" onsubmit="resetStaffPassword(event)" style="display:none;">
+                <input type="text" name="otp" class="form-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="الرمز (6 أرقام) / Code" required>
+                <input type="password" name="new_password" class="form-input" style="margin-top:8px;" minlength="8" autocomplete="new-password" placeholder="كلمة مرور جديدة (8+) / New password" required>
+                <button type="submit" class="btn btn-primary" style="width:100%; margin-top:8px;">
+                    <span class="lang-ar">غيّر كلمة المرور</span><span class="lang-en">Change password</span>
+                </button>
+            </form>
+            <div class="lang-ar" style="margin-top:12px; font-size:12px; opacity:.85;">
+                <p><b>ما في رقم على حسابك؟</b> الموظف بيطلب من المدير يعيّنله كلمة جديدة من الإعدادات ← الموظفين.</p>
+                <p><b>المدير:</b> من لوحة Render ← Environment، اسم الدخول هو <code>INITIAL_ADMIN_USERNAME</code>، وبتقدر تعيّن كلمة جديدة بإضافة <code>ADMIN_RESET_PASSWORD</code>.</p>
             </div>
             <div class="lang-en">
-                <p><b>Staff:</b> ask the manager to set a new password from Settings → Staff, where your username is listed too.</p>
+                <p><b>No number on your account?</b> Staff ask the manager to set a new password from Settings → Staff.</p>
                 <p><b>Manager:</b> in Render → Environment your username is <code>INITIAL_ADMIN_USERNAME</code>. To set a new password add <code>ADMIN_RESET_PASSWORD</code> (8+ characters), save, and log in with it after about two minutes.</p>
             </div>
         </div>
@@ -145,6 +160,28 @@
 
 {% block extra_js %}
 <script>
+    async function requestStaffReset(e) {
+        e.preventDefault();
+        const res = await fetch('/api/staff/forgot-password/', {method: 'POST', body: new FormData(e.target)});
+        const data = await res.json();
+        showToast(data.message, data.status === 'success' ? 'success' : 'danger');
+        if (data.status === 'success') {
+            e.target.style.display = 'none';
+            document.getElementById('forgotStep2').style.display = 'block';
+        }
+    }
+
+    async function resetStaffPassword(e) {
+        e.preventDefault();
+        const res = await fetch('/api/staff/forgot-password/reset/', {method: 'POST', body: new FormData(e.target)});
+        const data = await res.json();
+        showToast(data.message, data.status === 'success' ? 'success' : 'danger');
+        if (data.status === 'success') {
+            document.getElementById('forgotBox').classList.remove('open');
+            e.target.reset();
+        }
+    }
+
     function togglePassword(btn) {
         const input = document.getElementById('staffPassword');
         const show = input.type === 'password';

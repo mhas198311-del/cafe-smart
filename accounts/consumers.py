@@ -132,14 +132,6 @@ class TableCallConsumer(AsyncWebsocketConsumer):
                 await trigger_staff_web_push(self.table_number, call_type)
             except Exception as e:
                 logger.error(f"Failed to trigger web push notification: {e}")
-
-            # Trigger WhatsApp group alert fallback immediately in background thread
-            try:
-                from asgiref.sync import sync_to_async
-                from cafe_smart.integrations import WhatsAppClient
-                await sync_to_async(WhatsAppClient.send_table_alert, thread_sensitive=False)(self.table_number, call_type)
-            except Exception as e:
-                logger.error(f"Failed to trigger fallback WhatsApp table alert: {e}")
         elif msg_type == 'accept_call' and self.role == 'staff':
             # Staff accepted a call. Notify the table client.
             table_num = str(data.get('table', ''))
