@@ -1138,8 +1138,20 @@ async function submitWhatsAppTemplates() {
         const res = await fetch('/api/staff/whatsapp/templates/submit/', {method: 'POST', headers: {'X-CSRFToken': getCookie('csrftoken') || ''}});
         const data = await res.json();
         if (data.status === 'success') {
-            showToast('انبعتت القوالب لـMeta، الموافقة عادة خلال دقائق لساعات', 'success');
-            loadWhatsAppTemplates();
+            const errors = Object.entries(data.templates).filter(([, s]) => String(s).startsWith('ERROR'));
+            await loadWhatsAppTemplates();
+            if (errors.length) {
+                errors.forEach(([name, s]) => {
+                    const line = document.createElement('div');
+                    line.className = 'ltr-text';
+                    line.style.cssText = 'color:#ef4444; padding-top:8px;';
+                    line.textContent = `${name}: ${s}`;
+                    box.appendChild(line);
+                });
+                showToast('في قوالب ما انقبلت، شوف السبب تحت', 'danger');
+            } else {
+                showToast('انبعتت القوالب لـMeta، الموافقة عادة خلال دقائق لساعات', 'success');
+            }
         } else {
             box.textContent = data.message;
         }
