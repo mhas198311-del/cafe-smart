@@ -1087,3 +1087,99 @@ class SecurityHardeningTests(TestCase):
         svg = SimpleUploadedFile("x.svg", b"<svg onload=alert(1)>", content_type="image/svg+xml")
         res = self.client.post("/api/staff/tab/manage/", {"action": "create", "name_ar": "x", "image_file": svg})
         self.assertEqual(res.status_code, 400)
+
+
+class CodeReviewFixesTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.admin = StaffUser.objects.create(username="boss", employee_name="Boss", role="ADMIN", password_hash=make_password("boss-pass1"))
+        self.waiter = StaffUser.objects.create(username="sami", employee_name="Sami", role="WAITER", password_hash=make_password("waiter-pass1"))
+        self.customer = CustomerProfile.objects.create(loyverse_customer_id="cust-9", phone_number="+962790000009", password_hash="x",
+                                                       full_name="Rana", birth_date=datetime.date(1990, 1, 1), marketing_opt_in=True)
+
+    def login(self, user, password):
+        client = Client()
+        client.post(reverse('accounts:staff_login_api'), {"username": user.username, "password": password})
+        return client
+
+    def test_waiter_cannot_change_menu_item_names_or_prices(self):
+        from menu.models import MenuCategory, MenuItem
+        cat = MenuCategory.objects.create(loyverse_category_id="c", pos_category_name="C", display_category_name="C")
+        item = MenuItem.objects.create(loyverse_id="i", pos_name="Latte", display_name="Latte", price=2, category=cat)
+        res = self.login(self.waiter, "waiter-pass1").post(reverse('menu:staff_menu_edit'), {"item_id": item.id, "price": "0.100"})
+        self.assertEqual(res.status_code, 401)
+        item.refresh_from_db()
+        self.assertEqual(float(item.price), 2)
+        res = self.login(self.admin, "boss-pass1").post(reverse('menu:staff_menu_edit'), {"item_id": item.id, "status": "BROKEN"})
+        self.assertEqual(res.status_code, 200)
+        item.refresh_from_db()
+        self.assertEqual(item.status, "AVAILABLE")
+
+    def test_refunded_receipt_leaves_the_draw(self):
+        url = reverse('accounts:loyverse_webhook') + f"?key={loyverse_webhook_key()}"
+        sale = {"receipts": [{"receipt_number": "1-100", "receipt_type": "SALE", "customer_id": "cust-9", "total_money": 5.0}]}
+        Client().post(url, data=sale, content_type="application/json")
+        from accounts.draws import month_entries, month_start
+        self.assertEqual(month_entries(month_start()).count(), 1)
+        partial = {"receipts": [{"receipt_number": "1-101", "receipt_type": "REFUND", "refund_for": "1-100", "total_money": 2.0}]}
+        Client().post(url, data=partial, content_type="application/json")
+        self.assertEqual(month_entries(month_start()).count(), 1)
+        full = {"receipts": [{"receipt_number": "1-102", "receipt_type": "REFUND", "refund_for": "1-100", "total_money": 5.0}]}
+        res = Client().post(url, data=full, content_type="application/json")
+        self.assertEqual(res.json()["results"][0]["entries_cancelled"], 1)
+        self.assertEqual(month_entries(month_start()).count(), 0)
+        self.assertEqual(RaffleTicket.objects.count(), 1)  # kept, only marked
+
+    def test_same_offer_is_not_sent_twice(self):
+        client = self.login(self.admin, "boss-pass1")
+
+        class Now:
+            def __init__(self, target, daemon=None, **kw):
+                self.target = target
+            def start(self):
+                self.target()
+        body = '{"text": "خصم على البارد", "tier": ""}'
+        with mock.patch("threading.Thread", Now), \
+             mock.patch("cafe_smart.integrations.WhatsAppClient.send_offer", return_value=True) as send:
+            first = client.post("/api/staff/offers/send/", body, content_type="application/json")
+            second = client.post("/api/staff/offers/send/", body, content_type="application/json")
+        self.assertEqual((first.status_code, second.status_code), (200, 409))
+        self.assertEqual(send.call_count, 1)
+
+    def test_registration_of_a_number_registered_meanwhile_is_refused(self):
+        client = Client()
+        session = client.session
+        session.update({"reg_phone_number": "+962790000009", "reg_full_name": "X", "reg_birth_date": "1990-01-01",
+                        "reg_password": "x", "reg_otp": "123456", "reg_otp_hash": make_password("123456"),
+                        "reg_otp_expiry": datetime.datetime.now().timestamp() + 300})
+        session.save()
+        res = client.post(reverse('accounts:customer_verify'), {"otp": "123456", "phone_number": "0790000009"})
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(CustomerProfile.objects.filter(phone_number="+962790000009").count(), 1)
+
+    def test_manager_cannot_demote_own_account_or_reuse_a_username(self):
+        client = self.login(self.admin, "boss-pass1")
+        res = client.post("/api/staff/users/manage/", {"user_id": self.admin.id, "username": "boss", "employee_name": "Boss", "role": "WAITER"})
+        self.assertEqual(res.status_code, 400)
+        res = client.post("/api/staff/users/manage/", {"user_id": self.waiter.id, "username": "BOSS", "employee_name": "Sami", "role": "WAITER"})
+        self.assertEqual(res.status_code, 400)
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.role, "ADMIN")
+
+    def test_sync_lists_menu_items_loyverse_no_longer_sells(self):
+        from menu.models import MenuCategory, MenuItem, MenuTab, MenuSection
+        cat = MenuCategory.objects.create(loyverse_category_id="c", pos_category_name="C", display_category_name="C")
+        section = MenuSection.objects.create(tab=MenuTab.objects.create(name_en="T", name_ar="ت"), name_en="S", name_ar="س")
+        MenuItem.objects.create(loyverse_id="old", pos_name="Old", display_name="قديم", price=1, category=cat, custom_section=section)
+        CafeConfiguration.objects.create(loyverse_api_token="tok")
+
+        def fake_get(url, **kw):
+            res = mock.Mock(status_code=200)
+            res.raise_for_status = lambda: None
+            res.json = lambda: {"categories": [{"id": "c", "name": "C"}]} if url.endswith("categories") else {"items": [
+                {"id": "new", "item_name": "New", "category_id": "c", "variants": [{"stores": [{"available_for_sale": True, "price": 2}]}]}]}
+            return res
+        with mock.patch("requests.get", fake_get):
+            res = self.login(self.admin, "boss-pass1").post("/api/staff/loyverse/sync/")
+        self.assertEqual(res.json()["not_for_sale"], ["قديم"])
+        self.assertEqual(MenuItem.objects.get(loyverse_id="old").status, "AVAILABLE")  # listed, never changed

@@ -1269,7 +1269,8 @@ async function syncLoyverseLive() {
         const data = await res.json();
         if (data.status === 'success') {
             showToast(data.message, 'success');
-            setTimeout(() => window.location.reload(), 1200);
+            // Leave time to read the list of items Loyverse no longer sells
+            setTimeout(() => window.location.reload(), (data.not_for_sale || []).length ? 9000 : 1200);
         } else {
             showToast(data.message, 'danger');
         }

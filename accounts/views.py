@@ -177,6 +177,9 @@ def customer_register_verify(request):
     if datetime.datetime.now().timestamp() > session_expiry:
         return JsonResponse({"status": "error", "message": "انتهت صلاحية الكود، اطلب كود جديد / The code expired, request a new one"}, status=400)
 
+    if CustomerProfile.objects.filter(phone_number=phone_number).exists():
+        return JsonResponse({"status": "error", "message": "الرقم مسجّل من قبل، سجّل دخول / This number is already registered, please log in"}, status=400)
+
     # Create profile
     birth_date = datetime.datetime.strptime(request.session["reg_birth_date"], "%Y-%m-%d").date()
     
@@ -1681,6 +1684,9 @@ def _process_loyverse_receipt(receipt_data):
             return {"receipt": receipt_number, "status": "ignored", "reason": "receipt not found in Loyverse"}
         receipt_data = verified
 
+    if receipt_data.get("receipt_type") == "REFUND" and receipt_data.get("refund_for"):
+        return _cancel_refunded_entry(receipt_number, receipt_data)
+
     if receipt_data.get("receipt_type", "SALE") != "SALE" or receipt_data.get("cancelled_at"):
         return {"receipt": receipt_number, "status": "ignored", "reason": "not a completed sale"}
 
@@ -1740,6 +1746,20 @@ def _process_loyverse_receipt(receipt_data):
         "total_points": customer.points_balance,
         "tickets_generated": num_tickets,
     }
+
+
+def _cancel_refunded_entry(receipt_number, refund):
+    """A fully refunded sale no longer counts in the monthly draw (a buy-and-refund can't earn an entry)."""
+    from accounts.models import RaffleTicket
+    original = str(refund.get("refund_for")).strip()
+    refunded = float(refund.get("total_money", 0) or 0)
+    cancelled = 0
+    for ticket in RaffleTicket.objects.filter(receipt_number=original, draw_status="PENDING"):
+        if refunded >= ticket.receipt_amount - 0.001:
+            ticket.draw_status = "REFUNDED"
+            ticket.save(update_fields=["draw_status"])
+            cancelled += 1
+    return {"receipt": receipt_number, "status": "refund", "refund_for": original, "entries_cancelled": cancelled}
 
 
 @csrf_exempt
@@ -2280,10 +2300,13 @@ def staff_loyverse_sync_live(request):
                 )
             synced_items += 1
 
-        return JsonResponse({
-            "status": "success",
-            "message": f"تمت المزامنة الحية بأمان! تم تحديث {synced_items} صنفاً دون المساس بتخصيصاتك وفلاترك السابقة."
-        })
+        message = f"تمت المزامنة الحية بأمان! تم تحديث {synced_items} صنفاً دون المساس بتخصيصاتك وفلاترك السابقة."
+        # Items still shown on the menu that Loyverse no longer sells: listed for the manager, never changed here
+        stale = list(MenuItem.objects.filter(custom_section__isnull=False).exclude(status="OUT_OF_STOCK")
+                     .exclude(loyverse_id__in=valid_for_sale_item_ids).values_list("display_name", flat=True)[:15])
+        if valid_for_sale_item_ids and stale:
+            message += f" ⚠️ أصناف ظاهرة بالمنيو ومش للبيع بلويفيرس: {'، '.join(stale)}. اخفيها أو احذفها إذا ما عاد بدك ياها."
+        return JsonResponse({"status": "success", "message": message, "not_for_sale": stale if valid_for_sale_item_ids else []})
     except PermissionError:
         return JsonResponse({
             "status": "error",
@@ -2370,6 +2393,10 @@ def staff_user_manage(request):
         return JsonResponse({"status": "error", "message": "كلمة مرور الموظف يجب أن تكون 8 أحرف على الأقل"}, status=400)
 
     if user_id:
+        if StaffUser.objects.filter(username__iexact=username).exclude(id=user_id).exists():
+            return JsonResponse({"status": "error", "message": "اسم المستخدم مسجل مسبقاً، اختر اسماً آخر"}, status=400)
+        if str(user_id) == str(request.session.get("staff_user_id")) and role != "ADMIN":
+            return JsonResponse({"status": "error", "message": "ما بتقدر تشيل صلاحية المدير عن حسابك وانت فاتح فيه"}, status=400)
         try:
             user = StaffUser.objects.get(id=user_id)
             user.username = username
@@ -2386,7 +2413,7 @@ def staff_user_manage(request):
     else:
         if not password:
             return JsonResponse({"status": "error", "message": "كلمة المرور مطلوبة للموظف الجديد"}, status=400)
-        if StaffUser.objects.filter(username=username).exists():
+        if StaffUser.objects.filter(username__iexact=username).exists():
             return JsonResponse({"status": "error", "message": "اسم المستخدم مسجل مسبقاً، اختر اسماً آخر"}, status=400)
 
         user = StaffUser.objects.create(
@@ -2557,6 +2584,11 @@ def staff_offers_send(request):
     recipients = [(r["customer"].phone_number, r["customer"].full_name) for r in _offer_audience(config, data.get("tier") or "")]
     if not recipients:
         return JsonResponse({"status": "error", "message": "ما في أعضاء موافقين على العروض بهالمجموعة"}, status=400)
+    import hashlib
+    from django.core.cache import cache
+    sent_key = "offer-sent:" + hashlib.sha256(f"{data.get('tier') or ''}|{text}".encode()).hexdigest()
+    if not cache.add(sent_key, 1, 600):
+        return JsonResponse({"status": "error", "message": "هالعرض انبعت لنفس المجموعة قبل أقل من 10 دقائق، فما بعتناه مرة ثانية"}, status=409)
 
     def send_all():
         from django.db import connection

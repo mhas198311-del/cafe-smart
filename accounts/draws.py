@@ -55,7 +55,9 @@ def month_entries(month):
     from .models import RaffleTicket
     start = timezone.make_aware(datetime.datetime.combine(month, datetime.time.min))
     end = timezone.make_aware(datetime.datetime.combine(next_month(month), datetime.time.min))
-    return RaffleTicket.objects.filter(created_at__gte=start, created_at__lt=end).select_related("customer")
+    # Entries of fully refunded receipts don't count
+    return RaffleTicket.objects.filter(created_at__gte=start, created_at__lt=end).exclude(
+        draw_status="REFUNDED").select_related("customer")
 
 
 def _ticket_json(ticket):

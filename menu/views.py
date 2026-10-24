@@ -110,8 +110,8 @@ def staff_menu_edit(request):
     Secure endpoint allowing staff/admin users to override MenuItems.
     Validates if they are authenticated as a StaffUser via session.
     """
-    # Verify session authentication for Staff
-    if not request.session.get("staff_user_id"):
+    # Names, prices and pictures are the manager's: waiters only switch items on/off (toggle-status)
+    if not request.session.get("staff_user_id") or request.session.get("staff_role") != "ADMIN":
         return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
 
     try:
@@ -157,7 +157,7 @@ def staff_menu_edit(request):
             item.description_en = data.get("description_en", "").strip()
         if image is not None:
             item.image = image
-        if status:
+        if status in dict(MenuItem.STATUS_CHOICES):
             item.status = status
         if price:
             new_price = Decimal(str(price))
