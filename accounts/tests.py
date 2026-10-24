@@ -1013,3 +1013,35 @@ class TableCardTemplateTests(TestCase):
         self.assertFalse(res.json()["layout"]["use"])
         self.config.refresh_from_db()
         self.assertFalse(self.config.table_card_template)
+
+
+
+class LoyverseWebhookRegisterTests(TestCase):
+    def setUp(self):
+        self.config = CafeConfiguration.objects.create(loyverse_api_token="tok")
+        session = self.client.session
+        session["staff_user_id"] = 1
+        session["staff_role"] = "ADMIN"
+        session.save()
+
+    def test_creates_the_webhook_once(self):
+        from accounts.views import loyverse_webhook_key
+        url = f"http://testserver/integrations/loyverse-webhook/?key={loyverse_webhook_key()}"
+        listed = mock.Mock(status_code=200, content=b"x", json=lambda: {"webhooks": []})
+        created = mock.Mock(status_code=200, content=b"x", json=lambda: {"id": "w1"})
+        with mock.patch("requests.request", side_effect=[listed, created]) as req:
+            res = self.client.post("/api/staff/loyverse/webhook/register/")
+        self.assertEqual(res.json()["result"], "created")
+        self.assertEqual(req.call_args_list[1].kwargs["json"], {"url": url, "type": "receipts.update", "status": "ENABLED"})
+
+        listed = mock.Mock(status_code=200, content=b"x", json=lambda: {"webhooks": [{"id": "w1", "url": url, "type": "receipts.update", "status": "ENABLED"}]})
+        with mock.patch("requests.request", return_value=listed) as req:
+            res = self.client.post("/api/staff/loyverse/webhook/register/")
+        self.assertEqual(res.json()["result"], "exists")
+        self.assertEqual(req.call_count, 1)
+
+    def test_loyverse_refusal_is_reported(self):
+        refused = mock.Mock(status_code=403, content=b"x", text="forbidden")
+        with mock.patch("requests.request", return_value=refused):
+            res = self.client.post("/api/staff/loyverse/webhook/register/")
+        self.assertEqual(res.status_code, 502)

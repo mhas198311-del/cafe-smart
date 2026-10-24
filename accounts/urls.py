@@ -61,6 +61,7 @@ urlpatterns = [
     path('api/staff/item/rename/', views.staff_item_rename, name='staff_item_rename'),
     path('api/staff/item/delete/', views.staff_item_delete, name='staff_item_delete'),
     path('api/staff/loyverse/sync/', views.staff_loyverse_sync_live, name='staff_loyverse_sync_live'),
+    path('api/staff/loyverse/webhook/register/', views.staff_loyverse_webhook_register, name='staff_loyverse_webhook_register'),
     path('api/staff/users/list/', views.staff_users_list, name='staff_users_list'),
     path('api/staff/users/manage/', views.staff_user_manage, name='staff_user_manage'),
     path('api/staff/users/delete/', views.staff_user_delete, name='staff_user_delete'),

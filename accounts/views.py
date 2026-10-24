@@ -537,7 +537,7 @@ def staff_settings_view(request):
         "config": config,
         "staff_users": staff_users,
         "rewards": LoyaltyReward.objects.all(),
-        "loyverse_webhook_url": request.build_absolute_uri(f"/integrations/loyverse-webhook/?key={loyverse_webhook_key()}"),
+        "loyverse_webhook_url": loyverse_webhook_url(request),
         "current_network_ip": network_ip(request),
         "whatsapp_webhook_url": f"https://{request.get_host()}/api/whatsapp/webhook/",
         "table_halls_json": json.dumps(config.table_halls or [], ensure_ascii=False),
@@ -1586,6 +1586,32 @@ def coordinates_from_maps_link(link):
             return coords
         url = requests.compat.urljoin(url, location)
     return None
+
+
+def loyverse_webhook_url(request):
+    url = request.build_absolute_uri(f"/integrations/loyverse-webhook/?key={loyverse_webhook_key()}")
+    # Behind Render's proxy the request can look like plain http; Loyverse needs the public https address
+    if url.startswith("http://") and request.get_host().split(":")[0] not in ("localhost", "127.0.0.1", "testserver"):
+        url = "https://" + url[len("http://"):]
+    return url
+
+
+@csrf_exempt
+@require_POST
+def staff_loyverse_webhook_register(request):
+    """Adds the receipts webhook in Loyverse with the cafe's API token, so the owner doesn't have to."""
+    from cafe_smart.integrations import LoyverseClient, LoyverseError
+    if not staff_is_admin(request):
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+    if not LoyverseClient.is_configured():
+        return JsonResponse({"status": "error", "message": "حط مفتاح لويفيرس (API token) بالإعدادات أول"}, status=400)
+    try:
+        result = LoyverseClient.ensure_receipts_webhook(loyverse_webhook_url(request))
+    except LoyverseError as e:
+        logger.error(f"Loyverse webhook registration failed: {e}")
+        return JsonResponse({"status": "error", "message": "لويفيرس رفض الطلب. يمكن المفتاح ما إله صلاحية الويب هوك، فضيفه يدوياً من لويفيرس.", "detail": str(e)[:300]}, status=502)
+    messages = {"created": "✓ انربط الويب هوك بلويفيرس", "enabled": "✓ الويب هوك كان موقف، شغّلناه", "exists": "✓ الويب هوك مربوط من قبل وشغال"}
+    return JsonResponse({"status": "success", "result": result, "message": messages[result]})
 
 
 def loyverse_webhook_key():
