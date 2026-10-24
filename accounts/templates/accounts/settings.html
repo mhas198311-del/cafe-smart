@@ -600,7 +600,10 @@ body { padding-bottom: 70px; }
                     عند تسجيل زبون في الموقع يُنشأ له حساب في لويفيرس بنفس رقم الهاتف (أو يُربط بحسابه الموجود)، ويصبح باركود بطاقته هو "كود الزبون" في لويفيرس.
                     رصيد النقاط يُقرأ من لويفيرس مباشرة، والاستبدال يتم عند الكاشير.
                 </p>
-                <label class="form-label">رابط الويب هوك (اختياري: لتذاكر السحب ورسالة النقاط على واتساب بعد كل فاتورة)</label>
+                <label class="form-label">الويب هوك: لويفيرس بيخبّر الموقع بكل فاتورة، فبتنحسب مشاركات السحب والمستويات وبتنبعت رسالة النقاط</label>
+                <button type="button" class="btn btn-primary btn-sm" id="loyverseHookBtn" onclick="registerLoyverseWebhook()" style="margin-bottom:10px;">🔗 اربط الويب هوك تلقائياً</button>
+                <div id="loyverseHookMsg" style="font-size:13px; margin-bottom:10px;"></div>
+                <label class="form-label" style="font-size:12px;">أو انسخ الرابط وضيفه بلويفيرس بإيدك:</label>
                 <div style="display:flex; gap:8px; align-items:center;">
                     <input type="text" readonly dir="ltr" id="loyverseWebhookUrl" class="form-input" value="{{ loyverse_webhook_url }}" onclick="this.select()">
                     <button type="button" class="btn btn-secondary btn-sm" onclick="copyWebhookUrl()"><i class="fa-solid fa-copy"></i> نسخ</button>
@@ -1206,6 +1209,20 @@ async function deleteReward(id) {
     } catch (err) {
         showToast('تعذر الاتصال بالسيرفر', 'danger');
     }
+}
+
+async function registerLoyverseWebhook() {
+    const btn = document.getElementById('loyverseHookBtn'), msg = document.getElementById('loyverseHookMsg');
+    btn.disabled = true; msg.style.color = 'var(--text-muted)'; msg.textContent = 'عم نربط...';
+    try {
+        const res = await fetch('/api/staff/loyverse/webhook/register/', {method: 'POST', headers: {'X-CSRFToken': getCookie('csrftoken') || ''}});
+        const data = await res.json();
+        msg.style.color = data.status === 'success' ? '#22c55e' : '#ef4444';
+        msg.textContent = data.message || 'ما زبط الربط';
+    } catch (e) {
+        msg.style.color = '#ef4444'; msg.textContent = 'تعذر الاتصال بالسيرفر';
+    }
+    btn.disabled = false;
 }
 
 function copyWebhookUrl() {

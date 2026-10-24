@@ -250,6 +250,19 @@ class LoyverseClient:
             raise LoyverseError(f"Loyverse API {method} {path} returned {res.status_code}: {res.text[:200]}")
         return res.json() if res.content else {}
 
+    @classmethod
+    def ensure_receipts_webhook(cls, url):
+        """Registers url as a receipts.update webhook in Loyverse (or re-enables it). Returns "created", "enabled" or "exists"."""
+        hooks = (cls._request("GET", "/webhooks") or {}).get("webhooks", [])
+        for hook in hooks:
+            if hook.get("url") == url and hook.get("type") == "receipts.update":
+                if hook.get("status") == "ENABLED":
+                    return "exists"
+                cls._request("POST", "/webhooks", json={"id": hook.get("id"), "url": url, "type": "receipts.update", "status": "ENABLED"})
+                return "enabled"
+        cls._request("POST", "/webhooks", json={"url": url, "type": "receipts.update", "status": "ENABLED"})
+        return "created"
+
     @staticmethod
     def _phone_key(phone):
         """Last 9 digits, so +962791112233 and 0791112233 match."""
