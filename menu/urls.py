@@ -14,5 +14,7 @@ urlpatterns = [
     path('api/staff/menu/edit/', views.staff_menu_edit, name='staff_menu_edit'),
     path('api/staff/tabs/edit/', views.staff_tab_edit, name='staff_tab_edit'),
     path('api/staff/sections/edit/', views.staff_section_edit, name='staff_section_edit'),
+    path('staff/menu/translate/', views.staff_menu_translate_view, name='staff_menu_translate'),
+    path('api/staff/menu/translate/', views.staff_menu_translate_save, name='staff_menu_translate_save'),
 ]
 

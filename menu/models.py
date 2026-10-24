@@ -42,6 +42,9 @@ class MenuItem(models.Model):
     pos_name = models.CharField(max_length=255, help_text="Original short name in POS")
     display_name = models.CharField(max_length=255, help_text="Premium display name for customers")
     description = models.TextField(blank=True, null=True, help_text="Marketing food/drink description")
+    # English for tourists; the English menu falls back to the Arabic when these are empty
+    name_en = models.CharField(max_length=255, blank=True, default="")
+    description_en = models.TextField(blank=True, default="")
     price = models.DecimalField(max_digits=10, decimal_places=3)
     price_locked = models.BooleanField(default=False, help_text="Price was set on the website; Loyverse sync leaves it alone")
     image = models.URLField(blank=True, null=True)
@@ -62,4 +65,12 @@ class MenuItem(models.Model):
 
     def __str__(self):
         return self.display_name
+
+    @property
+    def english_name(self):
+        return self.name_en or self.display_name or self.pos_name
+
+    @property
+    def english_description(self):
+        return self.description_en or self.description or ""
 

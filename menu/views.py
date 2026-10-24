@@ -151,6 +151,10 @@ def staff_menu_edit(request):
             item.display_name = display_name
         if description is not None:
             item.description = description
+        if data.get("name_en") is not None:
+            item.name_en = data.get("name_en", "").strip()
+        if data.get("description_en") is not None:
+            item.description_en = data.get("description_en", "").strip()
         if image is not None:
             item.image = image
         if status:
@@ -403,3 +407,65 @@ def staff_section_edit(request):
 
 
 
+
+
+def staff_menu_translate_view(request):
+    """English names for tourists: every item, tab and group side by side with its Arabic (manager only)."""
+    from django.shortcuts import redirect
+    from .models import MenuTab, MenuSection
+    from .translate import suggest_english
+    if not request.session.get("staff_user_id") or request.session.get("staff_role") != "ADMIN":
+        return redirect("accounts:staff_login_view")
+    items = MenuItem.objects.select_related("custom_section__tab").order_by(
+        "custom_section__tab__order_index", "custom_section__order_index", "custom_section_id", "order_index", "id")
+    rows = []
+    for item in items:
+        arabic = item.display_name or item.pos_name
+        rows.append({
+            "item": item,
+            "arabic": arabic,
+            "group": item.custom_section.name_ar if item.custom_section else "بانتظار التوزيع",
+            "name_en": item.name_en,
+            "suggested": "" if item.name_en else suggest_english(arabic),
+        })
+    groups = []
+    for tab in MenuTab.objects.order_by("order_index", "id"):
+        groups.append({"kind": "tab", "obj": tab, "suggested": "" if tab.name_en else suggest_english(tab.name_ar)})
+        for section in MenuSection.objects.filter(tab=tab).order_by("order_index", "id"):
+            groups.append({"kind": "section", "obj": section, "suggested": "" if section.name_en else suggest_english(section.name_ar)})
+    return render(request, "menu/translate.html", {
+        "rows": rows,
+        "groups": groups,
+        "missing": sum(1 for r in rows if not r["name_en"]),
+    })
+
+
+@csrf_exempt
+@require_POST
+def staff_menu_translate_save(request):
+    """Saves only the English fields sent; Arabic names and everything else stay as they are."""
+    from .models import MenuTab, MenuSection
+    if not request.session.get("staff_user_id") or request.session.get("staff_role") != "ADMIN":
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"status": "error", "message": "بيانات غير صحيحة"}, status=400)
+    saved = 0
+    with transaction.atomic():
+        for row in data.get("items", []):
+            item = MenuItem.objects.filter(id=row.get("id")).first()
+            if not item:
+                continue
+            item.name_en = str(row.get("name_en", "")).strip()[:255]
+            item.description_en = str(row.get("description_en", "")).strip()
+            item.save(update_fields=["name_en", "description_en"])
+            saved += 1
+        for kind, model in (("tabs", MenuTab), ("sections", MenuSection)):
+            for row in data.get(kind, []):
+                obj = model.objects.filter(id=row.get("id")).first()
+                if obj:
+                    obj.name_en = str(row.get("name_en", "")).strip()[:100]
+                    obj.save(update_fields=["name_en"])
+                    saved += 1
+    return JsonResponse({"status": "success", "message": f"انحفظت الترجمة ({saved})"})
