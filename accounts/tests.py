@@ -621,7 +621,7 @@ class CafeLocationTests(TestCase):
     def setUp(self):
         self.config = CafeConfiguration.objects.create()
         session = self.client.session
-        session["staff_user_id"] = 1
+        session["staff_user_id"] = StaffUser.objects.create(username="boss", employee_name="Boss", role="ADMIN", password_hash="x").id
         session["staff_role"] = "ADMIN"
         session.save()
 
@@ -923,7 +923,7 @@ class TableHallsTests(TestCase):
     def setUp(self):
         self.config = CafeConfiguration.objects.create(table_count=3)
         session = self.client.session
-        session["staff_user_id"] = 1
+        session["staff_user_id"] = StaffUser.objects.create(username="boss", employee_name="Boss", role="ADMIN", password_hash="x").id
         session["staff_role"] = "ADMIN"
         session.save()
 
@@ -969,7 +969,7 @@ class TableCardTemplateTests(TestCase):
         self.media.enable()
         self.config = CafeConfiguration.objects.create(table_count=2)
         session = self.client.session
-        session["staff_user_id"] = 1
+        session["staff_user_id"] = StaffUser.objects.create(username="boss", employee_name="Boss", role="ADMIN", password_hash="x").id
         session["staff_role"] = "ADMIN"
         session.save()
 
@@ -1020,7 +1020,7 @@ class LoyverseWebhookRegisterTests(TestCase):
     def setUp(self):
         self.config = CafeConfiguration.objects.create(loyverse_api_token="tok")
         session = self.client.session
-        session["staff_user_id"] = 1
+        session["staff_user_id"] = StaffUser.objects.create(username="boss", employee_name="Boss", role="ADMIN", password_hash="x").id
         session["staff_role"] = "ADMIN"
         session.save()
 
@@ -1045,3 +1045,45 @@ class LoyverseWebhookRegisterTests(TestCase):
         with mock.patch("requests.request", return_value=refused):
             res = self.client.post("/api/staff/loyverse/webhook/register/")
         self.assertEqual(res.status_code, 502)
+
+
+
+class SecurityHardeningTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.config = CafeConfiguration.objects.create(loyverse_api_token="keep-me")
+        self.admin = StaffUser.objects.create(username="boss", employee_name="Boss", role="ADMIN", password_hash="x")
+        session = self.client.session
+        session["staff_user_id"] = self.admin.id
+        session["staff_role"] = "ADMIN"
+        session.save()
+
+    def test_deactivated_or_demoted_staff_lose_access_at_once(self):
+        self.assertEqual(self.client.get("/staff/tables/qr/").status_code, 200)
+        self.admin.role = "WAITER"
+        self.admin.save()
+        self.assertEqual(self.client.get("/staff/tables/qr/").status_code, 302)
+        self.admin.role = "ADMIN"
+        self.admin.is_active = False
+        self.admin.save()
+        self.assertEqual(self.client.get("/staff/tables/qr/").status_code, 302)
+        self.assertNotIn("staff_user_id", self.client.session)
+
+    def test_fake_forwarded_for_does_not_reset_login_limits(self):
+        StaffUser.objects.create(username="w", employee_name="W", role="WAITER", password_hash="x")
+        codes = [self.client.post("/api/staff/login/", {"username": f"u{i}", "password": "bad"},
+                                  HTTP_X_FORWARDED_FOR=f"8.8.{i}.1, 93.184.216.34").status_code for i in range(22)]
+        self.assertEqual(codes[-1], 429)
+
+    def test_empty_loyverse_token_box_keeps_the_saved_token(self):
+        self.client.post("/api/staff/config/edit/", {"loyverse_api_token": "", "cafe_name": "White Bird Cafe"})
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.loyverse_api_token, "keep-me")
+        page = self.client.get("/staff/settings/").content.decode()
+        self.assertNotIn("keep-me", page)
+
+    def test_svg_upload_is_refused(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        svg = SimpleUploadedFile("x.svg", b"<svg onload=alert(1)>", content_type="image/svg+xml")
+        res = self.client.post("/api/staff/tab/manage/", {"action": "create", "name_ar": "x", "image_file": svg})
+        self.assertEqual(res.status_code, 400)

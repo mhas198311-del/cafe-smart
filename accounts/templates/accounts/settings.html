@@ -582,7 +582,7 @@ body { padding-bottom: 70px; }
             </div>
             <div class="form-group">
                 <label class="form-label">رمز الوصول من لويفيرس</label>
-                <input type="text" name="loyverse_api_token" dir="ltr" id="settingLoyverseToken" class="form-input" value="{{ config.loyverse_api_token|default_if_none:'' }}" placeholder="مثال: 3832fd4c96814ccabbb6ee9d197a1901">
+                <input type="password" name="loyverse_api_token" dir="ltr" id="settingLoyverseToken" class="form-input" autocomplete="off" placeholder="{% if config.loyverse_api_token %}محفوظ ✓، اتركه فاضي إذا ما بدك تغيّره{% else %}الصق رمز الوصول هون{% endif %}">
                 <div style="background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.25); border-radius:10px; padding:12px; margin-top:10px; font-size:12.5px; color:#22c55e;">
                     🛡️ <b>نظام المزامنة الآمن:</b> عند تشغيل المزامنة، يقوم النظام بسحب الأسعار والمنتجات المسموحة للبيع مع <b>الحفاظ الكامل 100% على كافة تعديلاتك وفلاترك وأقسامك السابقة</b> دون مساس!
                 </div>

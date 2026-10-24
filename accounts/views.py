@@ -1041,7 +1041,9 @@ def staff_config_edit(request):
         config.wa_access_token = request.POST["wa_access_token"].strip()
     if request.POST.get("wa_app_secret", "").strip():
         config.wa_app_secret = request.POST["wa_app_secret"].strip()
-    config.loyverse_api_token = request.POST.get("loyverse_api_token", config.loyverse_api_token)
+    # The token isn't sent back to the page, so an empty box keeps the saved one
+    if request.POST.get("loyverse_api_token", "").strip():
+        config.loyverse_api_token = request.POST["loyverse_api_token"].strip()
 
     if request.POST.get("clear_menu_cover_image") == "on":
         config.menu_cover_image = None
@@ -1200,7 +1202,7 @@ def staff_table_qr_view(request):
     total = sum(len(h["tables"]) for h in halls)
     return render(request, "accounts/table_qr.html", {
         "halls": halls, "total": total, "config": config,
-        "card_layout": card_layout(config), "card_layout_json": json.dumps(card_layout(config)),
+        "card_layout": card_layout(config), "card_layout_json": json.dumps(card_layout(config)).replace("<", "\\u003c"),
     })
 
 
@@ -1884,7 +1886,8 @@ def _uploaded_image_url(request, field, folder):
     upload = request.FILES.get(field)
     if not upload:
         return None
-    if not (upload.content_type or "").startswith("image/") or upload.size > 8 * 1024 * 1024:
+    if (not (upload.content_type or "").startswith("image/") or "svg" in (upload.content_type or "").lower()
+            or upload.name.lower().endswith((".svg", ".svgz", ".html", ".htm")) or upload.size > 8 * 1024 * 1024):
         raise ValueError("الملف لازم يكون صورة وحجمها أقل من 8 ميغا")
     return default_storage.url(default_storage.save(f"{folder}/{upload.name}", upload))
 

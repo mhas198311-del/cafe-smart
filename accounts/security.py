@@ -4,11 +4,11 @@ from django.core.cache import cache
 
 
 def client_ip(request):
-    """Visitor IP. Render puts the real address first in X-Forwarded-For."""
-    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.META.get("REMOTE_ADDR", "")
+    """
+    Visitor IP for rate limits. The start of X-Forwarded-For is whatever the visitor
+    sent, so it is read from the right like network_ip(): a fake header can't dodge limits.
+    """
+    return network_ip(request)
 
 
 def network_ip(request):
@@ -102,6 +102,27 @@ def is_limited(key, limit):
 
 def reset_limit(key):
     cache.delete(f"ratelimit:{key}")
+
+
+class StaffSessionMiddleware:
+    """
+    Re-checks the logged-in staff member on every request: a deleted or deactivated
+    account is logged out at once, and a role change applies immediately.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        staff_id = request.session.get("staff_user_id")
+        if staff_id:
+            from .models import StaffUser
+            staff = StaffUser.objects.filter(id=staff_id).only("id", "role", "is_active").first()
+            if not staff or not staff.is_active:
+                for key in [k for k in request.session.keys() if k.startswith("staff_")]:
+                    del request.session[key]
+            elif request.session.get("staff_role") != staff.role:
+                request.session["staff_role"] = staff.role
+        return self.get_response(request)
 
 
 def staff_is_admin(request):
