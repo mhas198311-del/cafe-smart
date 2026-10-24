@@ -1241,7 +1241,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // WhatsApp templates
-const WA_TEMPLATE_STATUS = {APPROVED: ['موافق عليه', '#22c55e'], PENDING: ['بانتظار Meta', 'var(--primary)'], IN_APPEAL: ['بانتظار Meta', 'var(--primary)'], REJECTED: ['مرفوض', '#ef4444'], NOT_SUBMITTED: ['لم يُرسل بعد', 'var(--text-muted)']};
+const WA_TEMPLATE_STATUS = {APPROVED: ['موافق عليه', '#22c55e'], PENDING: ['بانتظار ميتا', 'var(--primary)'], IN_APPEAL: ['بانتظار ميتا', 'var(--primary)'], REJECTED: ['مرفوض', '#ef4444'], NOT_SUBMITTED: ['لم يُرسل بعد', 'var(--text-muted)']};
 function renderWhatsAppTemplates(rows) {
     const box = document.getElementById('waTemplatesBox');
     box.innerHTML = rows.map(t => {
