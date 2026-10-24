@@ -756,7 +756,7 @@ class TableCallSecurityTests(TestCase):
 
         self.login(self.admin)
         sheet = self.client.get("/staff/tables/qr/")
-        self.assertEqual(len(sheet.context["tables"]), 20)
+        self.assertEqual(sheet.context["total"], 20)
         old = table_token(self.config, 1)
         self.assertContains(sheet, f"/table/1/?auth={old}")
         self.assertEqual(self.client.post("/api/staff/tables/rotate-code/").status_code, 200)
@@ -916,3 +916,46 @@ class BirthdayAndOfferTests(TestCase):
         self.client.post("/api/customer/marketing-opt-in/", {"opt_in": "0"})
         self.yes.refresh_from_db()
         self.assertFalse(self.yes.marketing_opt_in)
+
+
+
+class TableHallsTests(TestCase):
+    def setUp(self):
+        self.config = CafeConfiguration.objects.create(table_count=3)
+        session = self.client.session
+        session["staff_user_id"] = 1
+        session["staff_role"] = "ADMIN"
+        session.save()
+
+    def test_without_halls_tables_are_numbers(self):
+        self.assertEqual(self.config.table_groups()[0]["tables"], ["1", "2", "3"])
+
+    def test_halls_are_saved_and_printed_with_their_codes(self):
+        import json
+        halls = [{"code": "f", "name": "الصالة الأمامية", "start": 1, "count": 2},
+                 {"code": "V", "name": "VIP", "start": 10, "count": 2}]
+        res = self.client.post("/api/staff/config/edit/", {"table_count": "3", "table_halls": json.dumps(halls)})
+        self.assertEqual(res.status_code, 200)
+        self.config.refresh_from_db()
+        self.assertEqual([g["tables"] for g in self.config.table_groups()], [["F1", "F2"], ["V10", "V11"]])
+        page = self.client.get("/staff/tables/qr/").content.decode()
+        self.assertIn("/table/F2/?auth=", page)
+        self.assertIn("/table/V11/?auth=", page)
+        self.assertIn("الصالة الأمامية", page)
+
+    def test_bad_hall_code_is_refused(self):
+        import json
+        for halls in ([{"code": "ف", "name": "x", "count": 3}], [{"code": "F", "count": 2}, {"code": "F", "count": 1}]):
+            res = self.client.post("/api/staff/config/edit/", {"table_count": "3", "table_halls": json.dumps(halls)})
+            self.assertEqual(res.status_code, 400)
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.table_halls, [])
+
+    def test_table_page_opens_for_a_hall_table(self):
+        from accounts.security import table_token
+        self.config.table_halls = [{"code": "F", "name": "", "start": 1, "count": 20}]
+        self.config.table_calls_wifi_only = False
+        self.config.save()
+        res = self.client.get(f"/table/F15/?auth={table_token(self.config, 'F15')}")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("F15", res.content.decode())

@@ -104,6 +104,7 @@ class CafeConfiguration(models.Model):
     arrival_qr_required = models.BooleanField(default=False, help_text="Waiters confirm arrival by scanning the table's QR code")
     table_qr_secret = models.CharField(max_length=64, blank=True, default="", help_text="Secret in the table QR codes; change it to retire all printed codes")
     table_count = models.PositiveIntegerField(default=20, help_text="Number of tables to print QR codes for")
+    table_halls = models.JSONField(default=list, blank=True, help_text="Halls, each with a letter code: [{code, name, start, count}]; tables are named like F15")
     table_calls_wifi_only = models.BooleanField(default=True, help_text="Table calls only from the cafe Wi-Fi")
     hookah_staff = models.ForeignKey("StaffUser", on_delete=models.SET_NULL, blank=True, null=True, related_name="+", help_text="Gets the hookah call notifications")
     cafe_network_ips = models.TextField(blank=True, default="", help_text="Public internet addresses of the cafe Wi-Fi, one per line. Shifts can only start or end from these.")
@@ -114,6 +115,20 @@ class CafeConfiguration(models.Model):
     featured_item_desc = models.TextField(blank=True, null=True, default="جرب صنفنا الجديد المميز بنكهة الزعفران الفاخرة الممزوجة مع الإسبريسو العضوي.")
     featured_item_video = models.FileField(upload_to='videos/', blank=True, null=True, help_text="Promo video file for the new item")
     featured_item_special_price = models.DecimalField(max_digits=10, decimal_places=3, blank=True, null=True, help_text="Discounted price for trying the new item")
+
+    def table_groups(self):
+        """Tables grouped by hall, e.g. [{"name": "الصالة الأمامية", "code": "F", "tables": ["F1", ..., "F20"]}].
+        Without halls, plain numbers 1..table_count."""
+        groups = []
+        for hall in self.table_halls or []:
+            try:
+                start, count = int(hall.get("start") or 1), int(hall.get("count") or 0)
+            except (TypeError, ValueError, AttributeError):
+                continue
+            if hall.get("code") and count > 0:
+                groups.append({"name": hall.get("name", ""), "code": hall["code"],
+                               "tables": [f"{hall['code']}{n}" for n in range(start, start + count)]})
+        return groups or [{"name": "", "code": "", "tables": [str(n) for n in range(1, self.table_count + 1)]}]
 
     def __str__(self):
         return "Cafe Configuration"

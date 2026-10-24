@@ -21,19 +21,22 @@
     .card { background: #fff; border: 2px solid #1c140d; border-radius: 14px; padding: 16px 12px; text-align: center; break-inside: avoid; page-break-inside: avoid; }
     .card .brand { font-size: 13px; letter-spacing: 1px; color: #8a6d1d; font-weight: 700; }
     .card .num { font-size: 26px; font-weight: 700; margin: 4px 0 10px; }
+    .card .hall { font-size: 13px; color: #4b3b2d; margin: -6px 0 8px; }
+    .hall-title { max-width: 900px; margin: 22px auto 0; padding: 0 16px; font-size: 20px; }
     .card .qr { display: flex; justify-content: center; }
     .card .qr svg { width: 160px; height: 160px; }
     .card .hint { font-size: 13px; margin-top: 10px; color: #4b3b2d; }
     @media print {
         body { background: #fff; }
-        .toolbar, .note { display: none; }
+        .toolbar, .note, .hall-title { display: none; }
+        .sheet + .hall-title + .sheet, .sheet ~ .sheet { page-break-before: always; }
         .sheet { margin: 0; max-width: none; grid-template-columns: repeat(3, 1fr); }
     }
 </style>
 </head>
 <body>
 <div class="toolbar">
-    <h1>🪑 باركود الطاولات ({{ tables|length }} طاولة)</h1>
+    <h1>🪑 باركود الطاولات ({{ total }} طاولة)</h1>
     <div class="actions">
         <a class="btn-back" href="/staff/settings/">رجوع للإعدادات</a>
         <button class="btn-rotate" type="button" onclick="rotateCodes()">تغيير الرموز</button>
@@ -43,18 +46,22 @@
 <p class="note">
     كل باركود خاص بطاولته. الزبون بيمسحه وهو على شبكة الواي فاي تبع الكافيه فبيقدر ينادي الموظف أو يطلب الحساب أو الفحم.
     إذا حدا صوّر الباركود واستعمله من برا، اضغط "تغيير الرموز" واطبع من جديد: الرموز القديمة بتوقف فوراً.
-    عدد الطاولات بتغيّره من الإعدادات ← الموظفين ← نداءات الطاولات.
+    الصالات وعدد الطاولات بتغيّرهم من الإعدادات ← الموظفين ← نداءات الطاولات.
 </p>
+{% for hall in halls %}
+{% if hall.name or hall.code %}<h2 class="hall-title">{{ hall.name|default:"صالة" }} <span dir="ltr">({{ hall.code }})</span></h2>{% endif %}
 <div class="sheet">
-    {% for t in tables %}
+    {% for t in hall.tables %}
     <div class="card">
         <div class="brand">WHITE BIRD CAFE</div>
-        <div class="num">طاولة {{ t.number }}</div>
+        <div class="num">طاولة <span dir="ltr">{{ t.number }}</span></div>
+        {% if hall.name %}<div class="hall">{{ hall.name }}</div>{% endif %}
         <div class="qr" data-url="{{ t.url }}">{{ t.qr_svg }}</div>
         <div class="hint">امسح الباركود لطلب الخدمة<br>Scan for table service</div>
     </div>
     {% endfor %}
 </div>
+{% endfor %}
 <script>
     async function rotateCodes() {
         if (!confirm('متأكد؟ كل الباركودات المطبوعة حالياً رح توقف عن العمل ولازم تطبع الجديدة وتوزعها على الطاولات.')) return;
