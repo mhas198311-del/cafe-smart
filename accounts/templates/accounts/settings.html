@@ -327,6 +327,24 @@
                 </div>
             </div>
 
+            <div class="form-group">
+                <label class="form-label">موقع الكافيه على خرائط جوجل</label>
+                <input type="url" dir="ltr" name="maps_link" id="mapsLinkInput" class="form-input" placeholder="الصق رابط المشاركة من خرائط جوجل">
+                <div style="font-size:12px; color:var(--text-muted); margin-top:6px;">افتح الكافيه على خرائط جوجل، اضغط "مشاركة" وانسخ الرابط والصقه هون، وبعدين احفظ. زر "الاتجاهات" بالموقع بيودّي الزبائن على هاد المكان.</div>
+                <div class="settings-grid-2" style="margin-top:10px;">
+                    <div>
+                        <label class="form-label">خط العرض</label>
+                        <input type="text" dir="ltr" name="latitude" class="form-input" value="{{ config.latitude|stringformat:'f' }}">
+                    </div>
+                    <div>
+                        <label class="form-label">خط الطول</label>
+                        <input type="text" dir="ltr" name="longitude" class="form-input" value="{{ config.longitude|stringformat:'f' }}">
+                    </div>
+                </div>
+                <iframe title="موقع الكافيه" loading="lazy" style="width:100%; height:220px; border:0; border-radius:12px; margin-top:10px;"
+                        src="https://maps.google.com/maps?q={{ config.latitude|stringformat:'f' }},{{ config.longitude|stringformat:'f' }}&z=16&output=embed"></iframe>
+            </div>
+
             <div class="settings-grid-3">
                 <div class="form-group">
                     <label class="form-label"><i class="fa-brands fa-instagram" style="color:#e1306c;"></i> انستغرام</label>

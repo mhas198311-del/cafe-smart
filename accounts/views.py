@@ -916,13 +916,19 @@ def staff_config_edit(request):
     config.location_desc_en = request.POST.get("location_desc_en", config.location_desc_en)
     config.location_desc_ar = request.POST.get("location_desc_ar", config.location_desc_ar)
     
+    maps_link = (request.POST.get("maps_link") or "").strip()
+    if maps_link:
+        coords = coordinates_from_maps_link(maps_link)
+        if not coords:
+            return JsonResponse({"status": "error", "message": "ما قدرنا نقرأ الموقع من الرابط، تأكد إنه رابط من خرائط جوجل"}, status=400)
+        config.latitude, config.longitude = coords
     try:
-        if request.POST.get("latitude"):
+        if not maps_link and request.POST.get("latitude"):
             config.latitude = float(request.POST.get("latitude"))
-        if request.POST.get("longitude"):
+        if not maps_link and request.POST.get("longitude"):
             config.longitude = float(request.POST.get("longitude"))
     except (ValueError, TypeError):
-        return JsonResponse({"status": "error", "message": "Invalid latitude or longitude format"}, status=400)
+        return JsonResponse({"status": "error", "message": "خط العرض أو الطول لازم يكون رقم"}, status=400)
 
     config.opening_hours_en = request.POST.get("opening_hours_en", config.opening_hours_en)
     config.opening_hours_ar = request.POST.get("opening_hours_ar", config.opening_hours_ar)
@@ -1241,6 +1247,52 @@ def whatsapp_webhook(request):
                     error=(errors[0].get("error_data", {}).get("details") or errors[0].get("title") or "")[:500]
                     if st.get("status") == "failed" else "")
     return JsonResponse({"status": "ok"})
+
+MAPS_HOSTS = ("maps.app.goo.gl", "goo.gl", "google.com", "maps.google.com", "www.google.com", "google.jo", "www.google.jo")
+
+
+def _coordinates_in(text):
+    """Finds lat,lng in a Google Maps URL: the place pin (!3d…!4d…) first, then @lat,lng or q=lat,lng."""
+    import re
+    from urllib.parse import unquote
+    text = unquote(text)
+    for pattern in (r"!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)", r"@(-?\d+\.\d+),(-?\d+\.\d+)",
+                    r"[?&](?:q|query|ll|destination)=(-?\d+\.\d+),\s*(-?\d+\.\d+)"):
+        match = re.search(pattern, text)
+        if match:
+            lat, lng = float(match.group(1)), float(match.group(2))
+            if -90 <= lat <= 90 and -180 <= lng <= 180:
+                return lat, lng
+    return None
+
+
+def coordinates_from_maps_link(link):
+    """(lat, lng) from a Google Maps link, following share short links (maps.app.goo.gl) to the full URL."""
+    from urllib.parse import urlparse
+    import requests
+    url = link
+    if (urlparse(url).hostname or "").lower() not in MAPS_HOSTS:
+        return None
+    coords = _coordinates_in(url)
+    if coords:
+        return coords
+    for _ in range(5):
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https") or (parsed.hostname or "").lower() not in MAPS_HOSTS:
+            return None
+        try:
+            res = requests.get(url, allow_redirects=False, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
+        except requests.RequestException:
+            return None
+        location = res.headers.get("Location")
+        if not location:
+            return _coordinates_in(res.text[:200000])
+        coords = _coordinates_in(location)
+        if coords:
+            return coords
+        url = requests.compat.urljoin(url, location)
+    return None
+
 
 def loyverse_webhook_key():
     """

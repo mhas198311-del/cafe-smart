@@ -223,11 +223,11 @@
             <form id="contactUsForm" onsubmit="handleContactSubmit(event)">
                 <div class="form-group">
                     <label class="form-label" data-tr="lbl_your_name">Your Name</label>
-                    <input type="text" name="name" class="form-input" placeholder="e.g. Ahmad Salem" required>
+                    <input type="text" name="name" id="contactNameInput" class="form-input" placeholder="مثال: أحمد سالم" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label" data-tr="lbl_your_email">Email / Phone</label>
-                    <input type="text" name="contact" class="form-input" placeholder="e.g. name@example.com or +9627..." required>
+                    <input type="text" name="contact" id="contactInfoInput" class="form-input" placeholder="مثال: 0791234567" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label" data-tr="lbl_msg_type">Inquiry Type</label>
@@ -239,7 +239,7 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label" data-tr="lbl_msg_text">Message Text</label>
-                    <textarea name="message" class="form-textarea" rows="4" placeholder="How can we help you today?" required id="contactMsgText"></textarea>
+                    <textarea name="message" class="form-textarea" rows="4" placeholder="كيف يمكننا مساعدتك اليوم؟" required id="contactMsgText"></textarea>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width:100%;">
                     <i class="fa-solid fa-paper-plane" style="margin-right:4px;"></i> <span data-tr="btn_send">Send Message</span>
@@ -311,6 +311,10 @@
         if (textEl) {
             textEl.placeholder = lang === 'ar' ? 'كيف يمكننا مساعدتك اليوم؟' : 'How can we help you today?';
         }
+        const nameEl = document.getElementById('contactNameInput');
+        const infoEl = document.getElementById('contactInfoInput');
+        if (nameEl) nameEl.placeholder = lang === 'ar' ? 'مثال: أحمد سالم' : 'e.g. Ahmad Salem';
+        if (infoEl) infoEl.placeholder = lang === 'ar' ? 'مثال: 0791234567' : 'e.g. name@example.com or +962 79 123 4567';
     }
 
     window.addEventListener('langChanged', (e) => {

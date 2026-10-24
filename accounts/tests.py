@@ -529,7 +529,7 @@ class StaffPwaTests(TestCase):
         self.assertContains(login, 'rel="manifest"')
         self.assertContains(login, "installStaffApp()")
         self.assertContains(login, "togglePassword(this)")
-        self.assertContains(login, "ADMIN_RESET_PASSWORD")
+        self.assertNotContains(login, "ADMIN_RESET_PASSWORD")
 
 
 class WhatsAppCloudTests(TestCase):
@@ -615,3 +615,37 @@ class WhatsAppCloudTests(TestCase):
         self.client.post("/api/staff/config/edit/", {"wa_phone_number_id": "999", "wa_access_token": ""})
         self.config.refresh_from_db()
         self.assertEqual((self.config.wa_phone_number_id, self.config.wa_access_token), ("999", "tok"))
+
+
+class CafeLocationTests(TestCase):
+    def setUp(self):
+        self.config = CafeConfiguration.objects.create()
+        session = self.client.session
+        session["staff_user_id"] = 1
+        session["staff_role"] = "ADMIN"
+        session.save()
+
+    def test_coordinates_from_full_link(self):
+        from accounts.views import coordinates_from_maps_link
+        link = "https://www.google.com/maps/place/White+Bird/@30.19,35.73,17z/data=!3m1!4b1!4m6!3m5!8m2!3d30.19625!4d35.73412"
+        self.assertEqual(coordinates_from_maps_link(link), (30.19625, 35.73412))
+
+    def test_short_link_is_followed_and_saved(self):
+        redirect = mock.Mock(headers={"Location": "https://www.google.com/maps/place/x/@30.2,35.7,17z/data=!3d30.19625!4d35.73412"}, text="")
+        with mock.patch("requests.get", return_value=redirect) as get:
+            res = self.client.post("/api/staff/config/edit/", {"maps_link": "https://maps.app.goo.gl/AbC123"})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(get.call_args[0][0], "https://maps.app.goo.gl/AbC123")
+        self.config.refresh_from_db()
+        self.assertEqual((self.config.latitude, self.config.longitude), (30.19625, 35.73412))
+
+    def test_non_google_link_is_refused(self):
+        with mock.patch("requests.get") as get:
+            res = self.client.post("/api/staff/config/edit/", {"maps_link": "https://evil.example.com/@1.0,2.0"})
+        self.assertEqual(res.status_code, 400)
+        with mock.patch("requests.get") as get:
+            res = self.client.post("/api/staff/config/edit/", {"maps_link": "http://169.254.169.254/latest"})
+        get.assert_not_called()
+        self.assertEqual(res.status_code, 400)
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.latitude, CafeConfiguration().latitude)
