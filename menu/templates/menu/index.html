@@ -552,7 +552,7 @@
     <div class="menu-tabs-nav">
         {% for tab_info in tabs_data %}
             <button class="tab-nav-btn {% if forloop.first %}active{% endif %}" data-tab-id="{{ tab_info.tab.id }}" data-tab-image="{{ tab_info.tab.image|default_if_none:'' }}" onclick="setActiveTab('{{ tab_info.tab.id }}', this)">
-                <span class="lang-en">{{ tab_info.tab.name_en }}</span>
+                <span class="lang-en">{{ tab_info.tab.name_en|default:tab_info.tab.name_ar }}</span>
                 <span class="lang-ar">{{ tab_info.tab.name_ar }}</span>
                 <span class="tab-count" data-tab-count="{{ tab_info.tab.id }}"></span>
             </button>
@@ -617,7 +617,7 @@
                         <div class="section-banner" onclick="toggleSectionAccordion('{{ tab_info.tab.id }}-{{ forloop.counter }}', this)" 
                              style="background: linear-gradient(rgba(18, 12, 8, 0.45), rgba(18, 12, 8, 0.75)), url('{{ sec_info.section.banner_image }}') center/cover;">
                             <div class="banner-content">
-                                <h3 class="banner-title lang-en">{{ sec_info.section.name_en }}</h3>
+                                <h3 class="banner-title lang-en">{{ sec_info.section.name_en|default:sec_info.section.name_ar }}</h3>
                                 <h3 class="banner-title lang-ar">{{ sec_info.section.name_ar }}</h3>
                             </div>
                             <div class="accordion-chevron">
@@ -630,7 +630,7 @@
                             <div class="menu-grid">
                                 {% for item in sec_info.items %}
                                     <div class="menu-item-card glass-card" 
-                                         data-item-name="{{ item.display_name|lower }} {{ item.description|lower }}"
+                                         data-item-name="{{ item.display_name|lower }} {{ item.name_en|lower }} {{ item.description|default_if_none:''|lower }} {{ item.description_en|lower }}"
                                          data-is-hot="{{ item.is_hot|yesno:'true,false' }}"
                                          data-is-cold="{{ item.is_cold|yesno:'true,false' }}"
                                          data-is-coffee="{{ item.is_coffee|yesno:'true,false' }}"
@@ -638,12 +638,12 @@
                                          data-is-caffeine-free="{{ item.is_caffeine_free|yesno:'true,false' }}">
                                         
                                         <div class="item-header">
-                                            <h4 class="item-title">{{ item.display_name }}</h4>
+                                            <h4 class="item-title"><span class="lang-ar">{{ item.display_name }}</span><span class="lang-en">{{ item.english_name }}</span></h4>
                                             <span class="item-price">{{ item.price|floatformat:2 }} <small style="font-size:12px; font-weight:700;"><span class="lang-ar">د.أ</span><span class="lang-en">JD</span></small></span>
                                         </div>
                                         
-                                        {% if item.description %}
-                                            <p class="item-desc">{{ item.description }}</p>
+                                        {% if item.description or item.description_en %}
+                                            <p class="item-desc"><span class="lang-ar">{{ item.description|default:item.description_en }}</span><span class="lang-en">{{ item.english_description }}</span></p>
                                         {% endif %}
                                         
                                         {% if item.show_fresh_badge or item.status == 'AUTOMATIC' and item.loyverse_stock <= 3 %}

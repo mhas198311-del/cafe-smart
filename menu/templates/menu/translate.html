@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block title %}ترجمة المنيو - White Bird Cafe{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block extra_css %}
+.tr-wrap { max-width: 980px; margin: 30px auto 120px; padding: 0 16px; }
+.tr-wrap h2 { color: var(--primary); margin-bottom: 6px; }
+.tr-note { color: var(--text-muted); font-size: 14px; line-height: 1.9; margin-bottom: 18px; }
+.tr-section-title { margin: 26px 0 10px; font-size: 16px; color: #fff; }
+.tr-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start;
+    padding: 12px; border-radius: 12px; margin-bottom: 8px;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border-light);
+}
+.tr-ar b { color: #fff; font-size: 14.5px; }
+.tr-ar small { display: block; color: var(--text-muted); font-size: 12px; margin-top: 3px; }
+.tr-ar p { color: var(--text-muted); font-size: 12.5px; margin: 6px 0 0; }
+.tr-en input, .tr-en textarea {
+    width: 100%; padding: 9px 12px; border-radius: 9px; background: rgba(18,12,8,0.5);
+    border: 1px solid var(--border-light); color: #fff; font-family: var(--font-body); font-size: 14px;
+    direction: ltr; text-align: left;
+}
+.tr-en textarea { margin-top: 6px; resize: vertical; }
+.tr-en input.suggested { border-color: #e6995c; }
+.tr-badge { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 6px; margin-top: 5px; }
+.tr-badge.sugg { color: #e6995c; background: rgba(230,153,92,0.12); }
+.tr-badge.empty { color: var(--text-muted); background: rgba(255,255,255,0.05); }
+.tr-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; padding: 12px 16px;
+    background: rgba(13,10,7,0.96); border-top: 1px solid var(--border-gold);
+    display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+}
+@media (max-width: 640px) {
+    .tr-row { grid-template-columns: 1fr; }
+}
+{% endblock %}
+
+{% block content %}
+<div class="tr-wrap">
+    <a href="/staff/dashboard/" style="color:var(--primary); font-size:13px;">→ رجوع للوحة التحكم</a>
+    <h2>🌍 ترجمة المنيو للسياح</h2>
+    <p class="tr-note">
+        هون بتكتب الاسم الإنجليزي لكل صنف وتبويب ومجموعة. اللي بخانته إطار برتقالي هو <b>اقتراح</b> من قاموس أسماء المقاهي وما بينحفظ إلا لما تضغط حفظ، راجعه وعدّله إذا لازم.
+        الخانة الفاضية معناها إن الاسم ما انعرف، اكتبه إنت، ولحد ما تكتبه السائح بيشوف الاسم بالعربي.
+        {% if missing %}<br><b>{{ missing }}</b> صنف لسا بدون اسم إنجليزي.{% endif %}
+    </p>
+
+    <h3 class="tr-section-title">التبويبات والمجموعات</h3>
+    {% for g in groups %}
+    <div class="tr-row" data-kind="{{ g.kind }}" data-id="{{ g.obj.id }}">
+        <div class="tr-ar">
+            <b>{% if g.kind == 'section' %}↳ {% endif %}{{ g.obj.name_ar }}</b>
+            <small>{% if g.kind == 'tab' %}تبويب{% else %}مجموعة{% endif %}</small>
+        </div>
+        <div class="tr-en">
+            <input type="text" class="tr-name{% if g.suggested %} suggested{% endif %}" value="{{ g.obj.name_en|default:g.suggested }}" placeholder="English name">
+            {% if g.suggested %}<span class="tr-badge sugg">اقتراح، راجعه</span>{% elif not g.obj.name_en %}<span class="tr-badge empty">اكتب الاسم</span>{% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <p class="tr-note">ما في تبويبات لسا.</p>
+    {% endfor %}
+
+    <h3 class="tr-section-title">الأصناف ({{ rows|length }})</h3>
+    {% for r in rows %}
+    <div class="tr-row" data-kind="item" data-id="{{ r.item.id }}">
+        <div class="tr-ar">
+            <b>{{ r.arabic }}</b>
+            <small>{{ r.group }}</small>
+            {% if r.item.description %}<p>{{ r.item.description }}</p>{% endif %}
+        </div>
+        <div class="tr-en">
+            <input type="text" class="tr-name{% if r.suggested %} suggested{% endif %}" value="{{ r.name_en|default:r.suggested }}" placeholder="English name">
+            {% if r.suggested %}<span class="tr-badge sugg">اقتراح، راجعه</span>{% elif not r.name_en %}<span class="tr-badge empty">اكتب الاسم</span>{% endif %}
+            <textarea class="tr-desc" rows="2" placeholder="English description (optional)">{{ r.item.description_en }}</textarea>
+        </div>
+    </div>
+    {% empty %}
+    <p class="tr-note">ما في أصناف لسا. اعمل مزامنة لويفيرس من لوحة التحكم.</p>
+    {% endfor %}
+</div>
+
+<div class="tr-bar">
+    <button type="button" class="btn btn-primary" onclick="saveTranslations()"><i class="fa-solid fa-floppy-disk"></i> حفظ الترجمة</button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('.tr-name.suggested').forEach(input => {
+        input.addEventListener('input', () => input.classList.remove('suggested'));
+    });
+
+    async function saveTranslations() {
+        const payload = {items: [], tabs: [], sections: []};
+        document.querySelectorAll('.tr-row').forEach(row => {
+            const entry = {id: row.dataset.id, name_en: row.querySelector('.tr-name').value};
+            if (row.dataset.kind === 'item') {
+                entry.description_en = row.querySelector('.tr-desc').value;
+                payload.items.push(entry);
+            } else {
+                payload[row.dataset.kind === 'tab' ? 'tabs' : 'sections'].push(entry);
+            }
+        });
+        try {
+            const res = await fetch('/api/staff/menu/translate/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            showToast(data.message || 'تعذر الحفظ', data.status === 'success' ? 'success' : 'danger');
+            if (data.status === 'success') {
+                document.querySelectorAll('.tr-name.suggested').forEach(i => i.classList.remove('suggested'));
+                document.querySelectorAll('.tr-badge.sugg').forEach(b => b.remove());
+            }
+        } catch (e) {
+            showToast('تعذر الاتصال بالسيرفر', 'danger');
+        }
+    }
+</script>
+{% endblock %}

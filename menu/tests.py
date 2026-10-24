@@ -220,3 +220,48 @@ class MenuStructureDeleteTests(TestCase):
         self.assertFalse(MenuSection.objects.exists())
         item.refresh_from_db()
         self.assertIsNone(item.custom_section)
+
+
+class MenuEnglishTests(TestCase):
+    def setUp(self):
+        from accounts.models import StaffUser
+        admin = StaffUser.objects.create(username="a", employee_name="Boss", role="ADMIN", password_hash="x")
+        session = self.client.session
+        session["staff_user_id"] = admin.id
+        session["staff_role"] = "ADMIN"
+        session.save()
+        self.tab = MenuTab.objects.create(name_en="", name_ar="مشروبات")
+        self.section = MenuSection.objects.create(tab=self.tab, name_en="", name_ar="قهوة")
+        category = MenuCategory.objects.create(loyverse_category_id="c1", pos_category_name="Hot")
+        self.item = MenuItem.objects.create(loyverse_id="i1", pos_name="TC", display_name="قهوة تركية دبل",
+                                            description="محوجة", price=1, category=category, custom_section=self.section)
+
+    def test_english_menu_falls_back_to_arabic(self):
+        page = self.client.get("/menu/")
+        self.assertContains(page, '<span class="lang-en">قهوة تركية دبل</span>', html=False)
+        self.item.name_en = "Double Turkish Coffee"
+        self.item.save()
+        page = self.client.get("/menu/")
+        self.assertContains(page, '<span class="lang-en">Double Turkish Coffee</span>')
+        self.assertContains(page, '<span class="lang-ar">قهوة تركية دبل</span>')
+
+    def test_translate_page_suggests_and_saves_only_english(self):
+        page = self.client.get("/staff/menu/translate/")
+        self.assertContains(page, 'value="Double Turkish Coffee"')
+        res = self.client.post("/api/staff/menu/translate/", json.dumps({
+            "items": [{"id": self.item.id, "name_en": "Double Turkish Coffee", "description_en": "Cardamom"}],
+            "tabs": [{"id": self.tab.id, "name_en": "Drinks"}],
+            "sections": [{"id": self.section.id, "name_en": "Coffee"}],
+        }), content_type="application/json")
+        self.assertEqual(res.status_code, 200)
+        self.item.refresh_from_db()
+        self.tab.refresh_from_db()
+        self.assertEqual((self.item.name_en, self.item.description_en, self.item.display_name, self.item.price),
+                         ("Double Turkish Coffee", "Cardamom", "قهوة تركية دبل", 1))
+        self.assertEqual(self.tab.name_en, "Drinks")
+
+    def test_translate_page_is_manager_only(self):
+        self.client.session.flush()
+        self.client.logout()
+        self.assertEqual(self.client.get("/staff/menu/translate/").status_code, 302)
+        self.assertEqual(self.client.post("/api/staff/menu/translate/", "{}", content_type="application/json").status_code, 401)

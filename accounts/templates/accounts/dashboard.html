@@ -424,6 +424,11 @@
                 <button class="cms-sub-tab-btn" id="btnCmsStruct" onclick="switchCmsTab('struct')">
                     <i class="fa-solid fa-folder-tree"></i> هيكلة التبويبات والأقسام
                 </button>
+                {% if staff_role == 'ADMIN' %}
+                <a class="cms-sub-tab-btn" href="/staff/menu/translate/" style="text-decoration:none;">
+                    <i class="fa-solid fa-language"></i> ترجمة المنيو للسياح
+                </a>
+                {% endif %}
             </div>
 
             <!-- TAB 1: All Menu Items Data Table -->
@@ -454,7 +459,7 @@
                         </thead>
                         <tbody>
                             {% for item in menu_items %}
-                            <tr id="item-row-{{ item.id }}" class="dashboard-item-row" data-name="{{ item.display_name|default:item.pos_name|lower }} {{ item.custom_section.name_ar|default:'بانتظار التوزيع'|lower }}">
+                            <tr id="item-row-{{ item.id }}" class="dashboard-item-row" data-name-en="{{ item.name_en }}" data-desc-en="{{ item.description_en }}" data-name="{{ item.display_name|default:item.pos_name|lower }} {{ item.custom_section.name_ar|default:'بانتظار التوزيع'|lower }}">
                                 <td>
                                     <div style="font-weight:700; color:#fff;">{{ item.display_name|default:item.pos_name }}</div>
                                     <div style="font-size:11px; color:var(--text-muted);">POS: {{ item.pos_name }}</div>
@@ -680,8 +685,12 @@
             <input type="hidden" id="overrideItemId" name="item_id">
             
             <div class="form-group">
-                <label class="form-label">الاسم التسويقي الظاهر (Display Name)</label>
+                <label class="form-label">اسم الصنف بالعربي</label>
                 <input type="text" id="overrideDisplayName" name="display_name" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">اسم الصنف بالإنجليزي (للسياح، إذا فاضي بيظهر بالعربي)</label>
+                <input type="text" id="overrideNameEn" name="name_en" class="form-input" dir="ltr" placeholder="Spanish Latte">
             </div>
 
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
@@ -734,8 +743,12 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label">الوصف التسويقي (Description)</label>
+                <label class="form-label">الوصف بالعربي</label>
                 <textarea id="overrideDesc" name="description" class="form-textarea" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">الوصف بالإنجليزي</label>
+                <textarea id="overrideDescEn" name="description_en" class="form-textarea" rows="2" dir="ltr"></textarea>
             </div>
 
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:20px;">
@@ -783,11 +796,11 @@
                 <input type="text" id="tabModalNameAr" name="name_ar" class="form-input" required>
             </div>
             <div class="form-group">
-                <label class="form-label">Name (English)</label>
-                <input type="text" id="tabModalNameEn" name="name_en" class="form-input" required>
+                <label class="form-label">الاسم بالإنجليزي (للسياح، اختياري)</label>
+                <input type="text" id="tabModalNameEn" name="name_en" class="form-input" dir="ltr">
             </div>
             <div class="form-group">
-                <label class="form-label">ترتيب العرض (Order Index)</label>
+                <label class="form-label">ترتيب العرض</label>
                 <input type="number" id="tabModalOrder" name="order_index" class="form-input" value="0">
             </div>
             <div class="form-group">
@@ -816,8 +829,8 @@
                 <input type="text" id="sectionModalNameAr" name="name_ar" class="form-input" required>
             </div>
             <div class="form-group">
-                <label class="form-label">Group Name (English)</label>
-                <input type="text" id="sectionModalNameEn" name="name_en" class="form-input" required>
+                <label class="form-label">اسم المجموعة (إنجليزي للسياح، اختياري)</label>
+                <input type="text" id="sectionModalNameEn" name="name_en" class="form-input" dir="ltr">
             </div>
             <div class="form-group">
                 <label class="form-label">صورة المجموعة (البانر)</label>
@@ -950,6 +963,9 @@ function openOverrideModal(id, name, desc, image, status, price, orderIndex, cus
     document.getElementById('overrideItemId').value = id;
     document.getElementById('overrideDisplayName').value = name || '';
     document.getElementById('overrideDesc').value = desc || '';
+    const itemRow = document.getElementById(`item-row-${id}`);
+    document.getElementById('overrideNameEn').value = itemRow ? itemRow.getAttribute('data-name-en') : '';
+    document.getElementById('overrideDescEn').value = itemRow ? itemRow.getAttribute('data-desc-en') : '';
     document.getElementById('overridePrice').value = price || '';
     document.getElementById('overrideFollowLoyverse').checked = false;
     document.getElementById('overrideFollowLoyverseWrap').style.display = (priceLocked === 'true') ? 'block' : 'none';
