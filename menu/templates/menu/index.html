@@ -173,6 +173,42 @@
     box-shadow: 0 0 12px rgba(212, 175, 55, 0.15);
 }
 
+/* Live counts on filters and tabs */
+.filter-count, .tab-count {
+    display: inline-block;
+    min-width: 20px;
+    padding: 0 6px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+}
+.filter-tag-btn.active .filter-count, .tab-nav-btn.active .tab-count {
+    background: var(--primary);
+    color: #120c08;
+}
+.tab-count { margin-inline-start: 6px; }
+.filter-tag-btn.empty { display: none; }
+.tab-nav-btn.no-match { opacity: 0.4; }
+.clear-filters-btn {
+    display: none;
+    margin: -28px auto 28px;
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-family: var(--font-body);
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.clear-filters-btn.show { display: block; }
+@media (max-width: 768px) {
+    .clear-filters-btn { margin: -10px auto 16px; }
+}
+
 /* Accordion Sections */
 .section-wrapper {
     margin-bottom: 24px;
@@ -376,24 +412,20 @@
         right: 18px;
     }
 
-    /* Filters become one horizontally scrollable row */
+    /* Filters sit on two rows of three, so every option is visible without scrolling */
     .filter-tags-container {
-        flex-wrap: nowrap;
-        justify-content: flex-start;
-        overflow-x: auto;
-        margin: 0 -14px 20px;
-        padding: 2px 14px 6px;
-        scrollbar-width: none;
-    }
-
-    .filter-tags-container::-webkit-scrollbar {
-        display: none;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 20px;
     }
 
     .filter-tag-btn {
-        flex-shrink: 0;
-        padding: 7px 14px;
-        font-size: 13px;
+        justify-content: center;
+        padding: 7px 6px;
+        font-size: 12.5px;
+        gap: 5px;
+        min-width: 0;
     }
 
     .section-wrapper {
@@ -522,6 +554,7 @@
             <button class="tab-nav-btn {% if forloop.first %}active{% endif %}" data-tab-id="{{ tab_info.tab.id }}" data-tab-image="{{ tab_info.tab.image|default_if_none:'' }}" onclick="setActiveTab('{{ tab_info.tab.id }}', this)">
                 <span class="lang-en">{{ tab_info.tab.name_en }}</span>
                 <span class="lang-ar">{{ tab_info.tab.name_ar }}</span>
+                <span class="tab-count" data-tab-count="{{ tab_info.tab.id }}"></span>
             </button>
         {% endfor %}
     </div>
@@ -565,6 +598,10 @@
             <span class="lang-ar">بدون كافيين</span>
         </button>
     </div>
+    <button type="button" class="clear-filters-btn" id="clearFiltersBtn" onclick="clearMenuFilters()">
+        <span class="lang-ar">✕ مسح البحث والفلتر</span>
+        <span class="lang-en">✕ Clear search and filter</span>
+    </button>
 
     <!-- Menu Container -->
     <div id="menuContainer">
@@ -645,8 +682,12 @@
             </h3>
             <p style="color: var(--text-muted); margin-top: 8px;">
                 <span class="lang-en">Try adjusting your search query or filter selections.</span>
-                <span class="lang-ar">حاول تعديل كلمة البحث أو خيارات الفلترة المحددة.</span>
+                <span class="lang-ar">جرّب كلمة ثانية أو اختار فلتر غيره.</span>
             </p>
+            <button type="button" class="btn btn-secondary" style="margin-top:16px;" onclick="clearMenuFilters()">
+                <span class="lang-ar">عرض كل المنيو</span>
+                <span class="lang-en">Show the full menu</span>
+            </button>
         </div>
     </div>
 
@@ -776,6 +817,45 @@
         if (noItemsEl) {
             noItemsEl.style.display = totalVisibleItemsInTab === 0 ? 'block' : 'none';
         }
+        document.getElementById('clearFiltersBtn').classList.toggle('show', searchAllTabs);
+        updateMenuCounts(query);
+    }
+
+    function itemHasFilter(item, filter) {
+        return item.getAttribute(`data-is-${filter.replace('_', '-')}`) === 'true';
+    }
+
+    // Each filter shows how many items it has (for the current search), and each tab how many
+    // items match right now. Filters with nothing in them are hidden.
+    function updateMenuCounts(query) {
+        const items = [...document.querySelectorAll('.menu-item-card')];
+        const bySearch = items.filter(item => !query || (item.getAttribute('data-item-name') || '').includes(query));
+        document.querySelectorAll('.filter-tag-btn').forEach(btn => {
+            const filter = btn.getAttribute('data-filter');
+            const count = filter === 'all' ? bySearch.length : bySearch.filter(item => itemHasFilter(item, filter)).length;
+            let badge = btn.querySelector('.filter-count');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'filter-count';
+                btn.appendChild(badge);
+            }
+            badge.textContent = count;
+            btn.classList.toggle('empty', filter !== 'all' && count === 0 && !btn.classList.contains('active'));
+        });
+        const filtering = query !== '' || activeFilters.size > 0;
+        document.querySelectorAll('.tab-nav-btn').forEach(btn => {
+            const pane = document.getElementById(`tab-pane-${btn.getAttribute('data-tab-id')}`);
+            const paneItems = pane ? [...pane.querySelectorAll('.menu-item-card')] : [];
+            const count = filtering ? paneItems.filter(item => item.style.display !== 'none').length : paneItems.length;
+            const badge = btn.querySelector('.tab-count');
+            if (badge) badge.textContent = count;
+            btn.classList.toggle('no-match', filtering && count === 0);
+        });
+    }
+
+    function clearMenuFilters() {
+        document.getElementById('menuSearch').value = '';
+        toggleFilter('all', document.querySelector('.filter-tag-btn[data-filter="all"]'));
     }
 
     function toggleSectionAccordion(accordionId, bannerEl) {
