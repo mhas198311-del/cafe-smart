@@ -5,7 +5,7 @@ from pywebpush import webpush, WebPushException
 
 logger = logging.getLogger(__name__)
 
-def send_web_push_to_staff(title, body, url="/staff/app/", tag="table-alert", admins_only=False):
+def send_web_push_to_staff(title, body, url="/staff/app/", tag="table-alert", admins_only=False, staff_ids=None, include_admins=False):
     """
     Sends Web Push Notification to all subscribed staff devices.
     Triggered even when mobile is locked or browser is in the background.
@@ -15,6 +15,12 @@ def send_web_push_to_staff(title, body, url="/staff/app/", tag="table-alert", ad
     subscriptions = StaffPushSubscription.objects.filter(staff_user__isnull=False, staff_user__is_active=True)
     if admins_only:
         subscriptions = subscriptions.filter(staff_user__role="ADMIN")
+    elif staff_ids:
+        from django.db.models import Q
+        who = Q(staff_user_id__in=staff_ids)
+        if include_admins:
+            who |= Q(staff_user__role="ADMIN")
+        subscriptions = subscriptions.filter(who)
     subscriptions = list(subscriptions)
     if not subscriptions:
         return 0

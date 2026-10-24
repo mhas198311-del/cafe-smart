@@ -1046,6 +1046,14 @@ def staff_config_edit(request):
     # Launch Promotion settings
     config.featured_item_is_active = request.POST.get("featured_item_is_active") == "on"
     config.arrival_qr_required = request.POST.get("arrival_qr_required") == "on"
+    if "table_count" in request.POST:
+        config.table_calls_wifi_only = request.POST.get("table_calls_wifi_only") == "on"
+        try:
+            config.table_count = max(1, min(200, int(request.POST.get("table_count") or config.table_count)))
+        except ValueError:
+            return JsonResponse({"status": "error", "message": "عدد الطاولات لازم يكون رقم"}, status=400)
+        hookah_id = request.POST.get("hookah_staff") or None
+        config.hookah_staff = StaffUser.objects.filter(id=hookah_id, is_active=True).first() if hookah_id else None
     config.featured_item_name = request.POST.get("featured_item_name", config.featured_item_name)
     config.featured_item_desc = request.POST.get("featured_item_desc", config.featured_item_desc)
     
@@ -1091,13 +1099,58 @@ def mark_message_read(request):
 
 def table_service_view(request, table_number):
     """
-    Renders table services view: /table/<table_number>?auth=<secure_token>
+    Table services page, opened from the table's QR code: /table/<n>/?auth=<token>.
+    Without the code's token, or off the cafe Wi-Fi (when required), it explains instead.
     """
-    auth_token = request.GET.get("auth", "demo-token") # default for demo
+    from .models import CafeConfiguration
+    from .security import table_token_is_valid
+    config = CafeConfiguration.objects.first() or CafeConfiguration.objects.create()
+    auth_token = request.GET.get("auth", "")
+    if not table_token_is_valid(config, table_number, auth_token):
+        table_status = "no_code"
+    elif config.table_calls_wifi_only and not on_cafe_network(request, config):
+        table_status = "no_wifi"
+    else:
+        table_status = "ok"
     return render(request, "accounts/table_service.html", {
         "table_number": table_number,
-        "auth_token": auth_token
+        "auth_token": auth_token if table_status == "ok" else "",
+        "table_status": table_status,
+        "wifi_ssid": config.wifi_ssid,
+        "wifi_password": config.wifi_password,
     })
+
+
+def staff_table_qr_view(request):
+    """Printable sheet with a QR code for every table (manager only)."""
+    from .models import CafeConfiguration
+    from .security import table_token
+    if not staff_is_admin(request):
+        return redirect("accounts:staff_login_view")
+    config = CafeConfiguration.objects.first() or CafeConfiguration.objects.create()
+    base = request.build_absolute_uri("/").rstrip("/")
+    import segno
+    from django.utils.safestring import mark_safe
+    tables = []
+    for n in range(1, config.table_count + 1):
+        url = f"{base}/table/{n}/?auth={table_token(config, n)}"
+        qr_svg = mark_safe(segno.make(url, error="m").svg_inline(border=2, omitsize=True))
+        tables.append({"number": n, "url": url, "qr_svg": qr_svg})
+    return render(request, "accounts/table_qr.html", {"tables": tables, "config": config})
+
+
+@csrf_exempt
+@require_POST
+def staff_table_qr_rotate(request):
+    """New secret for the table codes: every printed code stops working and must be reprinted."""
+    import secrets
+    from .models import CafeConfiguration
+    if not staff_is_admin(request):
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+    config = CafeConfiguration.objects.first() or CafeConfiguration.objects.create()
+    config.table_qr_secret = secrets.token_urlsafe(18)
+    config.save(update_fields=["table_qr_secret"])
+    return JsonResponse({"status": "success"})
 
 @csrf_exempt
 @require_POST

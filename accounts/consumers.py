@@ -1,5 +1,6 @@
 import json
 import re
+from urllib.parse import unquote
 import datetime
 import logging
 from django.core.cache import cache
@@ -20,7 +21,15 @@ def trigger_staff_web_push(table_num, call_type):
     else:
         title = f"🚨 نداء نادل — طاولة {table_num}"
         body = f"طاولة رقم {table_num} تنادي الموظف / النادل للخدمة"
-    send_web_push_to_staff(title=title, body=body, url="/staff/app/", tag=f"table-{table_num}")
+    from .models import CafeConfiguration
+    config = CafeConfiguration.objects.select_related("hookah_staff").first()
+    hookah_staff = config.hookah_staff if config and call_type == 'hookah' else None
+    if hookah_staff and hookah_staff.is_active:
+        # Hookah calls ring the person in charge of hookahs (and the managers)
+        send_web_push_to_staff(title=title, body=body, url="/staff/app/", tag=f"table-{table_num}",
+                               staff_ids=[hookah_staff.id], include_admins=True)
+    else:
+        send_web_push_to_staff(title=title, body=body, url="/staff/app/", tag=f"table-{table_num}")
 
 TABLE_NUMBER_RE = re.compile(r'^[A-Za-z0-9_-]{1,10}$')
 # Seconds before the same table can send the same kind of call again
@@ -31,6 +40,17 @@ TABLE_CALL_COOLDOWN = 20
 def log_table_call(table_num, call_type):
     from .models import TableCall
     return TableCall.objects.create(table_number=table_num, call_type=call_type).id
+
+
+@database_sync_to_async
+def table_connection_allowed(scope, table_num, token):
+    """A table page may connect only with its QR code's token, and (when required) from the cafe Wi-Fi."""
+    from .models import CafeConfiguration
+    from .security import table_token_is_valid, ip_on_cafe_network, scope_network_ip
+    config = CafeConfiguration.objects.first() or CafeConfiguration.objects.create()
+    if not table_token_is_valid(config, table_num, token):
+        return False
+    return not config.table_calls_wifi_only or ip_on_cafe_network(scope_network_ip(scope), config)
 
 
 @database_sync_to_async
@@ -59,7 +79,8 @@ class TableCallConsumer(AsyncWebsocketConsumer):
             if not await session_staff_user_id(self.scope):
                 await self.close()
                 return
-        elif not TABLE_NUMBER_RE.match(self.table_number):
+        elif not TABLE_NUMBER_RE.match(self.table_number) or not await table_connection_allowed(
+                self.scope, self.table_number, unquote(self.params.get('auth', ''))):
             await self.close()
             return
 

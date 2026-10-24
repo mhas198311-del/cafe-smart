@@ -261,6 +261,30 @@
         <p style="font-size:14px; color:var(--text-muted);" data-tr="table_subtitle">خدمات الخدمة الذكية للطاولة</p>
     </div>
 
+    {% if table_status != 'ok' %}
+    <div class="table-service-card">
+        <div style="font-size:42px; margin-bottom:10px;">{% if table_status == 'no_wifi' %}📶{% else %}📷{% endif %}</div>
+        {% if table_status == 'no_wifi' %}
+            <h3 style="color:#fff; margin:0 0 10px;"><span class="lang-ar">اتصل بواي فاي الكافيه</span><span class="lang-en">Connect to the café Wi-Fi</span></h3>
+            <p style="color:var(--text-muted); line-height:1.8; margin:0 0 14px;">
+                <span class="lang-ar">نداء الطاولة بيشتغل بس وإنت شابك على واي فاي الكافيه. اتصل بالشبكة وامسح الكود مرة ثانية.</span>
+                <span class="lang-en">Table service works only on the café Wi-Fi. Connect, then scan the code again.</span>
+            </p>
+            {% if wifi_ssid %}
+            <div dir="ltr" style="background:rgba(255,255,255,0.04); border:1px solid rgba(195,158,103,0.25); border-radius:14px; padding:12px; line-height:2;">
+                <div><span class="lang-ar">الشبكة:</span><span class="lang-en">Network:</span> <b>{{ wifi_ssid }}</b></div>
+                {% if wifi_password %}<div><span class="lang-ar">كلمة السر:</span><span class="lang-en">Password:</span> <b>{{ wifi_password }}</b></div>{% endif %}
+            </div>
+            {% endif %}
+        {% else %}
+            <h3 style="color:#fff; margin:0 0 10px;"><span class="lang-ar">امسح الكود على طاولتك</span><span class="lang-en">Scan the code on your table</span></h3>
+            <p style="color:var(--text-muted); line-height:1.8; margin:0;">
+                <span class="lang-ar">خدمة النداء بتفتح بس من الباركود الموجود على الطاولة داخل الكافيه.</span>
+                <span class="lang-en">Table service opens only from the QR code on your table inside the café.</span>
+            </p>
+        {% endif %}
+    </div>
+    {% else %}
     <div class="table-service-card">
         
         <!-- COUNTDOWN TIMER CONTAINER -->
@@ -324,6 +348,7 @@
         </div>
 
     </div>
+    {% endif %}
 
     <!-- Bottom Shortcuts -->
     <div style="display:flex; justify-content:center; gap:20px; margin-top:20px;">
@@ -426,6 +451,7 @@
 
     // Start 60-second countdown on direct URL load
     window.addEventListener('DOMContentLoaded', () => {
+        if (!document.getElementById('countdownSecsPage')) return;
         initWebSocket();
         
         let secondsLeft = 60;

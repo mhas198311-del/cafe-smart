@@ -486,6 +486,32 @@
                 </p>
             </div>
 
+            <div class="form-group" style="background:rgba(212,175,55,0.06); padding:14px; border-radius:10px; border:1px solid rgba(212,175,55,0.25); margin-bottom:18px;">
+                <div style="font-weight:700; color:#fff; margin-bottom:8px;">🪑 نداءات الطاولات</div>
+                <label style="display:flex; align-items:center; gap:10px; cursor:pointer; margin-bottom:6px;">
+                    <input type="checkbox" name="table_calls_wifi_only" {% if config.table_calls_wifi_only %}checked{% endif %}>
+                    النداء بس من واي فاي الكافيه
+                </label>
+                <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px;">
+                    لما يكون شغال، الزبون لازم يكون شابك على واي فاي الكافيه ليقدر ينادي، فما حدا بيقدر ينادي من برا. صفحة الطاولة بتعرضله اسم الشبكة وكلمة السر.
+                </p>
+                <div class="settings-grid-2">
+                    <div>
+                        <label class="form-label">عدد الطاولات</label>
+                        <input type="number" name="table_count" min="1" max="200" class="form-input" value="{{ config.table_count }}">
+                    </div>
+                    <div>
+                        <label class="form-label">المسؤول عن الأراجيل</label>
+                        <select name="hookah_staff" class="form-input">
+                            <option value="">كل الموظفين</option>
+                            {% for u in staff_users %}{% if u.is_active %}<option value="{{ u.id }}" {% if config.hookah_staff_id == u.id %}selected{% endif %}>{{ u.employee_name }}</option>{% endif %}{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <p style="font-size:12px; color:var(--text-muted); margin:8px 0 12px;">نداء الأراجيل بيرن على جوال المسؤول والمدير بس. احفظ الإعدادات بعد أي تغيير.</p>
+                <a href="{% url 'accounts:staff_table_qr' %}" target="_blank" class="btn btn-primary btn-sm">طباعة باركود الطاولات</a>
+            </div>
+
             <div style="overflow-x:auto; border-radius:12px; border:1px solid rgba(255,255,255,0.08);">
                 <table class="staff-table" id="staffUsersTable">
                     <thead>
