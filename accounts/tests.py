@@ -959,3 +959,57 @@ class TableHallsTests(TestCase):
         res = self.client.get(f"/table/F15/?auth={table_token(self.config, 'F15')}")
         self.assertEqual(res.status_code, 200)
         self.assertIn("F15", res.content.decode())
+
+
+
+class TableCardTemplateTests(TestCase):
+    def setUp(self):
+        import tempfile
+        self.media = self.settings(MEDIA_ROOT=tempfile.mkdtemp())
+        self.media.enable()
+        self.config = CafeConfiguration.objects.create(table_count=2)
+        session = self.client.session
+        session["staff_user_id"] = 1
+        session["staff_role"] = "ADMIN"
+        session.save()
+
+    def tearDown(self):
+        self.media.disable()
+
+    def png(self):
+        import io
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        buf = io.BytesIO()
+        Image.new("RGB", (20, 30), (255, 255, 255)).save(buf, "PNG")
+        return SimpleUploadedFile("card.png", buf.getvalue(), content_type="image/png")
+
+    def test_template_and_layout_are_saved_and_clamped(self):
+        import json
+        layout = {"use": True, "width_cm": 99, "qr": {"x": 40, "y": 60, "size": 30},
+                  "num": {"x": 50, "y": 85, "w": 30, "h": 8, "color": "red", "bg": "#112233", "prefix": "Table"}}
+        res = self.client.post("/api/staff/tables/card-template/", {"template": self.png(), "layout": json.dumps(layout)})
+        self.assertEqual(res.status_code, 200)
+        self.config.refresh_from_db()
+        self.assertTrue(self.config.table_card_template)
+        saved = self.config.table_card_layout
+        self.assertEqual(saved["width_cm"], 30)
+        self.assertEqual((saved["qr"]["x"], saved["qr"]["size"]), (40, 30))
+        self.assertEqual((saved["num"]["color"], saved["num"]["bg"], saved["num"]["w"]), ("#000000", "#112233", 30))
+        page = self.client.get("/staff/tables/qr/").content.decode()
+        self.assertIn(self.config.table_card_template.url, page)
+
+    def test_non_image_is_refused_and_staff_need_admin(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        res = self.client.post("/api/staff/tables/card-template/", {"template": SimpleUploadedFile("x.pdf", b"%PDF", content_type="application/pdf")})
+        self.assertEqual(res.status_code, 400)
+        self.client.logout()
+        self.assertEqual(self.client.post("/api/staff/tables/card-template/", {"remove": "1"}).status_code, 401)
+
+    def test_remove_turns_template_printing_off(self):
+        import json
+        self.client.post("/api/staff/tables/card-template/", {"template": self.png(), "layout": json.dumps({"use": True})})
+        res = self.client.post("/api/staff/tables/card-template/", {"remove": "1"})
+        self.assertFalse(res.json()["layout"]["use"])
+        self.config.refresh_from_db()
+        self.assertFalse(self.config.table_card_template)

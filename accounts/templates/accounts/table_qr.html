@@ -32,6 +32,39 @@
         .sheet + .hall-title + .sheet, .sheet ~ .sheet { page-break-before: always; }
         .sheet { margin: 0; max-width: none; grid-template-columns: repeat(3, 1fr); }
     }
+    /* Printing on the owner's own design (uploaded from Canva): the QR code and number are placed by percentages */
+    .card .bg { display: none; }
+    body.templ .sheet, .templ-preview .sheet { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4cm; }
+    body.templ .card, .templ-preview .card { position: relative; width: var(--card-w); max-width: 100%; padding: 0; border: none; border-radius: 0; container-type: inline-size; background: none; }
+    body.templ .card .bg, .templ-preview .card .bg { display: block; width: 100%; height: auto; }
+    body.templ .card .brand, body.templ .card .hall, body.templ .card .hint, .templ-preview .card .brand, .templ-preview .card .hall, .templ-preview .card .hint { display: none; }
+    body.templ .card .qr, .templ-preview .card .qr { position: absolute; left: var(--qx); top: var(--qy); width: var(--qs); aspect-ratio: 1; transform: translate(-50%, -50%); background: #fff; }
+    body.templ .card .qr svg, .templ-preview .card .qr svg { width: 100%; height: 100%; display: block; }
+    body.templ .card .num, .templ-preview .card .num { position: absolute; left: var(--nx); top: var(--ny); transform: translate(-50%, -50%); margin: 0; white-space: nowrap; font-size: calc(var(--ns) * 1cqw); color: var(--nc); }
+    body.templ.num-box .card .num, body.num-box .templ-preview .card .num { width: var(--nw); height: var(--nh); background: var(--nb); display: flex; align-items: center; justify-content: center; gap: 0.25em; }
+    body.templ.no-num .card .num, body.no-num .templ-preview .card .num { display: none; }
+    body.templ .card .num .prefix:empty, .templ-preview .card .num .prefix:empty { display: none; }
+    .editor { display: none; max-width: 900px; margin: 14px auto 0; padding: 16px; background: #fff; border: 2px solid #d4af37; border-radius: 14px; }
+    .editor.open { display: block; }
+    .editor h2 { margin: 0 0 6px; font-size: 18px; }
+    .editor p { margin: 0 0 10px; font-size: 14px; line-height: 1.8; color: #4b3b2d; }
+    .editor .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 10px 0; font-size: 14px; }
+    .editor .row label { display: flex; align-items: center; gap: 6px; }
+    .editor input[type=range] { width: 140px; }
+    .editor input[type=number], .editor input[type=text] { width: 90px; padding: 6px 8px; border: 1px solid #c9b79c; border-radius: 6px; font-family: inherit; }
+    .editor .pick { background: #120c08; color: #fff; padding: 9px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .editor .pick input { display: none; }
+    .editor .btn-save { background: #d4af37; color: #120c08; font-weight: 700; border: none; border-radius: 8px; padding: 10px 18px; font-family: inherit; font-size: 15px; cursor: pointer; }
+    .editor .btn-remove { background: none; border: 1px solid #7f1d1d; color: #7f1d1d; border-radius: 8px; padding: 8px 12px; font-family: inherit; cursor: pointer; }
+    .preview-wrap { display: flex; justify-content: center; margin-top: 12px; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0 / 16px 16px; padding: 12px; border-radius: 10px; }
+    .preview-wrap .card { width: min(100%, 380px) !important; }
+    .preview-wrap .card .qr, .preview-wrap .card .num { cursor: move; outline: 2px dashed #d4af37; outline-offset: 2px; touch-action: none; }
+    .editor-msg { font-size: 13px; color: #166534; min-height: 18px; }
+    @media print {
+        @page { margin: 1cm; }
+        .editor { display: none !important; }
+        body.templ .sheet { gap: 0.3cm; }
+    }
 </style>
 </head>
 <body>
@@ -39,6 +72,7 @@
     <h1>🪑 باركود الطاولات ({{ total }} طاولة)</h1>
     <div class="actions">
         <a class="btn-back" href="/staff/settings/">رجوع للإعدادات</a>
+        <button class="btn-back" type="button" onclick="toggleEditor()">🎨 تصميمي</button>
         <button class="btn-rotate" type="button" onclick="rotateCodes()">تغيير الرموز</button>
         <button class="btn-print" type="button" onclick="window.print()">🖨️ طباعة</button>
     </div>
@@ -48,13 +82,42 @@
     إذا حدا صوّر الباركود واستعمله من برا، اضغط "تغيير الرموز" واطبع من جديد: الرموز القديمة بتوقف فوراً.
     الصالات وعدد الطاولات بتغيّرهم من الإعدادات ← الموظفين ← نداءات الطاولات.
 </p>
+<div class="editor" id="editor">
+    <h2>🎨 اطبع الباركود على تصميمك</h2>
+    <p>
+        صمّم الكرت على كانفا، واترك <b>مربع أسود</b> مكان الباركود و<b>مستطيل أسود</b> مكان رقم الطاولة، ونزّله صورة PNG أو JPG.
+        لما ترفعه، الموقع بيلاقيهم لحاله وبيحط الباركود والرقم فوقهم. وإذا بدك تعدّل، اسحبهم بإصبعك أو بالماوس.
+    </p>
+    <div class="row">
+        <label class="pick">📤 رفع التصميم<input type="file" id="tplFile" accept="image/png,image/jpeg,image/webp"></label>
+        <button type="button" class="btn-remove" id="tplRemove" onclick="removeTemplate()" {% if not config.table_card_template %}hidden{% endif %}>حذف التصميم</button>
+        <label><input type="checkbox" id="useTpl"> اطبع على تصميمي</label>
+    </div>
+    <div class="row">
+        <label>حجم الباركود <input type="range" id="qrSize" min="5" max="100" step="0.5"></label>
+        <label>عرض الكرت عند الطباعة <input type="number" id="cardW" min="3" max="30" step="0.5"> سم</label>
+    </div>
+    <div class="row">
+        <label><input type="checkbox" id="numShow"> أظهر رقم الطاولة</label>
+        <label>الكلمة قبل الرقم <input type="text" id="numPrefix" maxlength="20"></label>
+        <label>حجم الرقم <input type="range" id="numSize" min="2" max="40" step="0.5"></label>
+        <label>لون الرقم <input type="color" id="numColor"></label>
+        <label title="بيغطي المستطيل الأسود اللي تركته للرقم">خلفية الرقم <input type="color" id="numBg"></label>
+    </div>
+    <div class="preview-wrap" id="previewWrap"></div>
+    <div class="row">
+        <button type="button" class="btn-save" onclick="saveTemplate()">💾 حفظ التصميم</button>
+        <span class="editor-msg" id="editorMsg"></span>
+    </div>
+</div>
 {% for hall in halls %}
 {% if hall.name or hall.code %}<h2 class="hall-title">{{ hall.name|default:"صالة" }} <span dir="ltr">({{ hall.code }})</span></h2>{% endif %}
 <div class="sheet">
     {% for t in hall.tables %}
     <div class="card">
+        <img class="bg" alt="" {% if config.table_card_template %}src="{{ config.table_card_template.url }}"{% endif %}>
         <div class="brand">WHITE BIRD CAFE</div>
-        <div class="num">طاولة <span dir="ltr">{{ t.number }}</span></div>
+        <div class="num"><span class="prefix">طاولة</span> <span dir="ltr">{{ t.number }}</span></div>
         {% if hall.name %}<div class="hall">{{ hall.name }}</div>{% endif %}
         <div class="qr" data-url="{{ t.url }}">{{ t.qr_svg }}</div>
         <div class="hint">امسح الباركود لطلب الخدمة<br>Scan for table service</div>
@@ -63,6 +126,172 @@
 </div>
 {% endfor %}
 <script>
+    let layout = {{ card_layout_json|safe }};
+    let tplUrl = {% if config.table_card_template %}"{{ config.table_card_template.url|escapejs }}"{% else %}""{% endif %};
+    let tplFile = null;
+    const $ = id => document.getElementById(id);
+
+    function applyLayout() {
+        const st = document.body.style;
+        st.setProperty('--card-w', layout.width_cm + 'cm');
+        st.setProperty('--qx', layout.qr.x + '%'); st.setProperty('--qy', layout.qr.y + '%'); st.setProperty('--qs', layout.qr.size + '%');
+        st.setProperty('--nx', layout.num.x + '%'); st.setProperty('--ny', layout.num.y + '%');
+        st.setProperty('--ns', layout.num.size); st.setProperty('--nc', layout.num.color);
+        st.setProperty('--nw', layout.num.w + '%'); st.setProperty('--nh', layout.num.h + '%'); st.setProperty('--nb', layout.num.bg);
+        document.body.classList.toggle('num-box', layout.num.w > 0 && layout.num.h > 0);
+        document.body.classList.toggle('templ', !!(layout.use && tplUrl));
+        document.body.classList.toggle('no-num', !layout.num.show);
+        document.querySelectorAll('.card .prefix').forEach(p => p.textContent = layout.num.prefix);
+        document.querySelectorAll('.card .bg').forEach(img => { if (tplUrl && img.getAttribute('src') !== tplUrl) img.src = tplUrl; });
+        const wrap = $('previewWrap');
+        if (wrap) wrap.classList.toggle('templ-preview', !!tplUrl);
+    }
+
+    function fillControls() {
+        $('useTpl').checked = layout.use; $('qrSize').value = layout.qr.size; $('cardW').value = layout.width_cm;
+        $('numShow').checked = layout.num.show; $('numPrefix').value = layout.num.prefix;
+        $('numSize').value = layout.num.size; $('numColor').value = layout.num.color; $('numBg').value = layout.num.bg;
+    }
+
+    function buildPreview() {
+        const wrap = $('previewWrap');
+        wrap.innerHTML = '';
+        const first = document.querySelector('.sheet .card');
+        if (!first || !tplUrl) { wrap.innerHTML = '<p style="margin:20px;">ارفع التصميم عشان تشوف المعاينة هون.</p>'; return; }
+        const card = first.cloneNode(true);
+        wrap.appendChild(card);
+        // The preview always shows the template, even before "print on my design" is ticked
+        wrap.style.cssText += '';
+        card.querySelector('.bg').src = tplUrl;
+        draggable(card, card.querySelector('.qr'), layout.qr);
+        draggable(card, card.querySelector('.num'), layout.num);
+    }
+
+    function draggable(card, el, target) {
+        el.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            el.setPointerCapture(e.pointerId);
+            const move = ev => {
+                const r = card.getBoundingClientRect();
+                target.x = Math.max(0, Math.min(100, (ev.clientX - r.left) / r.width * 100));
+                target.y = Math.max(0, Math.min(100, (ev.clientY - r.top) / r.height * 100));
+                applyLayout();
+            };
+            const up = () => { el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); };
+            el.addEventListener('pointermove', move);
+            el.addEventListener('pointerup', up);
+        });
+    }
+
+    // Finds the placeholders left in the design: the biggest solid black square (QR code)
+    // and the biggest solid black wide rectangle (table number)
+    function findPlaceholders(img) {
+        const W = 360, H = Math.max(1, Math.round(img.naturalHeight / img.naturalWidth * W));
+        const c = document.createElement('canvas'); c.width = W; c.height = H;
+        const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, W, H);
+        const px = ctx.getImageData(0, 0, W, H).data;
+        const dark = new Uint8Array(W * H);
+        for (let i = 0; i < W * H; i++) {
+            const r = px[i * 4], g = px[i * 4 + 1], b = px[i * 4 + 2], a = px[i * 4 + 3];
+            dark[i] = a > 200 && r < 45 && g < 45 && b < 45 ? 1 : 0;
+        }
+        const seen = new Uint8Array(W * H), stack = [];
+        let square = null, rect = null;
+        for (let start = 0; start < W * H; start++) {
+            if (!dark[start] || seen[start]) continue;
+            let count = 0, minX = W, minY = H, maxX = 0, maxY = 0;
+            stack.push(start); seen[start] = 1;
+            while (stack.length) {
+                const i = stack.pop(), x = i % W, y = (i / W) | 0;
+                count++; if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y;
+                for (const j of [i - 1, i + 1, i - W, i + W]) {
+                    if (j < 0 || j >= W * H || seen[j] || !dark[j]) continue;
+                    if ((j === i - 1 && x === 0) || (j === i + 1 && x === W - 1)) continue;
+                    seen[j] = 1; stack.push(j);
+                }
+            }
+            const w = maxX - minX + 1, h = maxY - minY + 1, box = {x: minX, y: minY, w, h};
+            if (count / (w * h) < 0.85 || w >= W * 0.98) continue;
+            if (w >= W * 0.06 && w / h >= 0.8 && w / h <= 1.25) {
+                if (!square || w * h > square.w * square.h) square = box;
+            } else if (w >= W * 0.05 && h >= 4 && w / h >= 1.6 && w / h <= 15) {
+                if (!rect || w * h > rect.w * rect.h) rect = box;
+            }
+        }
+        const pct = b => ({x: (b.x + b.w / 2) / W * 100, y: (b.y + b.h / 2) / H * 100, w: b.w / W * 100, h: b.h / H * 100, hw: b.h / W * 100});
+        return {square: square && pct(square), rect: rect && pct(rect)};
+    }
+
+    function toggleEditor() {
+        $('editor').classList.toggle('open');
+        if ($('editor').classList.contains('open')) { fillControls(); buildPreview(); $('editor').scrollIntoView({behavior: 'smooth'}); }
+    }
+
+    $('tplFile').addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        tplFile = file;
+        tplUrl = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+            const found = findPlaceholders(img), r2 = v => +v.toFixed(2), notes = [];
+            if (found.square) {
+                const q = found.square;
+                layout.qr = {x: r2(q.x), y: r2(q.y), size: r2(Math.max(q.w, q.hw) + 0.6)};
+                notes.push('✓ حطينا الباركود مكان المربع الأسود');
+            } else {
+                notes.push('ما لقينا مربع أسود، اسحب الباركود لمكانه');
+            }
+            if (found.rect) {
+                const n = found.rect;
+                Object.assign(layout.num, {x: r2(n.x), y: r2(n.y), w: r2(n.w + 0.4), h: r2(n.h + 0.4), size: r2(Math.min(n.hw * 0.62, n.w / 5)), show: true});
+                notes.push('✓ وحطينا الرقم مكان المستطيل الأسود');
+            } else {
+                Object.assign(layout.num, {w: 0, h: 0});
+                notes.push('ما لقينا مستطيل للرقم، اسحبه لمكانه');
+            }
+            $('editorMsg').textContent = notes.join('، ') + '. راجع المعاينة واحفظ.';
+            layout.use = true;
+            fillControls(); applyLayout(); buildPreview();
+        };
+        img.src = tplUrl;
+    });
+    $('useTpl').addEventListener('change', e => { layout.use = e.target.checked; applyLayout(); });
+    $('qrSize').addEventListener('input', e => { layout.qr.size = +e.target.value; applyLayout(); });
+    $('cardW').addEventListener('input', e => { layout.width_cm = +e.target.value || 10; applyLayout(); });
+    $('numShow').addEventListener('change', e => { layout.num.show = e.target.checked; applyLayout(); });
+    $('numPrefix').addEventListener('input', e => { layout.num.prefix = e.target.value; applyLayout(); });
+    $('numSize').addEventListener('input', e => { layout.num.size = +e.target.value; applyLayout(); });
+    $('numColor').addEventListener('input', e => { layout.num.color = e.target.value; applyLayout(); });
+    $('numBg').addEventListener('input', e => { layout.num.bg = e.target.value; applyLayout(); });
+
+    async function saveTemplate() {
+        if (!tplUrl) { $('editorMsg').textContent = 'ارفع التصميم أول.'; return; }
+        const fd = new FormData();
+        if (tplFile) fd.append('template', tplFile);
+        fd.append('layout', JSON.stringify(layout));
+        $('editorMsg').textContent = 'عم نحفظ...';
+        const res = await fetch('/api/staff/tables/card-template/', {method: 'POST', body: fd});
+        const data = await res.json().catch(() => ({}));
+        if (data.status === 'success') {
+            tplFile = null; tplUrl = data.template; layout = data.layout;
+            $('tplRemove').hidden = !tplUrl;
+            applyLayout(); fillControls(); buildPreview();
+            $('editorMsg').textContent = '✓ انحفظ التصميم. اضغط "طباعة" فوق.';
+        } else {
+            $('editorMsg').textContent = data.message || 'ما زبط الحفظ، جرّب مرة ثانية.';
+        }
+    }
+
+    async function removeTemplate() {
+        if (!confirm('بدك تحذف التصميم وترجع للكروت العادية؟')) return;
+        const fd = new FormData(); fd.append('remove', '1'); layout.use = false; fd.append('layout', JSON.stringify(layout));
+        const res = await fetch('/api/staff/tables/card-template/', {method: 'POST', body: fd});
+        const data = await res.json().catch(() => ({}));
+        if (data.status === 'success') { tplUrl = ''; tplFile = null; layout = data.layout; $('tplRemove').hidden = true; applyLayout(); fillControls(); buildPreview(); }
+    }
+
+    applyLayout();
     async function rotateCodes() {
         if (!confirm('متأكد؟ كل الباركودات المطبوعة حالياً رح توقف عن العمل ولازم تطبع الجديدة وتوزعها على الطاولات.')) return;
         const res = await fetch('/api/staff/tables/rotate-code/', { method: 'POST' });
