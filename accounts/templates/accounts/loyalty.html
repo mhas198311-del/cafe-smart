@@ -838,7 +838,7 @@
                         </span>
                     </label>
                     <button type="submit" class="btn btn-primary" style="width:100%; margin-top:15px; padding:12px;">
-                        <i class="fa-solid fa-user-plus"></i> <span data-tr="btn_register">طلب كود التحقق بالواتساب (OTP)</span>
+                        <i class="fa-solid fa-user-plus"></i> <span data-tr="btn_register">أرسل كود التحقق على الواتساب</span>
                     </button>
                 </form>
             </div>
@@ -863,7 +863,7 @@
                 <!-- Instructions (Shown by default) -->
                 <div id="barcodeInstruction" style="font-size:14px; color:#555; font-weight:600; padding:30px 10px;">
                     <span class="lang-ar">👇 اضغط بإصبع واحد واستمر بالضغط لعرض الباركود</span>
-                    <span class="lang-en">👇 Press and HOLD with one finger to show barcode</span>
+                    <span class="lang-en">👇 Press and hold to show the barcode</span>
                 </div>
 
                 <!-- Barcode Wrapper (hidden/blurred by default) -->
@@ -889,7 +889,7 @@
 
             <div style="font-size:12px; color:var(--text-muted); margin-bottom:15px; text-align:center;">
                 <span class="lang-ar">يمنع المسح من لقطات الشاشة (عرض حي فقط)</span>
-                <span class="lang-en">Screenshots blocked (Live view only)</span>
+                <span class="lang-en">Screenshots are blocked (live view only)</span>
             </div>
         </div>
 
@@ -945,7 +945,7 @@
         <div id="forgotStep1">
             <p style="color:var(--text-muted); font-size:14px; margin: 8px 0 20px; text-align: center;">
                 <span class="lang-ar">أدخل رقم هاتفك المسجل لإرسال رمز التحقق بالواتساب.</span>
-                <span class="lang-en">Enter your registered phone number to receive a verification OTP via WhatsApp.</span>
+                <span class="lang-en">Enter your registered phone number and we'll send you a code on WhatsApp.</span>
             </p>
             
             <form id="forgotRequestForm" onsubmit="handleForgotRequest(event)">
@@ -1101,7 +1101,7 @@
     function translatePointsVal() {
         const textEl = document.getElementById('pointsValText');
         if (textEl) {
-            textEl.innerText = currentLang === 'ar' ? 'نقاط ولاء نشطة ومتاحة للاستخدام' : 'Active loyalty points available';
+            textEl.innerText = currentLang === 'ar' ? 'نقاط ولاء نشطة ومتاحة للاستخدام' : 'Points ready to use';
         }
     }
 
@@ -1137,7 +1137,7 @@
             correctLevel : QRCode.CorrectLevel.M
         });
         document.getElementById('countdownBar').style.width = '100%';
-        document.getElementById('countdownText').innerText = currentLang === 'ar' ? 'أظهر هذا الكود للويتر لمسحه والاستلام' : 'Show this QR to floor waiter to claim';
+        document.getElementById('countdownText').innerText = currentLang === 'ar' ? 'أظهر هذا الكود للويتر لمسحه والاستلام' : 'Show this QR code to a waiter to claim';
         document.getElementById('customerNameText').innerText = reward;
         document.getElementById('customerPhoneText').innerText = code;
         document.getElementById('qrDrawerModal').classList.add('active');
@@ -1331,7 +1331,7 @@
                 document.getElementById('forgotTargetPhoneEn').innerText = phone;
                 document.getElementById('forgotStep1').style.display = 'none';
                 document.getElementById('forgotStep2').style.display = 'block';
-                showToast(currentLang === 'ar' ? 'تم إرسال كود التحقق بالواتساب!' : 'OTP verification code sent via WhatsApp!', 'success');
+                showToast(currentLang === 'ar' ? 'تم إرسال كود التحقق بالواتساب!' : 'Verification code sent on WhatsApp!', 'success');
             } else {
                 showToast(data.message, 'danger');
             }

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}White Bird Cafe - الإعدادات الشاملة (Cafe Settings){% endblock %}
+{% block title %}White Bird Cafe - الإعدادات الشاملة{% endblock %}
 {% block robots %}noindex, nofollow{% endblock %}
 
 {% block extra_css %}
@@ -214,6 +214,13 @@
         border-bottom: 1px solid rgba(212, 175, 55, 0.4);
     }
 }
+.sticky-save-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 900;
+    padding: 10px 16px; display: flex; justify-content: center;
+    background: rgba(13,10,7,0.95); border-top: 1px solid rgba(212,175,55,0.35);
+}
+.sticky-save-bar .btn { width: 100%; max-width: 420px; padding: 12px; font-size: 15px; font-weight: 700; justify-content: center; }
+body { padding-bottom: 70px; }
 {% endblock %}
 
 {% block content %}
@@ -251,7 +258,7 @@
             <i class="fa-solid fa-users-gear"></i> إدارة طاقم العمل والموظفين
         </button>
         <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('loyverse', this)">
-            <i class="fa-solid fa-cash-register"></i> ربط كاشير Loyverse POS
+            <i class="fa-solid fa-cash-register"></i> ربط الكاشير (لويفيرس)
         </button>
         <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('whatsapp', this)">
             <i class="fa-brands fa-whatsapp"></i> الواتساب
@@ -275,7 +282,7 @@
             
             <div class="settings-grid-3">
                 <div class="form-group">
-                    <label class="form-label">اسم الكافيه (Cafe Name)</label>
+                    <label class="form-label">اسم الكافيه</label>
                     <input type="text" name="cafe_name" class="form-input" value="{{ config.cafe_name }}">
                 </div>
                 <div class="form-group">
@@ -291,15 +298,15 @@
             <!-- Guest WiFi Info -->
             <div style="background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.25); border-radius:14px; padding:18px; margin-bottom:20px;">
                 <h4 style="color:var(--primary); font-size:14px; margin:0 0 12px; display:flex; align-items:center; gap:8px;">
-                    <i class="fa-solid fa-wifi"></i> بيانات شبكة الواي فاي للزبائن (Guest WiFi Info)
+                    <i class="fa-solid fa-wifi"></i> بيانات شبكة الواي فاي للزبائن
                 </h4>
                 <div class="settings-grid-2">
                     <div class="form-group" style="margin-bottom:0;">
-                        <label class="form-label">اسم شبكة الواي فاي (WiFi Network Name / SSID)</label>
+                        <label class="form-label">اسم شبكة الواي فاي</label>
                         <input type="text" name="wifi_ssid" class="form-input" value="{{ config.wifi_ssid|default_if_none:'WhiteBird_Guest' }}">
                     </div>
                     <div class="form-group" style="margin-bottom:0;">
-                        <label class="form-label">كلمة مرور الواي فاي (WiFi Password)</label>
+                        <label class="form-label">كلمة مرور الواي فاي</label>
                         <input type="text" name="wifi_password" class="form-input" value="{{ config.wifi_password|default_if_none:'whitebird2026' }}">
                     </div>
                 </div>
@@ -311,7 +318,7 @@
                     <input type="text" name="opening_hours_ar" class="form-input" value="{{ config.opening_hours_ar }}">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Opening Hours (EN)</label>
+                    <label class="form-label">ساعات العمل بالإنجليزي (للسياح)</label>
                     <input type="text" name="opening_hours_en" class="form-input" value="{{ config.opening_hours_en }}">
                 </div>
             </div>
@@ -322,7 +329,7 @@
                     <input type="text" name="location_desc_ar" class="form-input" value="{{ config.location_desc_ar }}">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Location (English)</label>
+                    <label class="form-label">العنوان بالإنجليزي (للسياح)</label>
                     <input type="text" name="location_desc_en" class="form-input" value="{{ config.location_desc_en }}">
                 </div>
             </div>
@@ -374,7 +381,7 @@
                     <input type="text" name="hero_title_ar" class="form-input" value="{{ config.hero_title_ar|default:'وايت بيرد كافيه' }}">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Hero Title (English)</label>
+                    <label class="form-label">العنوان الرئيسي بالإنجليزي (للسياح)</label>
                     <input type="text" name="hero_title_en" class="form-input" value="{{ config.hero_title_en|default:'White Bird Cafe' }}">
                 </div>
             </div>
@@ -385,7 +392,7 @@
                     <textarea name="hero_subtitle_ar" class="form-textarea" rows="2">{{ config.hero_subtitle_ar|default:'تجربة استثنائية من القهوة المختصة والمشروبات الساخنة والباردة' }}</textarea>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Hero Subtitle (English)</label>
+                    <label class="form-label">الوصف الافتتاحي بالإنجليزي (للسياح)</label>
                     <textarea name="hero_subtitle_en" class="form-textarea" rows="2">{{ config.hero_subtitle_en|default:'An exceptional specialty coffee & drinks experience' }}</textarea>
                 </div>
             </div>
@@ -393,7 +400,7 @@
             <!-- Video & Cover Files -->
             <div class="settings-grid-2">
                 <div class="form-group">
-                    <label class="form-label">🎬 فيديو الإطلاق السينمائي للشاشات العريضة (Desktop Promo Video)</label>
+                    <label class="form-label">🎬 فيديو الإطلاق السينمائي للشاشات العريضة</label>
                     <input type="file" name="promo_video_desktop" class="form-input" accept="video/*">
                     {% if config.promo_video_desktop %}
                     <div class="file-preview-card">
@@ -406,7 +413,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">📱 فيديو الإطلاق الرأسي للموبايل (Mobile Vertical Video)</label>
+                    <label class="form-label">📱 فيديو الإطلاق الرأسي للموبايل</label>
                     <input type="file" name="promo_video_mobile" class="form-input" accept="video/*">
                     {% if config.promo_video_mobile %}
                     <div class="file-preview-card">
@@ -421,7 +428,7 @@
 
             <div class="settings-grid-2">
                 <div class="form-group">
-                    <label class="form-label">🖼️ صورة غلاف بوابة المنيو (Menu Cover Landing Image)</label>
+                    <label class="form-label">🖼️ صورة غلاف بوابة المنيو</label>
                     <input type="file" name="menu_cover_image" class="form-input" accept="image/*">
                     {% if config.menu_cover_image %}
                     <div class="file-preview-card">
@@ -434,7 +441,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">🗺️ صورة لقطة خريطة موقع الكافيه (Map Screenshot Image)</label>
+                    <label class="form-label">🗺️ صورة لقطة خريطة موقع الكافيه</label>
                     <input type="file" name="map_image" class="form-input" accept="image/*">
                     {% if config.map_image %}
                     <div class="file-preview-card">
@@ -479,7 +486,7 @@
             <div class="form-group" style="background:rgba(212,175,55,0.06); padding:14px; border-radius:10px; border:1px solid rgba(212,175,55,0.25); margin-bottom:18px;">
                 <label style="display:flex; align-items:center; gap:10px; font-weight:700; color:#fff; cursor:pointer;">
                     <input type="checkbox" name="arrival_qr_required" {% if config.arrival_qr_required %}checked{% endif %}>
-                    تأكيد وصول الويتر للطاولة بمسح كود QR الطاولة 📷
+                    تأكيد وصول الويتر للطاولة بمسح باركود الطاولة 📷
                 </label>
                 <p style="font-size:12px; color:var(--text-muted); margin:6px 0 0;">
                     لما يكون مطفي: الويتر بيضغط "وصلت" بس. لما يكون شغال: لازم يمسح كود الطاولة بكاميرا جواله عشان يسجل الوصول.
@@ -517,7 +524,7 @@
                     <thead>
                         <tr>
                             <th>اسم الموظف</th>
-                            <th>اسم المستخدم (Login)</th>
+                            <th>اسم المستخدم</th>
                             <th>الدور والصلاحية</th>
                             <th>آخر دخول</th>
                             <th>الإجراءات</th>
@@ -530,9 +537,9 @@
                             <td><code>{{ u.username }}</code>{% if u.phone_number %}<div style="font-size:11px; color:var(--text-muted);" class="ltr-text">{{ u.phone_number }}</div>{% endif %}</td>
                             <td>
                                 {% if u.role == 'ADMIN' %}
-                                    <span style="background:rgba(212,175,55,0.15); color:var(--primary); padding:3px 10px; border-radius:6px; font-weight:700; font-size:11px;">👑 مدير (Admin)</span>
+                                    <span style="background:rgba(212,175,55,0.15); color:var(--primary); padding:3px 10px; border-radius:6px; font-weight:700; font-size:11px;">👑 مدير</span>
                                 {% else %}
-                                    <span style="background:rgba(255,255,255,0.05); color:#a0a0a0; padding:3px 10px; border-radius:6px; font-weight:700; font-size:11px;">🧑‍🍳 موظف صالة (Staff)</span>
+                                    <span style="background:rgba(255,255,255,0.05); color:#a0a0a0; padding:3px 10px; border-radius:6px; font-weight:700; font-size:11px;">🧑‍🍳 موظف صالة</span>
                                 {% endif %}
                             </td>
                             <td style="font-size:12px; color:var(--text-muted);">{{ u.last_login|date:"Y-m-d H:i"|default:"-" }}</td>
@@ -560,13 +567,13 @@
             </div>
         </div>
 
-        <!-- PANEL 4: Loyverse POS -->
+        <!-- PANEL 4: لويفيرس POS -->
         <div class="settings-panel" id="panel-loyverse" style="display:none;">
             <div class="settings-section-title">
-                <i class="fa-solid fa-cash-register"></i> ربط نقاط البيع والكاشير المباشر (Loyverse POS API)
+                <i class="fa-solid fa-cash-register"></i> ربط الكاشير (لويفيرس)
             </div>
             <div class="form-group">
-                <label class="form-label">رمز الوصول المباشر (Loyverse Access Token)</label>
+                <label class="form-label">رمز الوصول من لويفيرس</label>
                 <input type="text" name="loyverse_api_token" dir="ltr" id="settingLoyverseToken" class="form-input" value="{{ config.loyverse_api_token|default_if_none:'' }}" placeholder="مثال: 3832fd4c96814ccabbb6ee9d197a1901">
                 <div style="background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.25); border-radius:10px; padding:12px; margin-top:10px; font-size:12.5px; color:#22c55e;">
                     🛡️ <b>نظام المزامنة الآمن:</b> عند تشغيل المزامنة، يقوم النظام بسحب الأسعار والمنتجات المسموحة للبيع مع <b>الحفاظ الكامل 100% على كافة تعديلاتك وفلاترك وأقسامك السابقة</b> دون مساس!
@@ -582,22 +589,22 @@
             <div style="background:rgba(255,255,255,0.02); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); margin-top:24px;">
                 <h4 style="color:var(--primary); font-size:14px; margin:0 0 10px;">👥 ربط الزبائن والنقاط</h4>
                 <p style="font-size:13px; color:var(--text-muted); margin:0 0 10px; line-height:1.7;">
-                    عند تسجيل زبون في الموقع يُنشأ له حساب في Loyverse بنفس رقم الهاتف (أو يُربط بحسابه الموجود)، ويصبح باركود بطاقته هو "كود الزبون" في Loyverse.
-                    رصيد النقاط يُقرأ من Loyverse مباشرة، والاستبدال يتم عند الكاشير.
+                    عند تسجيل زبون في الموقع يُنشأ له حساب في لويفيرس بنفس رقم الهاتف (أو يُربط بحسابه الموجود)، ويصبح باركود بطاقته هو "كود الزبون" في لويفيرس.
+                    رصيد النقاط يُقرأ من لويفيرس مباشرة، والاستبدال يتم عند الكاشير.
                 </p>
                 <label class="form-label">رابط الويب هوك (اختياري: لتذاكر السحب ورسالة النقاط على واتساب بعد كل فاتورة)</label>
                 <div style="display:flex; gap:8px; align-items:center;">
                     <input type="text" readonly dir="ltr" id="loyverseWebhookUrl" class="form-input" value="{{ loyverse_webhook_url }}" onclick="this.select()">
                     <button type="button" class="btn btn-secondary btn-sm" onclick="copyWebhookUrl()"><i class="fa-solid fa-copy"></i> نسخ</button>
                 </div>
-                <div style="font-size:12px; color:var(--text-muted); margin-top:6px;">أضِفه في Loyverse كويب هوك من نوع receipts.update. لا تشاركه مع أحد.</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:6px;">أضِفه في لويفيرس كويب هوك من نوع <span dir="ltr">receipts.update</span>. لا تشاركه مع أحد.</div>
             </div>
         </div>
 
         <!-- PANEL 5: WhatsApp & Simulator -->
         <div class="settings-panel" id="panel-whatsapp" style="display:none;">
             <div class="settings-section-title">
-                <i class="fa-brands fa-whatsapp" style="color:#25d366;"></i> واتساب الرسمي (Meta)
+                <i class="fa-brands fa-whatsapp" style="color:#25d366;"></i> واتساب الرسمي من ميتا
             </div>
             <p style="font-size:13px; color:var(--text-muted); margin:-6px 0 14px;">
                 {% if config.wa_phone_number_id and config.wa_access_token %}
@@ -608,39 +615,39 @@
             </p>
             <div class="settings-grid-2">
                 <div class="form-group">
-                    <label class="form-label">Phone number ID</label>
+                    <label class="form-label">رقم تعريف الهاتف <span dir="ltr">(Phone number ID)</span></label>
                     <input type="text" name="wa_phone_number_id" dir="ltr" class="form-input" value="{{ config.wa_phone_number_id }}" placeholder="من WhatsApp ← API Setup">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">WhatsApp Business Account ID</label>
+                    <label class="form-label">رقم حساب واتساب للأعمال <span dir="ltr">(WhatsApp Business Account ID)</span></label>
                     <input type="text" name="wa_business_account_id" dir="ltr" class="form-input" value="{{ config.wa_business_account_id }}" placeholder="من WhatsApp ← API Setup">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">المفتاح الدائم (Access token)</label>
+                    <label class="form-label">المفتاح الدائم</label>
                     <input type="password" name="wa_access_token" dir="ltr" class="form-input" autocomplete="off" placeholder="{% if config.wa_access_token %}محفوظ ✓ — اتركه فاضي إذا ما بدك تغيّره{% else %}الصق المفتاح هون{% endif %}">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">App secret (اختياري، لحماية الـWebhook)</label>
+                    <label class="form-label">سر التطبيق <span dir="ltr">(App secret)</span>، اختياري لحماية استقبال الرسائل</label>
                     <input type="password" name="wa_app_secret" dir="ltr" class="form-input" autocomplete="off" placeholder="{% if config.wa_app_secret %}محفوظ ✓{% else %}من App settings ← Basic{% endif %}">
                 </div>
             </div>
 
             <div style="margin-top:18px; padding:16px; background:rgba(0,0,0,0.25); border-radius:12px; border:1px solid rgba(255,255,255,0.06);">
-                <h4 style="font-size:14px; color:var(--primary); margin:0 0 6px;">استقبال رسائل الزبائن (Webhook)</h4>
-                <p style="font-size:12.5px; color:var(--text-muted); margin:0 0 10px;">بالتطبيق على Meta: WhatsApp ← Configuration ← Edit، الصق القيمتين واشترك بـ messages.</p>
+                <h4 style="font-size:14px; color:var(--primary); margin:0 0 6px;">استقبال رسائل الزبائن</h4>
+                <p style="font-size:12.5px; color:var(--text-muted); margin:0 0 10px;">بتطبيقك على ميتا: <span dir="ltr">WhatsApp ← Configuration ← Edit</span>، الصق القيمتين واشترك بـ <span dir="ltr">messages</span>.</p>
                 <div class="form-group">
-                    <label class="form-label">Callback URL</label>
+                    <label class="form-label">رابط الاستقبال <span dir="ltr">(Callback URL)</span></label>
                     <input type="text" readonly dir="ltr" class="form-input" value="{{ whatsapp_webhook_url }}" onclick="this.select()">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Verify token</label>
+                    <label class="form-label">رمز التحقق <span dir="ltr">(Verify token)</span></label>
                     <input type="text" readonly dir="ltr" class="form-input" value="{{ config.wa_verify_token }}" onclick="this.select()">
                 </div>
             </div>
 
             <div style="margin-top:18px; padding:16px; background:rgba(0,0,0,0.25); border-radius:12px; border:1px solid rgba(255,255,255,0.06);">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
-                    <h4 style="font-size:14px; color:var(--primary); margin:0;">قوالب الرسائل وموافقة Meta</h4>
+                    <h4 style="font-size:14px; color:var(--primary); margin:0;">قوالب الرسائل وموافقة ميتا</h4>
                     <button type="button" class="btn btn-secondary btn-sm" onclick="submitWhatsAppTemplates()" style="padding:6px 12px; font-size:12px;">
                         إرسال القوالب للموافقة
                     </button>
@@ -664,7 +671,7 @@
 
                 <!-- Test Sender -->
                 <div style="display:flex; gap:10px; margin-top:14px; align-items:center;">
-                    <input type="tel" dir="ltr" id="testPhoneInput" class="form-input" placeholder="رقمك للتجربة (e.g. 0791112233)" style="flex:1;">
+                    <input type="tel" dir="ltr" id="testPhoneInput" class="form-input" placeholder="رقمك للتجربة (مثلاً 0791112233)" style="flex:1;">
                     <button type="button" class="btn btn-secondary" onclick="sendTestWhatsApp()" style="padding:10px 16px; font-size:12.5px; white-space:nowrap;">
                         <i class="fa-brands fa-whatsapp"></i> إرسال رسالة اختبار
                     </button>
@@ -684,7 +691,7 @@
                     <h4 style="color:var(--primary); font-size:14px; margin:0;">🎁 المكافآت المعروضة للزبائن</h4>
                     <button type="button" class="btn btn-primary btn-sm" onclick="openRewardModal()"><i class="fa-solid fa-plus"></i> إضافة مكافأة</button>
                 </div>
-                <p style="font-size:12.5px; color:var(--text-muted); margin:0 0 12px;">تظهر في صفحة الزبون مع ما تبقى له من نقاط. الاستبدال يتم عند الكاشير في Loyverse.</p>
+                <p style="font-size:12.5px; color:var(--text-muted); margin:0 0 12px;">تظهر في صفحة الزبون مع ما تبقى له من نقاط. الاستبدال يتم عند الكاشير في لويفيرس.</p>
                 <div style="overflow-x:auto; border-radius:12px; border:1px solid rgba(255,255,255,0.08);">
                     <table class="staff-table">
                         <thead>
@@ -772,11 +779,11 @@
 
             <div class="settings-grid-2">
                 <div class="form-group">
-                    <label class="form-label">اسم الصنف المميز (Featured Item Name)</label>
+                    <label class="form-label">اسم الصنف المميز</label>
                     <input type="text" name="featured_item_name" class="form-input" value="{{ config.featured_item_name|default_if_none:'' }}">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">سعر العرض الخاص للتجربة (Special Launch Price)</label>
+                    <label class="form-label">سعر العرض الخاص للتجربة</label>
                     <input type="number" name="featured_item_special_price" class="form-input" value="{{ config.featured_item_special_price|default_if_none:'' }}" step="0.001" placeholder="مثال: 3.500">
                 </div>
             </div>
@@ -787,7 +794,7 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label">فيديو العرض الترويجي للصنف الجديد (Featured Promo Video)</label>
+                <label class="form-label">فيديو العرض الترويجي للصنف الجديد</label>
                 <input type="file" name="featured_item_video" class="form-input" accept="video/*">
                 {% if config.featured_item_video %}
                 <div class="file-preview-card">
@@ -802,6 +809,13 @@
 
     </form>
 
+</div>
+
+<!-- Save bar that stays at the bottom of the screen on long pages -->
+<div class="sticky-save-bar">
+    <button type="submit" form="cafeFullSettingsForm" class="btn btn-primary">
+        <i class="fa-solid fa-floppy-disk"></i> حفظ الإعدادات
+    </button>
 </div>
 
 <!-- =================== Staff Modals =================== -->
@@ -821,15 +835,15 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label">اسم المستخدم لتسجيل الدخول (Username)</label>
+                <label class="form-label">اسم المستخدم لتسجيل الدخول</label>
                 <input type="text" id="staffUsername" name="username" dir="ltr" class="form-input" placeholder="مثال: ahmed123" required>
             </div>
 
             <div class="form-group">
-                <label class="form-label">الدور والصلاحية (Role)</label>
+                <label class="form-label">الدور والصلاحية</label>
                 <select id="staffRole" name="role" class="form-select">
-                    <option value="WAITER">🧑‍🍳 موظف صالة (Floor Staff / Waiter)</option>
-                    <option value="ADMIN">👑 مدير نظام / مسؤول (Admin / Manager)</option>
+                    <option value="WAITER">🧑‍🍳 موظف صالة</option>
+                    <option value="ADMIN">👑 مدير</option>
                 </select>
             </div>
 
@@ -872,7 +886,7 @@
             </div>
             <div class="form-group">
                 <label class="form-label">الاسم بالإنجليزي (اختياري)</label>
-                <input type="text" name="name_en" id="rewardNameEn" class="form-input" dir="ltr" placeholder="Free coffee">
+                <input type="text" name="name_en" id="rewardNameEn" class="form-input" dir="ltr" placeholder="Free coffee" title="الاسم بالإنجليزي للسياح">
             </div>
             <div class="settings-grid-2">
                 <div class="form-group">
@@ -971,7 +985,7 @@ async function triggerLoyverseSyncFromSettings() {
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري المزامنة الآمنة...';
     }
-    if (statusText) statusText.innerText = 'جاري الاتصال بخوادم Loyverse...';
+    if (statusText) statusText.innerText = 'جاري الاتصال بخوادم لويفيرس...';
 
     try {
         const res = await fetch('/api/staff/loyverse/sync/', {
@@ -987,7 +1001,7 @@ async function triggerLoyverseSyncFromSettings() {
             if (statusText) statusText.innerHTML = `<span style="color:#ef4444;">${data.message}</span>`;
         }
     } catch(err) {
-        showToast('فشل الاتصال بخوادم Loyverse', 'danger');
+        showToast('فشل الاتصال بخوادم لويفيرس', 'danger');
     } finally {
         if (btn) {
             btn.disabled = false;

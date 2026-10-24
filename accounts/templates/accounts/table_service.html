@@ -369,9 +369,9 @@
         en: {
             "table_subtitle": "Smart Table Service Panel",
             "btn_call_waiter": "Call Waiter",
-            "desc_call_waiter": "Request general floor assistance or ordering help",
+            "desc_call_waiter": "Ask a waiter for help or to take your order",
             "btn_request_bill": "Request Bill",
-            "desc_request_bill": "Receive your printed receipt and pay at the table",
+            "desc_request_bill": "Get your bill and pay at the table",
             "btn_hookah": "Hookah Service",
             "desc_hookah": "Request fresh hot coals or change hookah head",
             "status_connecting": "Connecting service...",
@@ -440,7 +440,7 @@
         socket.onmessage = (e) => {
             const data = JSON.parse(e.data);
             if (data.event === 'call_accepted') {
-                showToast(currentLang === 'ar' ? 'تمت تلبية النداء من الموظفين!' : 'Staff accepted your call!', 'success');
+                showToast(currentLang === 'ar' ? 'تمت تلبية النداء من الموظفين!' : 'A staff member is on the way!', 'success');
                 // Reset success state
                 document.querySelectorAll('.service-action-btn').forEach(btn => {
                     btn.classList.remove('success');
@@ -480,7 +480,7 @@
 
     function triggerServiceCall(type, btnEl, extraDetails = '') {
         if (!socket || socket.readyState !== WebSocket.OPEN) {
-            showToast(currentLang === 'ar' ? 'خطأ بالاتصال بالشبكة' : 'Network connection error.', 'danger');
+            showToast(currentLang === 'ar' ? 'خطأ بالاتصال بالشبكة' : 'Connection error. Please try again.', 'danger');
             return;
         }
 
@@ -500,7 +500,7 @@
             }, 6000);
         }
 
-        showToast(currentLang === 'ar' ? 'تم إرسال تنبيه فوري للموظفين!' : 'Notification sent to staff dashboard!', 'success');
+        showToast(currentLang === 'ar' ? 'تم إرسال تنبيه فوري للموظفين!' : 'The staff have been notified!', 'success');
     }
 </script>
 {% endblock %}

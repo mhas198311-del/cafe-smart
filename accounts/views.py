@@ -75,7 +75,7 @@ def customer_register_request(request):
     password = request.POST.get("password")
 
     if not all([phone_raw, full_name, birth_date_str, password]):
-        return JsonResponse({"status": "error", "message": "All fields are required"}, status=400)
+        return JsonResponse({"status": "error", "message": "عبّي كل الخانات / All fields are required"}, status=400)
 
     if len(password) < MIN_CUSTOMER_PASSWORD_LENGTH:
         return JsonResponse({"status": "error", "message": "كلمة المرور يجب أن تكون 6 أحرف على الأقل / Password must be at least 6 characters"}, status=400)
@@ -102,16 +102,16 @@ def customer_register_request(request):
     try:
         birth_date = datetime.datetime.strptime(birth_date_str, "%Y-%m-%d").date()
     except ValueError:
-        return JsonResponse({"status": "error", "message": "Invalid date format. Use YYYY-MM-DD"}, status=400)
+        return JsonResponse({"status": "error", "message": "تاريخ الميلاد غير صحيح / Invalid date of birth"}, status=400)
 
     # Validate age restriction >= 18
     age = calculate_age(birth_date)
     if age < 18:
-        return JsonResponse({"status": "error", "message": "Compliance error: Must be 18 years or older to register"}, status=400)
+        return JsonResponse({"status": "error", "message": "التسجيل لعمر 18 سنة وفوق / You must be 18 or older to register"}, status=400)
 
     # Check if user already exists
     if CustomerProfile.objects.filter(phone_number=phone_number).exists():
-        return JsonResponse({"status": "error", "message": "Phone number already registered"}, status=400)
+        return JsonResponse({"status": "error", "message": "الرقم مسجّل من قبل، سجّل دخول / This number is already registered, please log in"}, status=400)
 
     # Generate 6-digit OTP using CSPRNG
     otp_code = "".join(secrets.choice("0123456789") for _ in range(6))
@@ -132,7 +132,7 @@ def customer_register_request(request):
     if not WhatsAppClient.send_otp(phone_number, otp_code) and WhatsAppClient.is_configured():
         return JsonResponse({"status": "error", "message": "تعذر إرسال رمز التحقق على الواتساب، تأكد من الرقم وحاول مرة ثانية / Could not send the WhatsApp code"}, status=502)
 
-    return JsonResponse({"status": "success", "message": "OTP sent via WhatsApp"})
+    return JsonResponse({"status": "success", "message": "انبعت كود التحقق على الواتساب / Code sent on WhatsApp"})
 
 @csrf_exempt
 @require_POST
@@ -162,7 +162,7 @@ def customer_register_verify(request):
     session_expiry = request.session.get("reg_otp_expiry", 0)
 
     if not otp_code or not phone_number:
-        return JsonResponse({"status": "error", "message": "OTP code and phone number are required"}, status=400)
+        return JsonResponse({"status": "error", "message": "اكتب كود التحقق / Enter the verification code"}, status=400)
 
     is_valid = False
     if session_otp_hash and check_password(otp_code, session_otp_hash):
@@ -171,10 +171,10 @@ def customer_register_verify(request):
         is_valid = True
 
     if phone_number != session_phone or not is_valid:
-        return JsonResponse({"status": "error", "message": "Invalid OTP code or session expired"}, status=400)
+        return JsonResponse({"status": "error", "message": "الكود غلط أو انتهت صلاحيته / Wrong or expired code"}, status=400)
 
     if datetime.datetime.now().timestamp() > session_expiry:
-        return JsonResponse({"status": "error", "message": "OTP expired. Please request a new one"}, status=400)
+        return JsonResponse({"status": "error", "message": "انتهت صلاحية الكود، اطلب كود جديد / The code expired, request a new one"}, status=400)
 
     # Create profile
     birth_date = datetime.datetime.strptime(request.session["reg_birth_date"], "%Y-%m-%d").date()
@@ -219,7 +219,7 @@ def customer_register_verify(request):
         if key in request.session:
             del request.session[key]
 
-    return JsonResponse({"status": "success", "message": "Registration complete and verified", "redirect": "/loyalty/"})
+    return JsonResponse({"status": "success", "message": "تم التسجيل بنجاح / Registration complete", "redirect": "/loyalty/"})
 
 @csrf_exempt
 @require_POST
@@ -229,7 +229,7 @@ def customer_login(request):
     password = request.POST.get("password")
 
     if not phone_raw or not password:
-        return JsonResponse({"status": "error", "message": "Phone number and password are required"}, status=400)
+        return JsonResponse({"status": "error", "message": "اكتب رقم الهاتف وكلمة المرور / Enter your phone number and password"}, status=400)
 
     limit_key = f"login:customer:{phone_number}"
     if is_limited(limit_key, 10) or hit_limit(f"login:customer-ip:{client_ip(request)}", 30, 900):
@@ -247,7 +247,7 @@ def customer_login(request):
     request.session["customer_name"] = customer.full_name
     request.session["loyverse_customer_id"] = customer.loyverse_customer_id
 
-    return JsonResponse({"status": "success", "message": "Logged in successfully", "redirect": "/loyalty/"})
+    return JsonResponse({"status": "success", "message": "تم تسجيل الدخول / Logged in", "redirect": "/loyalty/"})
 
 def customer_logout(request):
     if "customer_id" in request.session:
@@ -275,7 +275,7 @@ def staff_login(request):
     staff = StaffUser.objects.filter(username__iexact=username).first()
     if not staff or not staff.is_active or not check_password(password, staff.password_hash):
         hit_limit(limit_key, 5, 900)
-        return JsonResponse({"status": "error", "message": "Invalid credentials"}, status=401)
+        return JsonResponse({"status": "error", "message": "البيانات غير صحيحة / Wrong login details"}, status=401)
     reset_limit(limit_key)
 
     # Log in
@@ -286,7 +286,7 @@ def staff_login(request):
 
     # Role-based redirect: ADMIN -> dashboard, others -> staff app
     redirect_url = "/staff/dashboard/" if staff.role == "ADMIN" else "/staff/app/"
-    return JsonResponse({"status": "success", "message": "Logged in successfully", "redirect": redirect_url})
+    return JsonResponse({"status": "success", "message": "تم تسجيل الدخول / Logged in", "redirect": redirect_url})
 
 def staff_logout(request):
     if "staff_user_id" in request.session:

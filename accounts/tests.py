@@ -40,7 +40,7 @@ class AccountsTests(TestCase):
             "password": "password123"
         })
         self.assertEqual(response.status_code, 400)
-        self.assertIn("Compliance error", response.json()["message"])
+        self.assertIn("18 or older", response.json()["message"])
 
         # Test over-age (18 years old)
         over_age_birthdate = datetime.date(today.year - 18, today.month, today.day).strftime("%Y-%m-%d")

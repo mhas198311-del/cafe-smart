@@ -246,7 +246,7 @@ def client_menu_view(request):
 
 def cover_page_view(request):
     """
-    Renders the premium cover landing page for 26 Cafe.
+    Renders the cover landing page.
     """
     from accounts.models import CafeConfiguration
     from .seo import cafe_schema
@@ -256,7 +256,7 @@ def cover_page_view(request):
 
 def contact_view(request):
     """
-    Renders the premium contact page for 26 Cafe.
+    Renders the contact page.
     """
     from accounts.models import CafeConfiguration
     config = CafeConfiguration.objects.first()

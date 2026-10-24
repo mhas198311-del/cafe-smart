@@ -839,25 +839,25 @@
                 </label>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
                     <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" id="overrideIsCoffee" name="is_coffee"> ☕ قهوة / Coffee
+                        <input type="checkbox" id="overrideIsCoffee" name="is_coffee"> ☕ قهوة
                     </label>
                     <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" id="overrideIsHot" name="is_hot"> 🔥 مشروب ساخن / Hot
+                        <input type="checkbox" id="overrideIsHot" name="is_hot"> 🔥 مشروب ساخن
                     </label>
                     <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" id="overrideIsCold" name="is_cold"> 🧊 مشروب بارد / Cold
+                        <input type="checkbox" id="overrideIsCold" name="is_cold"> 🧊 مشروب بارد
                     </label>
                     <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" id="overrideIsMilky" name="is_milky"> 🥛 يحتوي حليب / Milk
+                        <input type="checkbox" id="overrideIsMilky" name="is_milky"> 🥛 يحتوي حليب
                     </label>
                     <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" id="overrideIsDairyFree" name="is_dairy_free"> 🍃 خالي حليب / Dairy Free
+                        <input type="checkbox" id="overrideIsDairyFree" name="is_dairy_free"> 🍃 خالي حليب
                     </label>
                     <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" id="overrideIsCaffeineFree" name="is_caffeine_free"> ⚡ خالي كافيين / Decaf
+                        <input type="checkbox" id="overrideIsCaffeineFree" name="is_caffeine_free"> ⚡ خالي كافيين
                     </label>
                     <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; grid-column:span 2; margin-top:4px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.08); color:#22c55e;">
-                        <input type="checkbox" id="overrideShowFreshBadge" name="show_fresh_badge"> 🌿 إظهار وسم "متوفر طازجاً" على بطاقة الصنف (Fresh Badge)
+                        <input type="checkbox" id="overrideShowFreshBadge" name="show_fresh_badge"> 🌿 إظهار وسم "متوفر طازجاً" على بطاقة الصنف
                     </label>
                 </div>
             </div>
@@ -891,7 +891,7 @@
         <input type="hidden" id="assignItemId">
         <p id="assignItemNameDisplay" style="font-weight:700; color:#fff; margin-bottom:15px;"></p>
         <div class="form-group">
-            <label class="form-label">اختر المجموعة (Section):</label>
+            <label class="form-label">اختر المجموعة:</label>
             <select id="assignTargetSectionSelect" class="form-select">
                 {% for sec in sections %}
                     <option value="{{ sec.id }}">{{ sec.tab.name_ar }} ⬅ {{ sec.name_ar }}</option>
