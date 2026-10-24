@@ -308,6 +308,8 @@ def contact_submit(request):
                 }
             }
         )
+    from accounts.views import notify_staff_new_message
+    notify_staff_new_message(msg)
 
     return JsonResponse({"status": "success", "message": "Message sent successfully!"})
 

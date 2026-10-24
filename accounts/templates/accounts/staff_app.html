@@ -493,20 +493,35 @@ window.playChimeTone = function() {
     } catch(e) {}
 };
 
+function setPushButton(on) {
+    var btn = document.getElementById('btnPushToggle');
+    if (!btn) return;
+    btn.classList.toggle('on', on);
+    btn.title = on ? 'الإشعارات شغالة، اضغط للإيقاف' : 'تفعيل الرنين والإشعارات';
+}
+
 window.requestPushPermission = async function() {
+    var btn = document.getElementById('btnPushToggle');
+    if (btn && btn.classList.contains('on')) {
+        if (!confirm('بدك توقف الإشعارات على هالجوال؟ ما رح يوصلك نداء الطاولات والتطبيق مسكّر.')) return;
+        var off = window.unsubscribeStaffPush ? await unsubscribeStaffPush() : true;
+        setPushButton(!off);
+        showToast(off ? 'انطفت الإشعارات على هالجوال 🔕' : 'تعذر إيقاف الإشعارات', off ? 'success' : 'danger');
+        return;
+    }
     try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') await audioCtx.resume();
         playChimeTone();
     } catch(e) {}
 
-    var btn = document.getElementById('btnPushToggle');
-    if (btn) {
-        btn.classList.add('on');
-    }
     var pushed = window.subscribeStaffPush ? await subscribeStaffPush(window.VAPID_PUBLIC_KEY) : false;
-    showToast(pushed ? 'تم تفعيل الرنين والإشعارات حتى والشاشة مقفلة 🔔' : 'تم تفعيل الرنين 🔔 (الإشعارات غير مسموحة على هذا الجهاز)', 'success');
+    setPushButton(pushed);
+    showToast(pushed ? 'تم تفعيل الرنين والإشعارات حتى والشاشة مقفلة 🔔' : 'الإشعارات مش مسموحة على هالجوال. فعّلها من إعدادات المتصفح للموقع.', pushed ? 'success' : 'danger');
 };
+
+// Show the real notification state when the app opens
+if (window.staffPushEnabled) staffPushEnabled().then(setPushButton);
 
 // =================== WebSocket Table Calls Feed ===================
 function connectWS() {
@@ -659,6 +674,19 @@ window.toggleShift = function() {
         body: JSON.stringify({action: on ? 'end' : 'start'})
     }).then(function(r) { return r.json(); }).then(function(d) {
         btn.disabled = false;
+        if (d.code === 'not_cafe_network' && d.can_approve && !on) {
+            if (confirm('هالجوال مش على شبكة الكافيه المعتمدة. غالباً شركة الإنترنت غيّرت العنوان.\n\nإنت هلأ بالكافيه وشابك على الواي فاي تبعه؟ إذا آه، اعتمدها وابدأ الدوام.\n(المدير بيوصله إشعار بالتغيير)')) {
+                fetch('/api/staff/cafe-network/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') || ''},
+                    body: JSON.stringify({action: 'use'})
+                }).then(function(r) { return r.json(); }).then(function(n) {
+                    if (n.status === 'success') { showToast('تم اعتماد واي فاي الكافيه ✓', 'success'); toggleShift(); }
+                    else showToast(n.message || 'تعذر اعتماد الشبكة', 'danger');
+                });
+            }
+            return;
+        }
         if (d.status !== 'success') { showToast(d.message || 'تعذر التسجيل', 'danger'); return; }
         var started = new Date(d.shift.started_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
         bar.classList.toggle('on', !on);

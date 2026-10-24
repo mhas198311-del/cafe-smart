@@ -585,6 +585,20 @@ def staff_push_subscribe(request):
 
 @csrf_exempt
 @require_POST
+def staff_push_unsubscribe(request):
+    """Stops call notifications on this phone."""
+    from .models import StaffPushSubscription
+    staff_user = StaffUser.objects.filter(id=request.session.get("staff_user_id")).first()
+    if not staff_user:
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+    endpoint = _request_data(request).get("endpoint")
+    if endpoint:
+        StaffPushSubscription.objects.filter(endpoint=endpoint, staff_user=staff_user).delete()
+    return JsonResponse({"status": "success"})
+
+
+@csrf_exempt
+@require_POST
 def staff_forgot_password_request(request):
     """
     Sends a WhatsApp code to the phone saved on a staff account. The answer is
@@ -801,7 +815,8 @@ def staff_shift(request):
     if not staff:
         return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
     if not on_cafe_network(request, CafeConfiguration.objects.first()):
-        return JsonResponse({"status": "error", "message": "لازم تكون شابك على واي فاي الكافيه"}, status=403)
+        return JsonResponse({"status": "error", "code": "not_cafe_network", "can_approve": staff.can_approve_network or staff.role == "ADMIN",
+                             "message": "لازم تكون شابك على واي فاي الكافيه"}, status=403)
 
     action = _request_data(request).get("action")
     open_shift = StaffShift.objects.filter(staff=staff, ended_at__isnull=True).first()
@@ -844,21 +859,48 @@ def staff_shifts_log(request):
 @csrf_exempt
 @require_POST
 def staff_cafe_network(request):
-    """Admin, from inside the cafe: save this connection's address as the cafe Wi-Fi (or clear it)."""
+    """
+    From inside the cafe: save this connection's address as the cafe Wi-Fi.
+    The manager can also clear it or undo the last change; staff marked
+    can_approve_network may only add the current address, and the manager is notified.
+    """
+    from django.utils import timezone
     from .models import CafeConfiguration
-    if not staff_is_admin(request):
+    staff = StaffUser.objects.filter(id=request.session.get("staff_user_id"), is_active=True).first()
+    is_admin = staff_is_admin(request)
+    if not staff or not (is_admin or staff.can_approve_network):
         return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
     config = CafeConfiguration.objects.first() or CafeConfiguration.objects.create()
-    if _request_data(request).get("action") == "clear":
+    action = _request_data(request).get("action")
+    if action in ("clear", "undo") and not is_admin:
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+
+    before = config.cafe_network_ips
+    if action == "clear":
         config.cafe_network_ips = ""
+    elif action == "undo":
+        config.cafe_network_ips = config.cafe_network_previous
     else:
         ips = [ip for ip in config.cafe_network_ips.splitlines() if ip.strip()]
         current = network_ip(request)
         if current not in ips:
             ips.append(current)
         config.cafe_network_ips = "\n".join(ips[-5:])  # keep the last few addresses the provider gave
-    config.save(update_fields=["cafe_network_ips"])
-    return JsonResponse({"status": "success", "ips": config.cafe_network_ips.splitlines(), "current": network_ip(request)})
+    if config.cafe_network_ips != before:
+        config.cafe_network_previous = before
+        config.cafe_network_changed_by = staff.employee_name
+        config.cafe_network_changed_at = timezone.now()
+    config.save(update_fields=["cafe_network_ips", "cafe_network_previous", "cafe_network_changed_by", "cafe_network_changed_at"])
+
+    if config.cafe_network_ips != before and not is_admin:
+        try:
+            from .push_notifications import send_web_push_to_staff
+            send_web_push_to_staff("📶 تغيّرت شبكة الكافيه", f"{staff.employee_name} اعتمد شبكة الواي فاي الحالية. إذا مش صح، رجّعها من الإعدادات ← الموظفين.",
+                                   url="/staff/settings/", tag="cafe-network", admins_only=True)
+        except Exception as e:
+            logger.error(f"Cafe network push failed: {e}")
+    return JsonResponse({"status": "success", "ips": config.cafe_network_ips.splitlines(), "current": network_ip(request),
+                         "changed_by": config.cafe_network_changed_by})
 
 
 @require_GET
@@ -1173,8 +1215,18 @@ def whatsapp_templates_submit(request):
     return JsonResponse({"status": "success", "templates": result})
 
 
+def notify_staff_new_message(msg):
+    """Phone notification for a new customer message, so staff see it with the app closed."""
+    try:
+        from .push_notifications import send_web_push_to_staff
+        send_web_push_to_staff(f"✉️ رسالة جديدة من {msg.name}", (msg.message or "")[:120], url="/staff/app/", tag=f"message-{msg.id}")
+    except Exception as e:
+        logger.error(f"Message push failed: {e}")
+
+
 def _broadcast_contact_message(msg):
     """Shows a new message in the staff app and dashboard right away."""
+    notify_staff_new_message(msg)
     from asgiref.sync import async_to_sync
     from channels.layers import get_channel_layer
     channel_layer = get_channel_layer()
@@ -2026,6 +2078,7 @@ def staff_user_manage(request):
     role = request.POST.get("role", "WAITER").strip()
     password = request.POST.get("password", "").strip()
     phone_number = clean_phone_number(request.POST.get("phone_number", "").strip())
+    can_approve_network = request.POST.get("can_approve_network") in ("on", "true", "1")
 
     if not username or not employee_name:
         return JsonResponse({"status": "error", "message": "اسم المستخدم واسم الموظف مطلوبان"}, status=400)
@@ -2041,6 +2094,7 @@ def staff_user_manage(request):
             user.employee_name = employee_name
             user.role = role
             user.phone_number = phone_number
+            user.can_approve_network = can_approve_network
             if password:
                 user.password_hash = make_password(password)
             user.save()
@@ -2058,6 +2112,7 @@ def staff_user_manage(request):
             employee_name=employee_name,
             role=role,
             phone_number=phone_number,
+            can_approve_network=can_approve_network,
             password_hash=make_password(password),
             is_active=True
         )
