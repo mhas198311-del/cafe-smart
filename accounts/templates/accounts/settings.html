@@ -502,9 +502,17 @@ body { padding-bottom: 70px; }
                 <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px;">
                     لما يكون شغال، الزبون لازم يكون شابك على واي فاي الكافيه ليقدر ينادي، فما حدا بيقدر ينادي من برا. صفحة الطاولة بتعرضله اسم الشبكة وكلمة السر.
                 </p>
+                <label class="form-label">الصالات</label>
+                <p style="font-size:12px; color:var(--text-muted); margin:0 0 8px;">
+                    لكل صالة حرف إنجليزي، ورقم الطاولة بيطلع بالحرف مثل <b dir="ltr">F15</b>. "من رقم" هو رقم أول طاولة بالصالة.
+                    إذا ما في صالات، الطاولات بتكون أرقام عادية حسب "عدد الطاولات" تحت.
+                </p>
+                <input type="hidden" name="table_halls" id="tableHallsInput" value="{{ table_halls_json }}">
+                <div id="tableHallsRows" style="display:flex; flex-direction:column; gap:8px; margin-bottom:8px;"></div>
+                <button type="button" class="btn btn-outline btn-sm" onclick="addTableHall()" style="margin-bottom:14px;">+ إضافة صالة</button>
                 <div class="settings-grid-2">
                     <div>
-                        <label class="form-label">عدد الطاولات</label>
+                        <label class="form-label">عدد الطاولات (بدون صالات)</label>
                         <input type="number" name="table_count" min="1" max="200" class="form-input" value="{{ config.table_count }}">
                     </div>
                     <div>
@@ -955,6 +963,48 @@ function closeSettingsModal(id) {
     const modal = document.getElementById(id);
     if (modal) modal.style.display = 'none';
 }
+
+// Table halls editor: rows of code / name / first number / count, kept as JSON in a hidden input
+function tableHallsRead() {
+    try { return JSON.parse(document.getElementById('tableHallsInput').value || '[]'); } catch (e) { return []; }
+}
+function tableHallsSync() {
+    const rows = [...document.querySelectorAll('#tableHallsRows .hall-row')].map(r => ({
+        code: r.querySelector('[data-f=code]').value.trim().toUpperCase(),
+        name: r.querySelector('[data-f=name]').value.trim(),
+        start: parseInt(r.querySelector('[data-f=start]').value) || 1,
+        count: parseInt(r.querySelector('[data-f=count]').value) || 0,
+    }));
+    document.getElementById('tableHallsInput').value = JSON.stringify(rows);
+    document.querySelectorAll('#tableHallsRows .hall-row').forEach((r, i) => {
+        const h = rows[i];
+        r.querySelector('.hall-preview').textContent = h.code && h.count ? `${h.code}${h.start} … ${h.code}${h.start + h.count - 1}` : '';
+    });
+}
+function addTableHall(h) {
+    h = h || {code: '', name: '', start: 1, count: 10};
+    const row = document.createElement('div');
+    row.className = 'hall-row';
+    row.style.cssText = 'display:grid; grid-template-columns:1fr 1fr 44px; gap:6px; align-items:end; padding:10px; border:1px solid rgba(255,255,255,0.08); border-radius:10px;';
+    row.innerHTML = `
+        <div><label class="form-label" style="font-size:11px;">الحرف</label><input data-f="code" class="form-input" dir="ltr" maxlength="3" placeholder="F"></div>
+        <div style="grid-column:2/4;"><label class="form-label" style="font-size:11px;">اسم الصالة</label><input data-f="name" class="form-input" maxlength="40" placeholder="الصالة الأمامية"></div>
+        <div><label class="form-label" style="font-size:11px;">من رقم</label><input data-f="start" type="number" min="1" max="999" class="form-input"></div>
+        <div><label class="form-label" style="font-size:11px;">عدد الطاولات</label><input data-f="count" type="number" min="1" max="200" class="form-input"></div>
+        <button type="button" class="btn btn-sm" title="حذف الصالة" aria-label="حذف الصالة" style="background:rgba(239,68,68,0.15); color:#ef4444; height:42px;">✕</button>
+        <div class="hall-preview" dir="ltr" style="grid-column:1/-1; font-size:12px; color:var(--text-muted); text-align:right;"></div>`;
+    row.querySelector('[data-f=code]').value = h.code || '';
+    row.querySelector('[data-f=name]').value = h.name || '';
+    row.querySelector('[data-f=start]').value = h.start || 1;
+    row.querySelector('[data-f=count]').value = h.count || '';
+    row.querySelectorAll('input').forEach(i => i.addEventListener('input', tableHallsSync));
+    row.querySelector('button').addEventListener('click', () => { row.remove(); tableHallsSync(); });
+    document.getElementById('tableHallsRows').appendChild(row);
+    tableHallsSync();
+}
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('tableHallsInput')) tableHallsRead().forEach(addTableHall);
+});
 
 async function saveFullCafeSettings(e) {
     e.preventDefault();

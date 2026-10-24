@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 import random
 import secrets
@@ -539,6 +540,7 @@ def staff_settings_view(request):
         "loyverse_webhook_url": request.build_absolute_uri(f"/integrations/loyverse-webhook/?key={loyverse_webhook_key()}"),
         "current_network_ip": network_ip(request),
         "whatsapp_webhook_url": f"https://{request.get_host()}/api/whatsapp/webhook/",
+        "table_halls_json": json.dumps(config.table_halls or [], ensure_ascii=False),
     })
 
 
@@ -1103,6 +1105,11 @@ def staff_config_edit(request):
             config.table_count = max(1, min(200, int(request.POST.get("table_count") or config.table_count)))
         except ValueError:
             return JsonResponse({"status": "error", "message": "عدد الطاولات لازم يكون رقم"}, status=400)
+        if "table_halls" in request.POST:
+            halls, error = _parse_table_halls(request.POST.get("table_halls"))
+            if error:
+                return JsonResponse({"status": "error", "message": error}, status=400)
+            config.table_halls = halls
         hookah_id = request.POST.get("hookah_staff") or None
         config.hookah_staff = StaffUser.objects.filter(id=hookah_id, is_active=True).first() if hookah_id else None
     config.featured_item_name = request.POST.get("featured_item_name", config.featured_item_name)
@@ -1182,12 +1189,52 @@ def staff_table_qr_view(request):
     base = request.build_absolute_uri("/").rstrip("/")
     import segno
     from django.utils.safestring import mark_safe
-    tables = []
-    for n in range(1, config.table_count + 1):
-        url = f"{base}/table/{n}/?auth={table_token(config, n)}"
-        qr_svg = mark_safe(segno.make(url, error="m").svg_inline(border=2, omitsize=True))
-        tables.append({"number": n, "url": url, "qr_svg": qr_svg})
-    return render(request, "accounts/table_qr.html", {"tables": tables, "config": config})
+    halls = []
+    for group in config.table_groups():
+        tables = []
+        for number in group["tables"]:
+            url = f"{base}/table/{number}/?auth={table_token(config, number)}"
+            qr_svg = mark_safe(segno.make(url, error="m").svg_inline(border=2, omitsize=True))
+            tables.append({"number": number, "url": url, "qr_svg": qr_svg})
+        halls.append({"name": group["name"], "code": group["code"], "tables": tables})
+    total = sum(len(h["tables"]) for h in halls)
+    return render(request, "accounts/table_qr.html", {"halls": halls, "total": total, "config": config})
+
+
+def _parse_table_halls(raw):
+    """Halls from the settings form (JSON list). Returns (halls, error message)."""
+    import json
+    import re
+    try:
+        rows = json.loads(raw or "[]")
+    except ValueError:
+        return None, "بيانات الصالات مش مفهومة"
+    if not isinstance(rows, list):
+        return None, "بيانات الصالات مش مفهومة"
+    halls, seen, total = [], set(), 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        code = str(row.get("code", "")).strip().upper()
+        name = str(row.get("name", "")).strip()[:40]
+        if not code and not name:
+            continue
+        if not re.fullmatch(r"[A-Z][A-Z0-9]{0,2}", code):
+            return None, f"رمز الصالة \"{code or name}\" لازم يكون حرف إنجليزي (مثل F)، ومعه لحد حرفين أو رقمين"
+        if code in seen:
+            return None, f"الرمز {code} مكرر لصالتين"
+        try:
+            start, count = int(row.get("start") or 1), int(row.get("count") or 0)
+        except (TypeError, ValueError):
+            return None, f"أرقام صالة {code} لازم تكون أرقام"
+        if not (1 <= start <= 999 and 1 <= count <= 200):
+            return None, f"صالة {code}: أول رقم من 1 لـ 999، وعدد الطاولات من 1 لـ 200"
+        seen.add(code)
+        total += count
+        halls.append({"code": code, "name": name, "start": start, "count": count})
+    if total > 400:
+        return None, "مجموع الطاولات بكل الصالات لازم يكون أقل من 400"
+    return halls, None
 
 
 @csrf_exempt
