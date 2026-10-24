@@ -549,7 +549,7 @@
                                                 data-image="{{ t.image|default_if_none:'' }}" 
                                                 data-order-index="{{ t.order_index }}" 
                                                 onclick="openTabModal(this)">تعديل</button>
-                                        <button class="btn btn-secondary btn-sm" style="padding:3px 7px; font-size:11px; border-color:var(--danger); color:var(--danger);" onclick="deleteTab('{{ t.id }}')">حذف</button>
+                                        <button class="btn btn-secondary btn-sm" style="padding:3px 7px; font-size:11px; border-color:var(--danger); color:var(--danger);" onclick="deleteTab('{{ t.id }}', '{{ t.name_ar|escapejs }}')">حذف</button>
                                     {% endif %}
                                 </div>
                             </div>
@@ -584,7 +584,7 @@
                                                                     data-banner-image="{{ sec.banner_image|default_if_none:'' }}" 
                                                                     data-order-index="{{ sec.order_index }}" 
                                                                     onclick="openSectionModal(this)">تعديل</button>
-                                                            <button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:10.5px; border-color:var(--danger); color:var(--danger);" onclick="deleteSection('{{ sec.id }}')">حذف</button>
+                                                            <button class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:10.5px; border-color:var(--danger); color:var(--danger);" onclick="deleteSection('{{ sec.id }}', '{{ sec.name_ar|escapejs }}')">حذف</button>
                                                         {% endif %}
                                                     </div>
                                                 </div>
@@ -883,6 +883,62 @@ function toggleCmsAccordion(bodyId) {
         body.style.display = (body.style.display === 'none' || body.style.display === '') ? 'block' : 'none';
     }
 }
+
+// Saving reloads the page: come back to the same sub-tab, open groups and scroll spot
+window.addEventListener('beforeunload', () => {
+    try {
+        const open = [...document.querySelectorAll('.tab-cms-body, .section-cms-body')]
+            .filter(el => el.style.display === 'block').map(el => el.id);
+        sessionStorage.setItem('dashPlace', JSON.stringify({
+            at: Date.now(),
+            struct: document.getElementById('cmsStructPanel').style.display === 'block',
+            open: open,
+            search: document.getElementById('dashboardItemsSearch').value,
+            y: window.scrollY
+        }));
+    } catch (e) {}
+});
+window.addEventListener('load', () => {
+    let place = null;
+    try { place = JSON.parse(sessionStorage.getItem('dashPlace') || 'null'); sessionStorage.removeItem('dashPlace'); } catch (e) {}
+    if (!place || Date.now() - place.at > 30000) return;
+    if (place.struct) switchCmsTab('struct');
+    (place.open || []).forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'block'; });
+    if (place.search) {
+        document.getElementById('dashboardItemsSearch').value = place.search;
+        filterDashboardTable(place.search);
+    }
+    window.scrollTo(0, place.y || 0);
+});
+
+async function deleteMenuStructure(kind, id, name) {
+    const isTab = kind === 'tab';
+    const warning = isTab
+        ? `متأكد بدك تحذف التبويب (${name}) مع كل المجموعات اللي فيه؟\nالأصناف ما بتنحذف، بترجع لقائمة "بانتظار التوزيع" وبتنخفي عن الزبائن لحد ما تحطها بمجموعة ثانية.`
+        : `متأكد بدك تحذف المجموعة (${name})؟\nالأصناف ما بتنحذف، بترجع لقائمة "بانتظار التوزيع" وبتنخفي عن الزبائن لحد ما تحطها بمجموعة ثانية.`;
+    if (!confirm(warning)) return;
+    const formData = new FormData();
+    formData.append('action', 'delete');
+    formData.append(isTab ? 'tab_id' : 'section_id', id);
+    try {
+        const res = await fetch(isTab ? '/api/staff/tab/manage/' : '/api/staff/section/manage/', {
+            method: 'POST',
+            body: formData,
+            headers: {'X-CSRFToken': getCookie('csrftoken') || ''}
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast(isTab ? 'تم حذف التبويب' : 'تم حذف المجموعة', 'success');
+            setTimeout(() => window.location.reload(), 800);
+        } else {
+            showToast(data.message || 'تعذر الحذف', 'danger');
+        }
+    } catch (e) {
+        showToast('تعذر الاتصال بالسيرفر', 'danger');
+    }
+}
+function deleteTab(id, name) { deleteMenuStructure('tab', id, name || ''); }
+function deleteSection(id, name) { deleteMenuStructure('section', id, name || ''); }
 
 // =================== Modal Handlers ===================
 function closeModal(id) {

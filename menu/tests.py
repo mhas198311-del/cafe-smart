@@ -196,3 +196,27 @@ class SeoTests(TestCase):
         staff = client.get('/staff/login/').content.decode()
         self.assertIn('content="noindex, nofollow"', staff)
 
+
+
+class MenuStructureDeleteTests(TestCase):
+    def test_deleting_tab_keeps_its_items_waiting_for_a_group(self):
+        from accounts.models import StaffUser
+        admin = StaffUser.objects.create(username="a", employee_name="Boss", role="ADMIN", password_hash="x")
+        session = self.client.session
+        session["staff_user_id"] = admin.id
+        session["staff_role"] = "ADMIN"
+        session.save()
+        tab = MenuTab.objects.create(name_en="Drinks", name_ar="مشروبات")
+        section = MenuSection.objects.create(tab=tab, name_en="Cold", name_ar="بارد")
+        category = MenuCategory.objects.create(loyverse_category_id="c1", pos_category_name="Cold")
+        item = MenuItem.objects.create(loyverse_id="i1", pos_name="Mojito", price=2, category=category, custom_section=section)
+
+        dashboard = self.client.get("/staff/dashboard/")
+        self.assertContains(dashboard, "function deleteTab(")
+        self.assertContains(dashboard, "function deleteSection(")
+
+        res = self.client.post("/api/staff/tab/manage/", {"action": "delete", "tab_id": tab.id})
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(MenuSection.objects.exists())
+        item.refresh_from_db()
+        self.assertIsNone(item.custom_section)
