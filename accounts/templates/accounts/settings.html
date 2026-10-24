@@ -468,9 +468,12 @@
                 <div style="font-size:12.5px; margin-bottom:10px;">
                     الشبكة المعتمدة: <b id="cafeNetworkIps" dir="ltr">{{ config.cafe_network_ips|default:"لسا ما في (الدوام مسموح من أي مكان)"|linebreaksbr }}</b><br>
                     اتصالك الحالي: <b dir="ltr">{{ current_network_ip }}</b>
+                    {% if config.cafe_network_changed_by %}<br>آخر تغيير: {{ config.cafe_network_changed_by }} · {{ config.cafe_network_changed_at|date:"j/n H:i" }}{% endif %}
                 </div>
                 <button type="button" class="btn btn-primary btn-sm" onclick="saveCafeNetwork('use')">اعتمد شبكتي الحالية كشبكة الكافيه</button>
+                {% if config.cafe_network_changed_by %}<button type="button" class="btn btn-secondary btn-sm" onclick="saveCafeNetwork('undo')">رجّع الشبكة السابقة</button>{% endif %}
                 <button type="button" class="btn btn-secondary btn-sm" onclick="saveCafeNetwork('clear')">مسح</button>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:8px;">الموظفين اللي إلهم صلاحية "اعتماد الواي فاي" بيقدروا يعتمدوا الشبكة من تطبيقهم لما يبدأوا الدوام.</div>
             </div>
 
             <div class="form-group" style="background:rgba(212,175,55,0.06); padding:14px; border-radius:10px; border:1px solid rgba(212,175,55,0.25); margin-bottom:18px;">
@@ -512,7 +515,7 @@
                                     <button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" title="تغيير كلمة المرور" onclick="openChangePasswordModal('{{ u.id }}', '{{ u.employee_name|escapejs }}')">
                                         <i class="fa-solid fa-key"></i> كلمة السر
                                     </button>
-                                    <button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" title="تعديل البيانات" onclick="openStaffUserModal('edit', '{{ u.id }}', '{{ u.username|escapejs }}', '{{ u.employee_name|escapejs }}', '{{ u.role }}', '{{ u.phone_number|escapejs }}')">
+                                    <button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" title="تعديل البيانات" onclick="openStaffUserModal('edit', '{{ u.id }}', '{{ u.username|escapejs }}', '{{ u.employee_name|escapejs }}', '{{ u.role }}', '{{ u.phone_number|escapejs }}', {{ u.can_approve_network|yesno:'true,false' }})">
                                         <i class="fa-solid fa-pen"></i>
                                     </button>
                                     <button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px; border-color:var(--danger); color:var(--danger);" title="حذف الموظف" onclick="deleteStaffUser('{{ u.id }}', '{{ u.employee_name|escapejs }}')">
@@ -817,6 +820,14 @@
                 <input type="tel" id="staffPhone" name="phone_number" dir="ltr" class="form-input" placeholder="مثال: 0791234567">
             </div>
 
+            <div class="form-group">
+                <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                    <input type="checkbox" id="staffCanApproveNetwork" name="can_approve_network">
+                    يقدر يعتمد واي فاي الكافيه من تطبيق الموظفين
+                </label>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">لأول موظف بيداوم لما شركة الإنترنت تغيّر العنوان. كل اعتماد بيوصلك إشعار فيه.</div>
+            </div>
+
             <div class="form-group" id="staffPasswordGroup">
                 <label class="form-label" id="staffPasswordLabel">كلمة المرور</label>
                 <input type="password" id="staffPassword" name="password" class="form-input" placeholder="8 أحرف على الأقل" minlength="8" autocomplete="new-password">
@@ -968,8 +979,9 @@ async function triggerLoyverseSyncFromSettings() {
 }
 
 // Staff Management
-function openStaffUserModal(mode, id, username, empName, role, phone) {
+function openStaffUserModal(mode, id, username, empName, role, phone, canApproveNetwork) {
     document.getElementById('staffPhone').value = phone || '';
+    document.getElementById('staffCanApproveNetwork').checked = !!canApproveNetwork;
     if (mode === 'create') {
         document.getElementById('staffModalTitle').innerText = 'إضافة موظف / مدير جديد';
         document.getElementById('staffUserId').value = '';
@@ -1259,7 +1271,7 @@ async function saveCafeNetwork(action) {
         const d = await res.json();
         if (d.status !== 'success') throw new Error(d.message);
         document.getElementById('cafeNetworkIps').innerText = d.ips.length ? d.ips.join('\n') : 'لسا ما في (الدوام مسموح من أي مكان)';
-        showToast(action === 'clear' ? 'انمسحت شبكة الكافيه' : 'تم اعتماد شبكة الكافيه ✓', 'success');
+        showToast(action === 'clear' ? 'انمسحت شبكة الكافيه' : action === 'undo' ? 'رجعت الشبكة السابقة ✓' : 'تم اعتماد شبكة الكافيه ✓', 'success');
     } catch (e) {
         showToast('تعذر الحفظ', 'danger');
     }

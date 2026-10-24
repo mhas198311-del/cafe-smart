@@ -33,6 +33,7 @@ urlpatterns = [
     path('api/staff/shifts/log/', views.staff_shifts_log, name='staff_shifts_log'),
     path('api/staff/cafe-network/', views.staff_cafe_network, name='staff_cafe_network'),
     path('api/staff/push-subscribe/', views.staff_push_subscribe, name='staff_push_subscribe'),
+    path('api/staff/push-unsubscribe/', views.staff_push_unsubscribe, name='staff_push_unsubscribe'),
     path('api/staff/messages/read/', views.mark_message_read, name='mark_message_read'),
     path('api/staff/config/edit/', views.staff_config_edit, name='staff_config_edit'),
     path('api/staff/menu/toggle-status/', views.staff_menu_toggle_status, name='staff_menu_toggle_status'),

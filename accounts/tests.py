@@ -649,3 +649,54 @@ class CafeLocationTests(TestCase):
         self.assertEqual(res.status_code, 400)
         self.config.refresh_from_db()
         self.assertEqual(self.config.latitude, CafeConfiguration().latitude)
+
+
+class StaffAppBatchTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        from django.contrib.auth.hashers import make_password
+        self.config = CafeConfiguration.objects.create(cafe_network_ips="92.253.10.10")
+        self.waiter = StaffUser.objects.create(username="w", employee_name="Sami", role="WAITER", password_hash=make_password("x"))
+
+    def login(self, user):
+        session = self.client.session
+        session["staff_user_id"] = user.id
+        session["staff_role"] = user.role
+        session.save()
+
+    def test_only_trusted_staff_approve_network_and_admin_can_undo(self):
+        self.login(self.waiter)
+        res = self.client.post("/api/staff/shift/", '{"action": "start"}', content_type="application/json", REMOTE_ADDR="176.29.5.7")
+        self.assertEqual(res.json()["code"], "not_cafe_network")
+        self.assertFalse(res.json()["can_approve"])
+        self.assertEqual(self.client.post("/api/staff/cafe-network/", '{"action": "use"}', content_type="application/json", REMOTE_ADDR="176.29.5.7").status_code, 401)
+
+        self.waiter.can_approve_network = True
+        self.waiter.save()
+        with mock.patch("accounts.push_notifications.send_web_push_to_staff") as push:
+            res = self.client.post("/api/staff/cafe-network/", '{"action": "use"}', content_type="application/json", REMOTE_ADDR="176.29.5.7")
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(push.call_args.kwargs["admins_only"])
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.cafe_network_ips.splitlines(), ["92.253.10.10", "176.29.5.7"])
+        self.assertEqual(self.config.cafe_network_changed_by, "Sami")
+        self.assertEqual(self.client.post("/api/staff/cafe-network/", '{"action": "undo"}', content_type="application/json").status_code, 401)
+
+        admin = StaffUser.objects.create(username="a", employee_name="Boss", role="ADMIN", password_hash="x")
+        self.login(admin)
+        self.client.post("/api/staff/cafe-network/", '{"action": "undo"}', content_type="application/json")
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.cafe_network_ips, "92.253.10.10")
+
+    def test_contact_message_sends_phone_notification(self):
+        with mock.patch("accounts.push_notifications.send_web_push_to_staff") as push:
+            res = self.client.post("/contact/submit/", {"name": "Lina", "contact": "0790000000", "message": "Hi"})
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("Lina", push.call_args.args[0])
+
+    def test_push_unsubscribe(self):
+        from accounts.models import StaffPushSubscription
+        StaffPushSubscription.objects.create(staff_user=self.waiter, endpoint="https://push/1", p256dh="k", auth="a")
+        self.login(self.waiter)
+        self.client.post("/api/staff/push-unsubscribe/", '{"endpoint": "https://push/1"}', content_type="application/json")
+        self.assertFalse(StaffPushSubscription.objects.exists())

@@ -7,6 +7,7 @@ class StaffUser(models.Model):
     employee_name = models.CharField(max_length=255)
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='WAITER')
     phone_number = models.CharField(max_length=20, blank=True, default="", help_text="WhatsApp number for password recovery")
+    can_approve_network = models.BooleanField(default=False, help_text="May confirm the cafe Wi-Fi from the staff app when the provider changes its address")
     is_active = models.BooleanField(default=True)
     last_login = models.DateTimeField(auto_now=True)
 
@@ -97,6 +98,9 @@ class CafeConfiguration(models.Model):
     featured_item_is_active = models.BooleanField(default=False, help_text="Toggle to display a special featured item launch card on the menu")
     arrival_qr_required = models.BooleanField(default=False, help_text="Waiters confirm arrival by scanning the table's QR code")
     cafe_network_ips = models.TextField(blank=True, default="", help_text="Public internet addresses of the cafe Wi-Fi, one per line. Shifts can only start or end from these.")
+    cafe_network_previous = models.TextField(blank=True, default="", help_text="cafe_network_ips before the last change, for undo")
+    cafe_network_changed_by = models.CharField(max_length=255, blank=True, default="")
+    cafe_network_changed_at = models.DateTimeField(blank=True, null=True)
     featured_item_name = models.CharField(max_length=255, blank=True, null=True, default="Saffron Latte / لاتيه الزعفران")
     featured_item_desc = models.TextField(blank=True, null=True, default="جرب صنفنا الجديد المميز بنكهة الزعفران الفاخرة الممزوجة مع الإسبريسو العضوي.")
     featured_item_video = models.FileField(upload_to='videos/', blank=True, null=True, help_text="Promo video file for the new item")

@@ -61,5 +61,32 @@
     }).catch(function () { return false; });
   };
 
+  // Resolves true when this phone already gets call notifications.
+  window.staffPushEnabled = function () {
+    if (!('PushManager' in window) || !('Notification' in window) || Notification.permission !== 'granted') return Promise.resolve(false);
+    return window.staffSW.then(function () { return navigator.serviceWorker.ready; })
+      .then(function (reg) { return reg.pushManager.getSubscription(); })
+      .then(function (sub) { return !!sub; })
+      .catch(function () { return false; });
+  };
+
+  // Stops call notifications on this phone.
+  window.unsubscribeStaffPush = function () {
+    if (!('PushManager' in window)) return Promise.resolve(true);
+    return window.staffSW.then(function () { return navigator.serviceWorker.ready; })
+      .then(function (reg) { return reg.pushManager.getSubscription(); })
+      .then(function (sub) {
+        if (!sub) return true;
+        var endpoint = sub.endpoint;
+        return sub.unsubscribe().then(function () {
+          return fetch('/api/staff/push-unsubscribe/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: endpoint }),
+          }).then(function () { return true; });
+        });
+      }).catch(function () { return false; });
+  };
+
   document.addEventListener('DOMContentLoaded', refreshButtons);
 })();
