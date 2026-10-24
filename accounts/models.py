@@ -105,6 +105,8 @@ class CafeConfiguration(models.Model):
     table_qr_secret = models.CharField(max_length=64, blank=True, default="", help_text="Secret in the table QR codes; change it to retire all printed codes")
     table_count = models.PositiveIntegerField(default=20, help_text="Number of tables to print QR codes for")
     table_halls = models.JSONField(default=list, blank=True, help_text="Halls, each with a letter code: [{code, name, start, count}]; tables are named like F15")
+    table_card_template = models.FileField(upload_to='tables/', blank=True, null=True, help_text="Background design (e.g. from Canva) the table QR codes are printed on")
+    table_card_layout = models.JSONField(default=dict, blank=True, help_text="Where the QR code and table number sit on the template, in percent of the card")
     table_calls_wifi_only = models.BooleanField(default=True, help_text="Table calls only from the cafe Wi-Fi")
     hookah_staff = models.ForeignKey("StaffUser", on_delete=models.SET_NULL, blank=True, null=True, related_name="+", help_text="Gets the hookah call notifications")
     cafe_network_ips = models.TextField(blank=True, default="", help_text="Public internet addresses of the cafe Wi-Fi, one per line. Shifts can only start or end from these.")

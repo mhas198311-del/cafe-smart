@@ -1198,7 +1198,80 @@ def staff_table_qr_view(request):
             tables.append({"number": number, "url": url, "qr_svg": qr_svg})
         halls.append({"name": group["name"], "code": group["code"], "tables": tables})
     total = sum(len(h["tables"]) for h in halls)
-    return render(request, "accounts/table_qr.html", {"halls": halls, "total": total, "config": config})
+    return render(request, "accounts/table_qr.html", {
+        "halls": halls, "total": total, "config": config,
+        "card_layout": card_layout(config), "card_layout_json": json.dumps(card_layout(config)),
+    })
+
+
+TABLE_CARD_DEFAULTS = {
+    "use": False,          # print on the uploaded template instead of the plain cards
+    "width_cm": 10,        # printed width of one card
+    "qr": {"x": 50, "y": 62, "size": 42},                       # centre and width, % of the card width/height
+    "num": {"x": 50, "y": 22, "size": 9, "color": "#000000", "show": True, "prefix": "طاولة",
+            "w": 0, "h": 0, "bg": "#ffffff"},  # w/h: box covering the black placeholder, 0 = no box
+}
+
+
+def card_layout(config):
+    """The saved template layout with every missing or out-of-range value replaced by its default."""
+    saved = config.table_card_layout if isinstance(config.table_card_layout, dict) else {}
+    import re
+
+    def num(value, default, low, high):
+        try:
+            return max(low, min(high, float(value)))
+        except (TypeError, ValueError):
+            return default
+
+    d = TABLE_CARD_DEFAULTS
+    qr, label = saved.get("qr") or {}, saved.get("num") or {}
+    color = str(label.get("color", d["num"]["color"]))
+    bg = str(label.get("bg", d["num"]["bg"]))
+    return {
+        "use": bool(saved.get("use")) and bool(config.table_card_template),
+        "width_cm": num(saved.get("width_cm"), d["width_cm"], 3, 30),
+        "qr": {k: num(qr.get(k), d["qr"][k], lo, hi) for k, lo, hi in (("x", 0, 100), ("y", 0, 100), ("size", 5, 100))},
+        "num": {
+            "x": num(label.get("x"), d["num"]["x"], 0, 100),
+            "y": num(label.get("y"), d["num"]["y"], 0, 100),
+            "size": num(label.get("size"), d["num"]["size"], 2, 40),
+            "color": color if re.fullmatch(r"#[0-9a-fA-F]{6}", color) else d["num"]["color"],
+            "show": bool(label.get("show", True)),
+            "prefix": str(label.get("prefix", d["num"]["prefix"]))[:20],
+            "w": num(label.get("w"), 0, 0, 100),
+            "h": num(label.get("h"), 0, 0, 100),
+            "bg": bg if re.fullmatch(r"#[0-9a-fA-F]{6}", bg) else d["num"]["bg"],
+        },
+    }
+
+
+@csrf_exempt
+@require_POST
+def staff_table_card_template(request):
+    """Uploads or removes the table card design and saves where the QR code and number go on it."""
+    from .models import CafeConfiguration
+    if not staff_is_admin(request):
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+    config = CafeConfiguration.objects.first() or CafeConfiguration.objects.create()
+    upload = request.FILES.get("template")
+    if upload:
+        if upload.content_type not in ("image/png", "image/jpeg", "image/webp") or upload.size > 10 * 1024 * 1024:
+            return JsonResponse({"status": "error", "message": "ارفع صورة PNG أو JPG، حجمها أقل من 10 ميغا"}, status=400)
+        config.table_card_template = upload
+    elif request.POST.get("remove") == "1":
+        config.table_card_template = None
+    if request.POST.get("layout"):
+        try:
+            layout = json.loads(request.POST["layout"])
+        except ValueError:
+            return JsonResponse({"status": "error", "message": "بيانات التصميم مش مفهومة"}, status=400)
+        if isinstance(layout, dict):
+            config.table_card_layout = layout
+            config.table_card_layout = card_layout(config)
+    config.save(update_fields=["table_card_template", "table_card_layout"])
+    return JsonResponse({"status": "success", "template": config.table_card_template.url if config.table_card_template else "",
+                         "layout": card_layout(config)})
 
 
 def _parse_table_halls(raw):

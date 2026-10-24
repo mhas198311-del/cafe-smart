@@ -36,6 +36,7 @@ urlpatterns = [
     path('api/staff/push-unsubscribe/', views.staff_push_unsubscribe, name='staff_push_unsubscribe'),
     path('staff/tables/qr/', views.staff_table_qr_view, name='staff_table_qr'),
     path('api/staff/tables/rotate-code/', views.staff_table_qr_rotate, name='staff_table_qr_rotate'),
+    path('api/staff/tables/card-template/', views.staff_table_card_template, name='staff_table_card_template'),
     path('api/staff/messages/read/', views.mark_message_read, name='mark_message_read'),
     path('api/staff/config/edit/', views.staff_config_edit, name='staff_config_edit'),
     path('api/staff/menu/toggle-status/', views.staff_menu_toggle_status, name='staff_menu_toggle_status'),
