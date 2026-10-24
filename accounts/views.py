@@ -121,6 +121,7 @@ def customer_register_request(request):
     request.session["reg_full_name"] = full_name
     request.session["reg_birth_date"] = birth_date_str
     request.session["reg_password"] = make_password(password)
+    request.session["reg_marketing_opt_in"] = str(request.POST.get("marketing_opt_in", "")).lower() in ("1", "true", "on")
     request.session["reg_otp_hash"] = make_password(otp_code)
     request.session["reg_otp_expiry"] = (datetime.datetime.now() + datetime.timedelta(minutes=5)).timestamp()
     request.session["reg_otp_attempts"] = 0
@@ -189,7 +190,8 @@ def customer_register_verify(request):
         password_hash=request.session["reg_password"],
         full_name=request.session["reg_full_name"],
         birth_date=birth_date,
-        is_verified=True
+        is_verified=True,
+        marketing_opt_in=bool(request.session.get("reg_marketing_opt_in")),
     )
 
     # Create (or reuse by phone) the customer in Loyverse. If Loyverse is unreachable
@@ -403,8 +405,21 @@ def loyalty_view(request):
             reward.progress = 100 if not reward.points_required else min(100, int(customer.points_balance * 100 / reward.points_required))
             rewards.append(reward)
 
+    from .draws import get_draw, month_start, next_month, month_entries, month_name_ar, PLACE_NAMES
+    from django.utils import timezone
+    this_month = month_start()
+    draw = get_draw(this_month)
+    draw_prizes = [{"place": PLACE_NAMES[p], "name": n, "image": i} for p, n, i in draw.prizes() if n]
+    my_entries = month_entries(this_month).filter(customer=customer).count() if customer else 0
+    draw_ends = timezone.make_aware(datetime.datetime.combine(next_month(this_month), datetime.time.min))
+
     return render(request, "accounts/loyalty.html", {
         "customer": customer,
+        "draw": draw,
+        "draw_prizes": draw_prizes,
+        "draw_month_name": month_name_ar(this_month),
+        "draw_ends_iso": draw_ends.isoformat(),
+        "my_entries": my_entries,
         "rewards": rewards,
         "points_live": points_live,
         "loyverse_enabled": LoyverseClient.is_configured(),
@@ -1076,6 +1091,8 @@ def staff_config_edit(request):
     config.birthday_msg_bronze = request.POST.get("birthday_msg_bronze", config.birthday_msg_bronze)
     config.birthday_msg_silver = request.POST.get("birthday_msg_silver", config.birthday_msg_silver)
     config.birthday_msg_gold = request.POST.get("birthday_msg_gold", config.birthday_msg_gold)
+    if request.POST.get("birthday_settings"):
+        config.birthday_messages_enabled = request.POST.get("birthday_messages_enabled") == "on"
 
     # Launch Promotion settings
     config.featured_item_is_active = request.POST.get("featured_item_is_active") == "on"
@@ -1531,9 +1548,8 @@ def _process_loyverse_receipt(receipt_data):
         customer.monthly_spend += total_amount
         customer.save()
 
-        config = CafeConfiguration.objects.first() or CafeConfiguration.objects.create()
-        threshold = config.raffle_ticket_threshold
-        num_tickets = int(total_amount // threshold) if threshold and total_amount >= threshold else 0
+        # Every paid receipt of a registered member is one entry in this month's draw
+        num_tickets = 1 if total_amount > 0 else 0
         for _ in range(num_tickets):
             ticket_code = f"TKT-{secrets.randbelow(900000) + 100000}"
             while RaffleTicket.objects.filter(ticket_code=ticket_code).exists():
@@ -1638,52 +1654,64 @@ def staff_redeem_scan(request):
 @csrf_exempt
 @require_POST
 def staff_raffle_draw(request):
-    """
-    Endpoint for admin managers to draw a winner from all active raffle tickets.
-    """
+    """Draws this month's (or the chosen month's) three winners and messages them on WhatsApp."""
     if not request.session.get("staff_user_id") or request.session.get("staff_role") != "ADMIN":
         return JsonResponse({"status": "error", "message": "Unauthorized. Admin rights required."}, status=401)
-
-    from accounts.models import RaffleTicket, CafeConfiguration
-    active_tickets = RaffleTicket.objects.filter(draw_status='PENDING')
-
-    if not active_tickets.exists():
-        return JsonResponse({"status": "error", "message": "لا يوجد تذاكر نشطة في سحب هذا الشهر."}, status=400)
-
-    # Pick a random winner
-    winner_ticket = random.choice(list(active_tickets))
-    
-    # Mark winner as WON, others as LOST in this draw
-    winner_ticket.draw_status = 'WON'
-    winner_ticket.save()
-    
-    # Update other tickets
-    active_tickets.exclude(id=winner_ticket.id).update(draw_status='LOST')
-
-    winner_customer = winner_ticket.customer
-    config = CafeConfiguration.objects.first()
-    prize_name = config.raffle_prize_name if config else "Premium Coffee Box"
-
-    # Send WhatsApp congratulations
-    from cafe_smart.integrations import WhatsAppClient
+    from .draws import get_draw, parse_month, run_draw, draw_info
+    data = _request_data(request)
+    draw = get_draw(parse_month(data.get("month")))
     try:
-        WhatsAppClient.send_winner_notification(
-            winner_customer.phone_number,
-            winner_customer.full_name,
-            winner_ticket.ticket_code,
-            prize_name
-        )
-    except Exception as e:
-        logger.error(f"Failed to send winner WhatsApp message: {e}")
-
+        draw = run_draw(draw)
+    except ValueError as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    info = draw_info(draw)
+    first = info["winners"][0] if info["winners"] else {}
     return JsonResponse({
         "status": "success",
-        "message": "Draw completed successfully",
-        "winner_name": winner_customer.full_name,
-        "winner_phone": winner_customer.phone_number,
-        "ticket_code": winner_ticket.ticket_code,
-        "prize": prize_name
+        "message": "تم السحب",
+        "draw": info,
+        # Older screens read the first winner from these
+        "winner_name": first.get("name", ""),
+        "winner_phone": first.get("phone", ""),
+        "ticket_code": first.get("ticket", ""),
     })
+
+
+def staff_raffle_month(request):
+    """Entries, first and last receipt, prizes and winners of one month's draw."""
+    if not request.session.get("staff_user_id") or request.session.get("staff_role") != "ADMIN":
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+    from .draws import get_draw, parse_month, draw_info
+    return JsonResponse({"status": "success", "draw": draw_info(get_draw(parse_month(request.GET.get("month"))))})
+
+
+@csrf_exempt
+@require_POST
+def staff_raffle_prizes(request):
+    """Saves the three prizes (name and picture) of one month's draw."""
+    if not request.session.get("staff_user_id") or request.session.get("staff_role") != "ADMIN":
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+    from .draws import get_draw, parse_month, draw_info
+    draw = get_draw(parse_month(request.POST.get("month")))
+    fields = []
+    for place in (1, 2, 3):
+        name = request.POST.get(f"prize{place}_name")
+        if name is not None:
+            setattr(draw, f"prize{place}_name", name.strip()[:255])
+            fields.append(f"prize{place}_name")
+        try:
+            image = _uploaded_image_url(request, f"prize{place}_file", "prizes")
+        except ValueError as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+        if image:
+            setattr(draw, f"prize{place}_image", image)
+            fields.append(f"prize{place}_image")
+        elif request.POST.get(f"prize{place}_remove_image") == "1":
+            setattr(draw, f"prize{place}_image", "")
+            fields.append(f"prize{place}_image")
+    if fields:
+        draw.save(update_fields=fields)
+    return JsonResponse({"status": "success", "message": "انحفظت الجوائز", "draw": draw_info(draw)})
 
 
 def _uploaded_image_url(request, field, folder):
@@ -2311,3 +2339,81 @@ def staff_rewards_manage(request):
         reward.image = request.FILES["image"]
     reward.save()
     return JsonResponse({"status": "success", "message": "تم حفظ المكافأة", "reward_id": reward.id})
+
+
+def _offer_audience(config, tier):
+    rows = [r for r in _dashboard_stats_and_customers(config)[1] if r["customer"].marketing_opt_in]
+    return [r for r in rows if not tier or r["tier"] == tier]
+
+
+def staff_offers_view(request):
+    """Send an offer on WhatsApp to the members who agreed to offers (manager only)."""
+    if not request.session.get("staff_user_id") or request.session.get("staff_role") != "ADMIN":
+        return redirect("accounts:staff_login_view")
+    from .models import CafeConfiguration, CustomerProfile, WhatsAppMessage
+    config = CafeConfiguration.objects.first() or CafeConfiguration.objects.create()
+    audience = _offer_audience(config, "")
+    counts = {"all": len(audience)}
+    for tier in ("Gold", "Silver", "Bronze"):
+        counts[tier] = sum(1 for r in audience if r["tier"] == tier)
+    return render(request, "accounts/offers.html", {
+        "config": config,
+        "counts": counts,
+        "members_total": CustomerProfile.objects.count(),
+        "recent_offers": WhatsAppMessage.objects.filter(kind="offer")[:30],
+    })
+
+
+@csrf_exempt
+@require_POST
+def staff_offers_send(request):
+    if not request.session.get("staff_user_id") or request.session.get("staff_role") != "ADMIN":
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+    import threading
+    from decimal import Decimal, InvalidOperation
+    from .models import CafeConfiguration
+    config = CafeConfiguration.objects.first() or CafeConfiguration.objects.create()
+    data = _request_data(request)
+    if data.get("price") not in (None, ""):
+        try:
+            config.wa_marketing_price = Decimal(str(data.get("price")))
+            config.save(update_fields=["wa_marketing_price"])
+        except InvalidOperation:
+            return JsonResponse({"status": "error", "message": "سعر الرسالة لازم يكون رقم"}, status=400)
+    if data.get("action") == "save_price":
+        return JsonResponse({"status": "success", "message": "انحفظ السعر"})
+    text = (data.get("text") or "").strip()
+    if len(text) < 5:
+        return JsonResponse({"status": "error", "message": "اكتب نص العرض"}, status=400)
+    if len(text) > 500:
+        return JsonResponse({"status": "error", "message": "نص العرض طويل، خليه أقل من 500 حرف"}, status=400)
+    recipients = [(r["customer"].phone_number, r["customer"].full_name) for r in _offer_audience(config, data.get("tier") or "")]
+    if not recipients:
+        return JsonResponse({"status": "error", "message": "ما في أعضاء موافقين على العروض بهالمجموعة"}, status=400)
+
+    def send_all():
+        from django.db import connection
+        try:
+            for phone, name in recipients:
+                try:
+                    WhatsAppClient.send_offer(phone, name, text)
+                except Exception as e:
+                    logger.error(f"Offer to {phone} failed: {e}")
+        finally:
+            connection.close()
+
+    threading.Thread(target=send_all, daemon=True).start()
+    return JsonResponse({"status": "success", "message": f"بدأ إرسال العرض لـ {len(recipients)} عضو"})
+
+
+@csrf_exempt
+@require_POST
+def customer_marketing_opt_in(request):
+    """The member turns birthday gifts and offers on WhatsApp on or off."""
+    customer_id = request.session.get("customer_id")
+    if not customer_id:
+        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+    data = _request_data(request)
+    agreed = str(data.get("opt_in", "")).lower() in ("1", "true", "on")
+    CustomerProfile.objects.filter(id=customer_id).update(marketing_opt_in=agreed)
+    return JsonResponse({"status": "success", "opt_in": agreed})

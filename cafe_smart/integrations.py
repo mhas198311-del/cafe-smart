@@ -31,6 +31,19 @@ TEMPLATES = {
         "body": "مبروك {{1}}! تذكرتك رقم {{2}} فازت في سحب White Bird Cafe بجائزة: {{3}}. اعرض هذه الرسالة على الكاشير لاستلام جائزتك.",
         "example": ["محمد", "TKT-123456", "بوكس قهوة مختصة"],
     },
+    # Marketing messages: only sent to members who agreed to them
+    "birthday": {
+        "name": "wb_birthday_gift",
+        "category": "MARKETING",
+        "body": "كل عام وأنت بخير يا {{1}} 🎂 هديتك من White Bird Cafe بمناسبة عيد ميلادك: {{2}}. اعرض بطاقة العضوية على الكاشير خلال 7 أيام لاستلامها.",
+        "example": ["محمد", "مشروب مجاني من اختيارك"],
+    },
+    "offer": {
+        "name": "wb_special_offer",
+        "category": "MARKETING",
+        "body": "مرحباً {{1}}، عندنا عرض خاص لأعضاء White Bird Cafe: {{2}}. نستناك ☕",
+        "example": ["محمد", "خصم 20% على كل المشروبات الباردة هذا الأسبوع"],
+    },
 }
 
 
@@ -159,6 +172,14 @@ class WhatsAppClient:
     @classmethod
     def send_winner_notification(cls, phone_number, full_name, ticket_code, prize_name="جائزة السحب"):
         return cls.send_template(phone_number, "winner", [full_name, ticket_code, prize_name])
+
+    @classmethod
+    def send_birthday_gift(cls, phone_number, full_name, gift):
+        return cls.send_template(phone_number, "birthday", [full_name, gift])
+
+    @classmethod
+    def send_offer(cls, phone_number, full_name, offer_text):
+        return cls.send_template(phone_number, "offer", [full_name, offer_text])
 
     @classmethod
     def template_statuses(cls):

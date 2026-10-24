@@ -25,6 +25,8 @@ class CustomerProfile(models.Model):
     monthly_spend = models.FloatField(default=0.0, help_text="Calculated monthly spend for tier status")
     barcode = models.CharField(max_length=100, blank=True, null=True, db_index=True, help_text="Loyverse customer barcode for scanning")
     points_synced_at = models.DateTimeField(blank=True, null=True, help_text="Last time points_balance was read from Loyverse")
+    marketing_opt_in = models.BooleanField(default=False, help_text="Agreed to birthday and offer messages on WhatsApp")
+    birthday_sent_year = models.PositiveIntegerField(blank=True, null=True, help_text="Year the last birthday message was sent")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -90,9 +92,12 @@ class CafeConfiguration(models.Model):
     gold_tier_threshold = models.FloatField(default=1500.0, help_text="Total points earned in last 12 months for Gold Tier")
 
     # Birthday messages by tier
-    birthday_msg_bronze = models.TextField(default="Happy Birthday! Enjoy 15% off today.")
-    birthday_msg_silver = models.TextField(default="Happy Birthday! Enjoy a free drink today.")
-    birthday_msg_gold = models.TextField(default="Happy Birthday! Enjoy a free drink + dessert today.")
+    birthday_msg_bronze = models.TextField(default="خصم 15% على طلبك اليوم")
+    birthday_msg_silver = models.TextField(default="مشروب مجاني من اختيارك")
+    birthday_msg_gold = models.TextField(default="مشروب وحلوى مجاناً")
+    birthday_messages_enabled = models.BooleanField(default=False, help_text="Send the birthday gift on WhatsApp each morning (needs the approved birthday template)")
+    birthday_last_run = models.DateField(blank=True, null=True)
+    wa_marketing_price = models.DecimalField(max_digits=6, decimal_places=4, default=0, help_text="Meta's price per marketing message in USD, for cost estimates")
 
     # New Item Launch Promotion (Cinematic video & Special Offer)
     featured_item_is_active = models.BooleanField(default=False, help_text="Toggle to display a special featured item launch card on the menu")
@@ -128,12 +133,35 @@ class ContactMessage(models.Model):
     def __str__(self):
         return f"{self.name} - {self.inquiry_type} ({self.created_at.strftime('%Y-%m-%d %H:%M')})"
 
+class MonthlyDraw(models.Model):
+    """One draw per month: members' receipts are the entries, three places with their own prizes."""
+    month = models.DateField(unique=True, help_text="First day of the month")
+    prize1_name = models.CharField(max_length=255, blank=True, default="")
+    prize1_image = models.CharField(max_length=500, blank=True, default="")
+    prize2_name = models.CharField(max_length=255, blank=True, default="")
+    prize2_image = models.CharField(max_length=500, blank=True, default="")
+    prize3_name = models.CharField(max_length=255, blank=True, default="")
+    prize3_image = models.CharField(max_length=500, blank=True, default="")
+    drawn_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ["-month"]
+
+    def prizes(self):
+        return [(1, self.prize1_name, self.prize1_image), (2, self.prize2_name, self.prize2_image), (3, self.prize3_name, self.prize3_image)]
+
+    def __str__(self):
+        return f"Draw {self.month:%Y-%m}"
+
+
 class RaffleTicket(models.Model):
     ticket_code = models.CharField(max_length=50, unique=True)
     customer = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name='raffle_tickets')
     receipt_number = models.CharField(max_length=100)
     receipt_amount = models.FloatField()
     draw_status = models.CharField(max_length=20, default='PENDING', help_text="PENDING, WON, or LOST")
+    draw = models.ForeignKey(MonthlyDraw, on_delete=models.SET_NULL, blank=True, null=True, related_name="winners")
+    place = models.PositiveSmallIntegerField(blank=True, null=True, help_text="1, 2 or 3 for a winning ticket")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}العروض على الواتساب - White Bird Cafe{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block extra_css %}
+.offers-wrap { max-width: 760px; margin: 30px auto 80px; padding: 0 16px; }
+.offers-wrap h2 { color: var(--primary); margin-bottom: 6px; }
+.offers-note { color: var(--text-muted); font-size: 14px; line-height: 1.9; }
+.offers-card { padding: 20px; margin-top: 18px; }
+.offers-card label { display: block; font-size: 13.5px; color: var(--text-muted); margin: 12px 0 6px; }
+.offers-card select, .offers-card textarea, .offers-card input {
+    width: 100%; padding: 11px 14px; border-radius: 10px; background: rgba(18,12,8,0.5);
+    border: 1px solid var(--border-light); color: #fff; font-family: var(--font-body); font-size: 14.5px;
+}
+.offers-preview {
+    margin-top: 14px; padding: 14px; border-radius: 12px; background: #0b3d2e; color: #e8fff4;
+    font-size: 14px; line-height: 1.8; white-space: pre-wrap;
+}
+.offers-estimate { margin-top: 14px; font-size: 14px; }
+.offers-estimate b { color: var(--primary); }
+.offers-log { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+.offers-log td { padding: 8px 6px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+{% endblock %}
+
+{% block content %}
+<div class="offers-wrap">
+    <a href="/staff/dashboard/" style="color:var(--primary); font-size:13px;">→ رجوع للوحة التحكم</a>
+    <h2>📣 إرسال عرض على الواتساب</h2>
+    <p class="offers-note">
+        العرض بيوصل بس للأعضاء اللي وافقوا على استلام العروض ({{ counts.all }} من أصل {{ members_total }} عضو).
+        رسائل العروض بتدفع عليها ميتا لكل رسالة، ولازم يكون قالب <b dir="ltr">wb_special_offer</b> موافق عليه من الإعدادات ← واتساب.
+    </p>
+
+    <div class="glass-card offers-card">
+        <label for="offerTier">مين يستلم العرض؟</label>
+        <select id="offerTier" onchange="updateEstimate()">
+            <option value="">كل الموافقين ({{ counts.all }})</option>
+            <option value="Gold">المستوى الذهبي ({{ counts.Gold }})</option>
+            <option value="Silver">المستوى الفضي ({{ counts.Silver }})</option>
+            <option value="Bronze">المستوى البرونزي ({{ counts.Bronze }})</option>
+        </select>
+
+        <label for="offerText">نص العرض</label>
+        <textarea id="offerText" rows="3" maxlength="500" placeholder="مثلاً: خصم 20% على كل المشروبات الباردة هالأسبوع" oninput="updateEstimate()"></textarea>
+
+        <div class="offers-preview" id="offerPreview"></div>
+
+        <label for="offerPrice">سعر رسالة التسويق عند ميتا (بالدولار)</label>
+        <input type="number" id="offerPrice" step="0.0001" min="0" value="{{ config.wa_marketing_price|floatformat:4 }}" oninput="updateEstimate()" dir="ltr">
+        <p class="offers-note" style="font-size:12.5px; margin:6px 0 0;">
+            السعر بيتغير حسب الدولة. بتلاقيه بصفحة <a href="https://developers.facebook.com/docs/whatsapp/pricing" target="_blank" rel="noopener" style="color:var(--primary);">أسعار واتساب من ميتا</a> تحت "Marketing" للأردن، أو بفاتورة ميتا.
+        </p>
+
+        <div class="offers-estimate" id="offerEstimate"></div>
+
+        <button type="button" class="btn btn-primary" style="width:100%; margin-top:16px;" onclick="sendOffer()">
+            <i class="fa-brands fa-whatsapp"></i> إرسال العرض
+        </button>
+    </div>
+
+    {% if recent_offers %}
+    <div class="glass-card offers-card">
+        <h3 style="margin:0; font-size:16px; color:#fff;">آخر رسائل العروض</h3>
+        <table class="offers-log">
+            {% for m in recent_offers %}
+            <tr>
+                <td dir="ltr" style="text-align:right;">{{ m.phone }}</td>
+                <td>{{ m.created_at|date:"Y/m/d H:i" }}</td>
+                <td>{% if m.status == 'failed' %}<span style="color:#ef4444;">ما وصلت</span>{% elif m.status == 'read' %}انقرأت{% elif m.status == 'delivered' %}وصلت{% else %}انبعتت{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const offerCounts = {"": {{ counts.all }}, "Gold": {{ counts.Gold }}, "Silver": {{ counts.Silver }}, "Bronze": {{ counts.Bronze }}};
+
+    function updateEstimate() {
+        const text = document.getElementById('offerText').value.trim() || '...';
+        document.getElementById('offerPreview').textContent = `مرحباً محمد، عندنا عرض خاص لأعضاء White Bird Cafe: ${text}. نستناك ☕`;
+        const count = offerCounts[document.getElementById('offerTier').value] || 0;
+        const price = parseFloat(document.getElementById('offerPrice').value) || 0;
+        document.getElementById('offerEstimate').innerHTML = price > 0
+            ? `بيوصل لـ <b>${count}</b> عضو، والتكلفة التقريبية <b dir="ltr">$${(count * price).toFixed(2)}</b>`
+            : `بيوصل لـ <b>${count}</b> عضو. اكتب سعر الرسالة فوق عشان تشوف التكلفة.`;
+    }
+    updateEstimate();
+
+    async function sendOffer() {
+        const tier = document.getElementById('offerTier').value;
+        const text = document.getElementById('offerText').value.trim();
+        const count = offerCounts[tier] || 0;
+        if (!text) { showToast('اكتب نص العرض', 'danger'); return; }
+        if (!count) { showToast('ما في أعضاء موافقين على العروض بهالمجموعة', 'danger'); return; }
+        if (!confirm(`رح ينبعت العرض لـ ${count} عضو على الواتساب، وميتا بتحاسب على كل رسالة. متأكد؟`)) return;
+        try {
+            const res = await fetch('/api/staff/offers/send/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({tier: tier, text: text, price: document.getElementById('offerPrice').value})
+            });
+            const data = await res.json();
+            showToast(data.message || 'تعذر الإرسال', data.status === 'success' ? 'success' : 'danger');
+        } catch (e) {
+            showToast('تعذر الاتصال بالسيرفر', 'danger');
+        }
+    }
+</script>
+{% endblock %}

@@ -714,12 +714,12 @@
             </div>
             <div class="settings-grid-2">
                 <div class="form-group">
-                    <label class="form-label">معدل تحويل النقاط (لكل 1 د.أ مشتريات)</label>
+                    <label class="form-label">كم نقطة بتساوي دينار خصم؟ (بيظهر للزبون قيمة نقاطه)</label>
                     <input type="number" name="points_conversion_rate" class="form-input" value="{{ config.points_conversion_rate }}" step="any">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">حد تذكرة السحب (د.أ لكل تذكرة)</label>
-                    <input type="number" name="raffle_ticket_threshold" class="form-input" value="{{ config.raffle_ticket_threshold }}" step="any">
+                    <label class="form-label">السحب الشهري</label>
+                    <p style="font-size:12.5px; color:var(--text-muted); margin:6px 0 0; line-height:1.8;">كل فاتورة لعضو = مشاركة، و3 فائزين كل شهر. الجوائز والسحب من <a href="/staff/dashboard/#drawCard" style="color:var(--primary);">لوحة التحكم</a>.</p>
                 </div>
             </div>
             <div class="settings-grid-2">
@@ -732,34 +732,26 @@
                     <input type="number" name="gold_tier_threshold" class="form-input" value="{{ config.gold_tier_threshold }}" step="any">
                 </div>
             </div>
-            <div class="settings-grid-2">
-                <div class="form-group">
-                    <label class="form-label">اسم جائزة السحب الشهري الكبرى</label>
-                    <input type="text" name="raffle_prize_name" class="form-input" value="{{ config.raffle_prize_name }}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">صورة الجائزة (Prize Image File)</label>
-                    <input type="file" name="raffle_prize_image" class="form-input" accept="image/*">
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">تفاصيل ووصف الجائزة</label>
-                <textarea name="raffle_prize_desc" class="form-textarea" rows="2">{{ config.raffle_prize_desc|default_if_none:'' }}</textarea>
-            </div>
 
             <!-- Birthday Messages -->
             <div style="background:rgba(255,255,255,0.02); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); margin-top:20px;">
-                <h4 style="color:var(--primary); font-size:14px; margin:0 0 14px;">🎂 رسائل التهنئة الآلية لأعياد ميلاد العملاء:</h4>
+                <h4 style="color:var(--primary); font-size:14px; margin:0 0 10px;">🎂 هدية عيد الميلاد</h4>
+                <input type="hidden" name="birthday_settings" value="1">
+                <label style="display:flex; gap:10px; align-items:flex-start; font-size:13.5px; color:#fff; cursor:pointer; margin-bottom:12px;">
+                    <input type="checkbox" name="birthday_messages_enabled" {% if config.birthday_messages_enabled %}checked{% endif %} style="margin-top:3px;">
+                    <span>إرسال الهدية على الواتساب كل يوم الساعة 9 الصبح<br>
+                    <small style="color:var(--text-muted);">بتوصل بس للأعضاء الموافقين على الرسائل، ولازم يكون قالب <span dir="ltr">wb_birthday_gift</span> موافق عليه من ميتا. نفس الهدية بتظهر للكاشير لما يمسح بطاقة الزبون يوم عيد ميلاده.</small></span>
+                </label>
                 <div class="form-group">
-                    <label class="form-label">رسالة الفئة البرونزية (Bronze)</label>
+                    <label class="form-label">هدية المستوى البرونزي</label>
                     <input type="text" name="birthday_msg_bronze" class="form-input" value="{{ config.birthday_msg_bronze }}">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">رسالة الفئة الفضية (Silver)</label>
+                    <label class="form-label">هدية المستوى الفضي</label>
                     <input type="text" name="birthday_msg_silver" class="form-input" value="{{ config.birthday_msg_silver }}">
                 </div>
                 <div class="form-group" style="margin-bottom:0;">
-                    <label class="form-label">رسالة الفئة الذهبية (Gold)</label>
+                    <label class="form-label">هدية المستوى الذهبي</label>
                     <input type="text" name="birthday_msg_gold" class="form-input" value="{{ config.birthday_msg_gold }}">
                 </div>
             </div>
