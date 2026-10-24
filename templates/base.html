@@ -448,7 +448,7 @@
         </a>
         <nav>
             <a href="/menu/" class="nav-link {% if '/menu/' in request.path %}active{% endif %}" data-tr="nav_menu">Menu</a>
-            <a href="/loyalty/" class="nav-link {% if '/loyalty/' in request.path %}active{% endif %}" data-tr="nav_crm">CRM Card</a>
+            <a href="/loyalty/" class="nav-link {% if '/loyalty/' in request.path %}active{% endif %}" data-tr="nav_crm">نادي العملاء</a>
             <a href="/contact/" class="nav-link {% if '/contact/' in request.path %}active{% endif %}" data-tr="nav_contact">Contact</a>
             {% if request.session.staff_user_id %}
                 <a href="/staff/dashboard/" class="nav-link {% if '/staff/dashboard/' in request.path %}active{% endif %}" data-tr="nav_staff_portal">Staff Portal</a>
@@ -470,7 +470,7 @@
     <!-- Mobile Drawer Overlay Navigation -->
     <div class="mobile-nav-overlay" id="mobileNavDrawer" onclick="handleDrawerBackdropClick(event)">
         <!-- Prominent Close Button -->
-        <button class="mobile-drawer-close-btn" onclick="closeMobileMenu()" aria-label="Close menu">
+        <button class="mobile-drawer-close-btn" onclick="closeMobileMenu()" aria-label="إغلاق القائمة">
             <i class="fa-solid fa-xmark"></i>
         </button>
 
@@ -520,7 +520,7 @@
                 {% endif %}
             </div>
         {% endif %}
-        <p>&copy; 2026 <span data-tr="footer_text">White Bird Cafe. Premium Smart Table Services & CRM System.</span></p>
+        <p>&copy; 2026 <span data-tr="footer_text">وايت بيرد كافيه. قهوة مختصة في معان.</span></p>
         <p style="margin-top: 8px; font-size: 12px; opacity: 0.75;" dir="rtl">كوفي شوب الطائر الابيض · سجل تجاري رقم 385246 · معان، الأردن</p>
         {% if not request.session.staff_user_id %}
             <p style="margin-top: 10px; font-size: 12px;"><a href="/staff/login/" style="color: var(--text-muted); opacity: 0.6;" data-tr="nav_staff_login">Staff Login</a></p>
@@ -535,13 +535,13 @@
         window.cafeTranslations = {
             en: {
                 "nav_menu": "Menu",
-                "nav_crm": "Customers Club",
+                "nav_crm": "Loyalty Club",
                 "nav_contact": "Contact Us",
                 "nav_staff_portal": "Staff Portal",
                 "nav_staff_login": "Staff Login",
                 "nav_logout": "Logout",
                 "close_menu": "Close Menu",
-                "footer_text": "White Bird Cafe. Premium Smart Table Services & CRM System.",
+                "footer_text": "White Bird Cafe. Specialty coffee in Ma'an.",
                 
                 // Menu page
                 "menu_title": "Specialty Coffee & Drinks Menu",
@@ -552,44 +552,44 @@
                 "fresh_available": "Freshly Available",
                 "left_stock": "left",
                 "stock_label": "Stock:",
-                "no_items_synced": "No Items Synced Yet",
-                "no_items_synced_desc": "We are currently syncing the live POS menu. Please check back in a moment.",
+                "no_items_synced": "The menu is being updated",
+                "no_items_synced_desc": "Please check back in a moment.",
                 
                 // Loyalty Portal
                 "crm_title": "White Bird Cafe Club",
-                "login_tab": "Customer Login",
-                "register_tab": "Register Loyalty",
-                "label_phone": "Phone Number (E.164, e.g. +962791234567)",
+                "login_tab": "Log in",
+                "register_tab": "Join the Club",
+                "label_phone": "Phone number (e.g. 0791234567)",
                 "label_password": "Password",
                 "label_name": "Full Name",
-                "label_birthdate": "Birth Date (Requires Age 18+)",
+                "label_birthdate": "Date of birth (18+ only)",
                 "label_create_password": "Create Password",
-                "btn_login": "Login",
-                "btn_register": "Request WhatsApp OTP",
+                "btn_login": "Log in",
+                "btn_register": "Send WhatsApp code",
                 "otp_title": "WhatsApp Verification",
-                "otp_desc": "We've sent a 6-digit OTP code to",
+                "otp_desc": "We sent a 6-digit code on WhatsApp to",
                 "otp_placeholder": "Enter 6-digit code",
                 "btn_cancel": "Cancel",
                 "btn_verify": "Verify & Register",
-                "loyalty_card_id": "Loyverse ID:",
+                "loyalty_card_id": "Member ID:",
                 "loyalty_card_expiry": "Code expires in",
-                "tickets_title": "Your Raffle Tickets",
-                "no_tickets": "No raffle tickets issued yet.",
-                "no_tickets_desc": "Make transactions at our cafe to auto-populate tickets!",
+                "tickets_title": "Your draw entries",
+                "no_tickets": "No draw entries yet.",
+                "no_tickets_desc": "Every receipt you pay as a member is one entry.",
                 "btn_logout": "Log Out",
                 
                 // Table Service page
                 "table_title": "Table",
                 "table_subtitle": "Smart Table Service Panel",
                 "btn_call_waiter": "Call Waiter",
-                "desc_call_waiter": "Request general floor assistance or ordering help",
+                "desc_call_waiter": "Ask a waiter for help or to take your order",
                 "btn_request_bill": "Request Bill",
-                "desc_request_bill": "Receive your printed receipt and pay at the table",
+                "desc_request_bill": "Get your bill and pay at the table",
                 "status_connecting": "Connecting Service...",
-                "status_connected": "Smart Service Connected",
+                "status_connected": "Connected",
                 "status_disconnected": "Disconnected (Reconnecting...)",
                 "calling_waiter": "Calling Waiter...",
-                "calling_waiter_desc": "Staff notified. We are assigning a waiter.",
+                "calling_waiter_desc": "The staff have been notified. A waiter is on the way.",
                 "btn_cancel_call": "Cancel Call",
                 "bill_requested": "Bill Requested...",
                 "bill_requested_desc": "Staff are printing your receipt.",
@@ -597,10 +597,10 @@
                 
                 // Staff Login
                 "staff_login_title": "Staff Portal",
-                "staff_login_subtitle": "Enter your employee credentials to access dashboard",
+                "staff_login_subtitle": "Sign in with your staff account",
                 "staff_username": "Username",
                 "staff_password": "Password",
-                "btn_staff_login": "Login to Dashboard",
+                "btn_staff_login": "Sign in",
                 "testing_credentials": "Testing Credentials:",
                 
                 // Staff Dashboard
@@ -643,7 +643,7 @@
                 "nav_staff_login": "دخول الموظفين",
                 "nav_logout": "خروج",
                 "close_menu": "إغلاق القائمة",
-                "footer_text": "وايت بيرد كافيه. نظام خدمات الطاولة الذكي والولاء الفاخر.",
+                "footer_text": "وايت بيرد كافيه. قهوة مختصة في معان.",
                 
                 // Menu page
                 "menu_title": "قائمة المشروبات والقهوة المختصة",
@@ -667,13 +667,13 @@
                 "label_birthdate": "تاريخ الميلاد (يجب أن يكون العمر 18+)",
                 "label_create_password": "إنشاء كلمة مرور",
                 "btn_login": "تسجيل الدخول",
-                "btn_register": "طلب كود التحقق OTP",
+                "btn_register": "أرسل كود التحقق على الواتساب",
                 "otp_title": "التحقق عبر الواتساب",
-                "otp_desc": "لقد أرسلنا كود تحقق OTP مكون من 6 أرقام إلى",
+                "otp_desc": "أرسلنا كود تحقق من 6 أرقام على الواتساب للرقم",
                 "otp_placeholder": "أدخل كود الـ 6 أرقام",
                 "btn_cancel": "إلغاء",
                 "btn_verify": "التحقق والتسجيل",
-                "loyalty_card_id": "معرف لو يفرز:",
+                "loyalty_card_id": "رقم العضوية:",
                 "loyalty_card_expiry": "ينتهي الرمز خلال",
                 "tickets_title": "تذاكر السحب الخاصة بك",
                 "no_tickets": "لم يتم إصدار تذاكر سحب بعد.",
@@ -855,6 +855,36 @@
             }, 4000);
         }
     </script>
+    <script>
+        // File pickers show the browser's own words ("Choose File", "No file chosen"); give them an Arabic button instead
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('input[type=file]').forEach(function (input) {
+                if (input.style.display === 'none' || input.closest('label')) return;
+                var wrap = document.createElement('label');
+                wrap.className = 'file-pick';
+                var button = document.createElement('span');
+                button.className = 'file-pick-btn';
+                button.textContent = '📎 اختر ملف';
+                var name = document.createElement('span');
+                name.className = 'file-pick-name';
+                name.textContent = 'ما في ملف مختار';
+                input.parentNode.insertBefore(wrap, input);
+                wrap.appendChild(button);
+                wrap.appendChild(name);
+                wrap.appendChild(input);
+                input.classList.add('file-pick-input');
+                input.addEventListener('change', function () {
+                    name.textContent = input.files.length ? input.files[0].name : 'ما في ملف مختار';
+                });
+            });
+        });
+    </script>
+    <style>
+        .file-pick { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 8px 10px; border-radius: 10px; border: 1px dashed rgba(212,175,55,0.4); background: rgba(18,12,8,0.4); }
+        .file-pick-btn { flex-shrink: 0; padding: 6px 12px; border-radius: 8px; background: rgba(212,175,55,0.15); color: var(--primary); font-size: 13px; font-weight: 700; }
+        .file-pick-name { font-size: 12.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        .file-pick-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    </style>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

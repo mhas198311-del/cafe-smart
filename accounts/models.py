@@ -36,16 +36,16 @@ class CafeConfiguration(models.Model):
     cafe_name = models.CharField(max_length=255, default="White Bird Cafe", help_text="The name of the cafe displayed on the website")
     phone_number = models.CharField(max_length=50, default="+962 79 123 4567")
     whatsapp_number = models.CharField(max_length=50, default="962791234567", help_text="WhatsApp format without + or spaces, e.g. 962791234567")
-    email = models.EmailField(default="info@26cafe.com")
-    location_desc_en = models.CharField(max_length=255, default="Wadi Musa, Petra Road - Near Petra Visitor Center")
-    location_desc_ar = models.CharField(max_length=255, default="وادي موسى، شارع البتراء - بالقرب من مركز زوار البتراء")
-    latitude = models.FloatField(default=30.3222)
-    longitude = models.FloatField(default=35.4795)
+    email = models.EmailField(default="", blank=True)
+    location_desc_en = models.CharField(max_length=255, default="Ma'an, Jordan")
+    location_desc_ar = models.CharField(max_length=255, default="معان، الأردن")
+    latitude = models.FloatField(default=30.1962)
+    longitude = models.FloatField(default=35.7341)
     opening_hours_en = models.CharField(max_length=255, default="Daily: 7:30 AM - 11:30 PM")
     opening_hours_ar = models.CharField(max_length=255, default="يومياً: 7:30 صباحاً - 11:30 مساءً")
-    instagram_url = models.URLField(default="https://instagram.com/26cafe", blank=True, null=True)
-    facebook_url = models.URLField(default="https://facebook.com/26cafe", blank=True, null=True)
-    tiktok_url = models.URLField(default="https://tiktok.com/@26cafe", blank=True, null=True)
+    instagram_url = models.URLField(default="", blank=True, null=True)
+    facebook_url = models.URLField(default="", blank=True, null=True)
+    tiktok_url = models.URLField(default="", blank=True, null=True)
     
     # WhatsApp Business Platform (Meta Cloud API)
     wa_phone_number_id = models.CharField(max_length=50, blank=True, default="", help_text="Phone number ID from WhatsApp → API Setup")
@@ -116,7 +116,7 @@ class CafeConfiguration(models.Model):
     featured_item_special_price = models.DecimalField(max_digits=10, decimal_places=3, blank=True, null=True, help_text="Discounted price for trying the new item")
 
     def __str__(self):
-        return "26 Cafe Configuration"
+        return "Cafe Configuration"
 
     class Meta:
         verbose_name = "Cafe Configuration"

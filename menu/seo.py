@@ -64,7 +64,7 @@ def cafe_schema(request, config):
         "address": {
             "@type": "PostalAddress",
             "streetAddress": config.location_desc_ar,
-            "addressLocality": "Wadi Musa",
+            "addressLocality": "Ma'an",
             "addressRegion": "Ma'an",
             "addressCountry": "JO",
         },
