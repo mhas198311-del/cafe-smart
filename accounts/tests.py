@@ -700,3 +700,71 @@ class StaffAppBatchTests(TestCase):
         self.login(self.waiter)
         self.client.post("/api/staff/push-unsubscribe/", '{"endpoint": "https://push/1"}', content_type="application/json")
         self.assertFalse(StaffPushSubscription.objects.exists())
+
+
+class TableCallSecurityTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.config = CafeConfiguration.objects.create(cafe_network_ips="92.253.10.10", wifi_ssid="WhiteBird")
+        self.admin = StaffUser.objects.create(username="a", employee_name="Boss", role="ADMIN", password_hash="x")
+        self.hookah = StaffUser.objects.create(username="h", employee_name="Ali", role="WAITER", password_hash="x")
+
+    def login(self, user):
+        session = self.client.session
+        session["staff_user_id"] = user.id
+        session["staff_role"] = user.role
+        session.save()
+
+    def test_table_page_needs_code_and_cafe_wifi(self):
+        from accounts.security import table_token
+        token = table_token(self.config, 3)
+        ok = self.client.get(f"/table/3/?auth={token}", REMOTE_ADDR="92.253.10.10")
+        self.assertEqual(ok.context["table_status"], "ok")
+        self.assertEqual(ok.context["auth_token"], token)
+        self.assertEqual(self.client.get("/table/3/?auth=wrong", REMOTE_ADDR="92.253.10.10").context["table_status"], "no_code")
+        self.assertEqual(self.client.get(f"/table/4/?auth={token}", REMOTE_ADDR="92.253.10.10").context["table_status"], "no_code")
+        outside = self.client.get(f"/table/3/?auth={token}", REMOTE_ADDR="176.29.5.7")
+        self.assertEqual(outside.context["table_status"], "no_wifi")
+        self.assertEqual(outside.context["auth_token"], "")
+        self.assertContains(outside, "WhiteBird")
+
+        self.config.table_calls_wifi_only = False
+        self.config.save()
+        self.assertEqual(self.client.get(f"/table/3/?auth={token}", REMOTE_ADDR="176.29.5.7").context["table_status"], "ok")
+
+    def test_qr_sheet_is_for_manager_and_codes_can_be_changed(self):
+        from accounts.security import table_token
+        self.assertEqual(self.client.get("/staff/tables/qr/").status_code, 302)
+        self.login(self.hookah)
+        self.assertEqual(self.client.get("/staff/tables/qr/").status_code, 302)
+        self.assertEqual(self.client.post("/api/staff/tables/rotate-code/").status_code, 401)
+
+        self.login(self.admin)
+        sheet = self.client.get("/staff/tables/qr/")
+        self.assertEqual(len(sheet.context["tables"]), 20)
+        old = table_token(self.config, 1)
+        self.assertContains(sheet, f"/table/1/?auth={old}")
+        self.assertEqual(self.client.post("/api/staff/tables/rotate-code/").status_code, 200)
+        self.config.refresh_from_db()
+        self.assertNotEqual(table_token(self.config, 1), old)
+
+    def test_hookah_calls_ring_the_hookah_person(self):
+        from asgiref.sync import async_to_sync
+        from accounts.consumers import trigger_staff_web_push
+        self.config.hookah_staff = self.hookah
+        self.config.save()
+        with mock.patch("accounts.push_notifications.send_web_push_to_staff") as push:
+            async_to_sync(trigger_staff_web_push)("5", "hookah")
+        self.assertEqual(push.call_args.kwargs["staff_ids"], [self.hookah.id])
+        self.assertTrue(push.call_args.kwargs["include_admins"])
+        with mock.patch("accounts.push_notifications.send_web_push_to_staff") as push:
+            async_to_sync(trigger_staff_web_push)("5", "waiter")
+        self.assertNotIn("staff_ids", push.call_args.kwargs)
+
+    def test_settings_save_table_options(self):
+        self.login(self.admin)
+        self.client.post("/api/staff/config/edit/", {"table_count": "12", "hookah_staff": str(self.hookah.id)})
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.table_count, 12)
+        self.assertEqual(self.config.hookah_staff, self.hookah)
+        self.assertFalse(self.config.table_calls_wifi_only)

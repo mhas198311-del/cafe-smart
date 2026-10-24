@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>باركود الطاولات - White Bird Cafe</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+<style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Tajawal', sans-serif; background: #f5f1ea; color: #1c140d; }
+    .toolbar { position: sticky; top: 0; background: #120c08; color: #fff; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; z-index: 5; }
+    .toolbar h1 { font-size: 18px; margin: 0; }
+    .toolbar .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .toolbar button, .toolbar a { font-family: inherit; font-size: 14px; border: none; border-radius: 8px; padding: 9px 14px; cursor: pointer; text-decoration: none; }
+    .btn-print { background: #d4af37; color: #120c08; font-weight: 700; }
+    .btn-back { background: #2b211a; color: #fff; }
+    .btn-rotate { background: #7f1d1d; color: #fff; }
+    .note { max-width: 900px; margin: 14px auto 0; padding: 0 16px; font-size: 14px; line-height: 1.8; color: #4b3b2d; }
+    .sheet { max-width: 900px; margin: 16px auto 40px; padding: 0 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+    .card { background: #fff; border: 2px solid #1c140d; border-radius: 14px; padding: 16px 12px; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+    .card .brand { font-size: 13px; letter-spacing: 1px; color: #8a6d1d; font-weight: 700; }
+    .card .num { font-size: 26px; font-weight: 700; margin: 4px 0 10px; }
+    .card .qr { display: flex; justify-content: center; }
+    .card .qr svg { width: 160px; height: 160px; }
+    .card .hint { font-size: 13px; margin-top: 10px; color: #4b3b2d; }
+    @media print {
+        body { background: #fff; }
+        .toolbar, .note { display: none; }
+        .sheet { margin: 0; max-width: none; grid-template-columns: repeat(3, 1fr); }
+    }
+</style>
+</head>
+<body>
+<div class="toolbar">
+    <h1>🪑 باركود الطاولات ({{ tables|length }} طاولة)</h1>
+    <div class="actions">
+        <a class="btn-back" href="/staff/settings/">رجوع للإعدادات</a>
+        <button class="btn-rotate" type="button" onclick="rotateCodes()">تغيير الرموز</button>
+        <button class="btn-print" type="button" onclick="window.print()">🖨️ طباعة</button>
+    </div>
+</div>
+<p class="note">
+    كل باركود خاص بطاولته. الزبون بيمسحه وهو على شبكة الواي فاي تبع الكافيه فبيقدر ينادي الموظف أو يطلب الحساب أو الفحم.
+    إذا حدا صوّر الباركود واستعمله من برا، اضغط "تغيير الرموز" واطبع من جديد: الرموز القديمة بتوقف فوراً.
+    عدد الطاولات بتغيّره من الإعدادات ← الموظفين ← نداءات الطاولات.
+</p>
+<div class="sheet">
+    {% for t in tables %}
+    <div class="card">
+        <div class="brand">WHITE BIRD CAFE</div>
+        <div class="num">طاولة {{ t.number }}</div>
+        <div class="qr" data-url="{{ t.url }}">{{ t.qr_svg }}</div>
+        <div class="hint">امسح الباركود لطلب الخدمة<br>Scan for table service</div>
+    </div>
+    {% endfor %}
+</div>
+<script>
+    async function rotateCodes() {
+        if (!confirm('متأكد؟ كل الباركودات المطبوعة حالياً رح توقف عن العمل ولازم تطبع الجديدة وتوزعها على الطاولات.')) return;
+        const res = await fetch('/api/staff/tables/rotate-code/', { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        if (data.status === 'success') {
+            location.reload();
+        } else {
+            alert('ما زبط تغيير الرموز، جرّب مرة ثانية.');
+        }
+    }
+</script>
+</body>
+</html>

@@ -27,6 +27,52 @@ def network_ip(request):
     return request.META.get("REMOTE_ADDR", "")
 
 
+def _public_hop(forwarded, fallback):
+    hops = [h.strip() for h in (forwarded or "").split(",") if h.strip()]
+    for hop in reversed(hops):
+        try:
+            if ipaddress.ip_address(hop).is_global:
+                return hop
+        except ValueError:
+            continue
+    return fallback
+
+
+def scope_network_ip(scope):
+    """network_ip() for a websocket connection."""
+    headers = {k.decode("latin1").lower(): v.decode("latin1") for k, v in scope.get("headers", [])}
+    client = scope.get("client") or ("", 0)
+    return _public_hop(headers.get("x-forwarded-for", ""), client[0] or "")
+
+
+def ip_on_cafe_network(ip, config):
+    allowed = [a.strip() for a in (getattr(config, "cafe_network_ips", "") or "").splitlines() if a.strip()]
+    return not allowed or ip in allowed
+
+
+def table_secret(config):
+    """The secret inside every table QR code. Changing it makes all printed codes stop working."""
+    import secrets
+    if not config.table_qr_secret:
+        # Only the first writer wins, so two first visits can't make different codes
+        type(config).objects.filter(pk=config.pk, table_qr_secret="").update(table_qr_secret=secrets.token_urlsafe(18))
+        config.refresh_from_db(fields=["table_qr_secret"])
+    return config.table_qr_secret
+
+
+def table_token(config, table_number):
+    import hashlib
+    import hmac
+    from django.conf import settings
+    key = f"{settings.SECRET_KEY}:{table_secret(config)}".encode()
+    return hmac.new(key, f"table:{table_number}".encode(), hashlib.sha256).hexdigest()[:20]
+
+
+def table_token_is_valid(config, table_number, token):
+    import secrets
+    return bool(token) and secrets.compare_digest(str(token), table_token(config, table_number))
+
+
 def on_cafe_network(request, config):
     """True when no cafe network is set yet, or the request comes from one of its addresses."""
     allowed = [ip.strip() for ip in (getattr(config, "cafe_network_ips", "") or "").splitlines() if ip.strip()]
