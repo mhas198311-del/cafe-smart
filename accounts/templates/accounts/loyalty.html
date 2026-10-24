@@ -204,19 +204,41 @@
     font-family: 'Outfit', sans-serif;
 }
 
+/* Membership card at the top of the member page */
+.member-card-box {
+    margin-bottom: 20px;
+    padding: 20px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(18,12,8,0.6));
+    border: 1px solid rgba(212,175,55,0.45);
+}
+.member-card-top { display: flex; justify-content: space-between; gap: 12px; }
+.member-card-label { font-size: 12.5px; color: var(--text-muted); }
+.member-card-points { font-size: 34px; font-weight: 700; color: var(--primary); font-family: 'Outfit', sans-serif; }
+.member-card-btn { width: 100%; margin-top: 14px; padding: 13px; font-size: 15px; font-weight: 700; justify-content: center; gap: 8px; }
+.draw-prize-list { list-style: none; padding: 0; margin: 0 0 10px; font-size: 13.5px; color: #fff; line-height: 1.9; }
+.optin-box {
+    margin-top: 30px; padding: 16px; border-radius: 14px;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border-light); font-size: 14px;
+}
+.optin-box small { color: var(--text-muted); }
+
 /* Floating Action Button (FAB) for QR */
 .qr-fab {
     position: fixed;
-    bottom: 25px;
-    right: 25px;
-    width: 65px;
-    height: 65px;
-    border-radius: 50%;
+    bottom: 20px;
+    right: 20px;
+    height: 52px;
+    padding: 0 18px;
+    gap: 8px;
+    border-radius: 99px;
+    font-family: var(--font-body);
+    font-weight: 700;
     background: linear-gradient(135deg, #ffd700 0%, #c39e67 100%);
     border: none;
     box-shadow: 0 8px 25px rgba(195, 158, 103, 0.4);
     color: #12100f;
-    font-size: 26px;
+    font-size: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -525,11 +547,17 @@
 <div class="container loyalty-page-wrapper">
 
     {% if customer %}
-        <!-- GREETING & TIER HEADER -->
+        <!-- GREETING -->
         <div class="loyalty-header">
             <div>
-                <h2 style="font-size: 22px; color:#fff; font-weight:700;">أهلاً بك، {{ customer.full_name }} 👋</h2>
-                <p style="font-size: 13px; color: var(--text-muted); margin-top:4px;">مستواك الحالي في النادي:</p>
+                <h2 style="font-size: 22px; color:#fff; font-weight:700;">
+                    <span class="lang-ar">أهلاً، {{ customer.full_name }} 👋</span>
+                    <span class="lang-en">Welcome, {{ customer.full_name }} 👋</span>
+                </h2>
+                <p style="font-size: 13px; color: var(--text-muted); margin-top:4px;">
+                    <span class="lang-ar">مستواك بالنادي: <strong class="text-primary">{% if tier == 'Gold' %}الذهبي{% elif tier == 'Silver' %}الفضي{% else %}البرونزي{% endif %}</strong></span>
+                    <span class="lang-en">Your club tier: <strong class="text-primary">{{ tier }}</strong></span>
+                </p>
             </div>
             <div class="tier-badge-container">
                 <div class="tier-badge {% if tier == 'Gold' %}gold{% elif tier == 'Silver' %}silver{% else %}bronze{% endif %}">
@@ -538,54 +566,57 @@
             </div>
         </div>
 
+        <!-- MEMBERSHIP CARD: the first thing the customer needs at the cashier -->
+        <div class="member-card-box">
+            <div class="member-card-top">
+                <div>
+                    <div class="member-card-label"><span class="lang-ar">رصيد النقاط</span><span class="lang-en">Points balance</span></div>
+                    <div class="member-card-points">{{ customer.points_balance }}</div>
+                    <div class="stat-subtitle" id="pointsValText"></div>
+                    {% if loyverse_enabled and not points_live %}
+                    <div class="stat-subtitle" style="color:#e0a85a; margin-top:4px;">
+                        <span class="lang-ar">آخر رصيد محفوظ{% if customer.points_synced_at %} ({{ customer.points_synced_at|date:"d/m H:i" }}){% endif %}، تعذّر التحديث الآن</span>
+                        <span class="lang-en">Last saved balance{% if customer.points_synced_at %} ({{ customer.points_synced_at|date:"d/m H:i" }}){% endif %}, live update unavailable</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div style="text-align:end;">
+                    <div class="member-card-label"><span class="lang-ar">مشاركاتك بسحب هالشهر</span><span class="lang-en">Your draw entries this month</span></div>
+                    <div class="member-card-points" style="font-size:26px;">{{ my_entries }}</div>
+                </div>
+            </div>
+            <button type="button" class="btn btn-primary member-card-btn" onclick="openQrModal()">
+                <i class="fa-solid fa-barcode"></i>
+                <span class="lang-ar">اعرض باركود العضوية للكاشير</span>
+                <span class="lang-en">Show my membership barcode</span>
+            </button>
+        </div>
+
         <!-- TIER PROGRESS CARD -->
         <div class="tier-progress-card">
-            <div style="display:flex; justify-content:space-between; font-size:14px;">
+            <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; font-size:14px;">
                 <span>
-                    <span class="lang-ar">المستوى الحالي: <strong class="text-primary">{% if tier == 'Gold' %}الذهبي{% elif tier == 'Silver' %}الفضي{% else %}البرونزي{% endif %}</strong></span>
-                    <span class="lang-en">Current Tier: <strong class="text-primary">{{ tier }}</strong></span>
+                    <span class="lang-ar">المستوى: <strong class="text-primary">{% if tier == 'Gold' %}الذهبي{% elif tier == 'Silver' %}الفضي{% else %}البرونزي{% endif %}</strong></span>
+                    <span class="lang-en">Tier: <strong class="text-primary">{{ tier }}</strong></span>
                 </span>
                 {% if needed > 0 %}
                     <span style="color:var(--text-muted)">
-                        <span class="lang-ar">يتبقى <strong>{{ needed|floatformat:0 }}</strong> نقطة للترقية إلى <strong>{% if next_tier == 'Silver' %}الفضي{% else %}الذهبي{% endif %}</strong></span>
-                        <span class="lang-en"><strong>{{ needed|floatformat:0 }}</strong> points needed to reach <strong>{{ next_tier }}</strong></span>
+                        <span class="lang-ar">باقي <strong>{{ needed|floatformat:0 }}</strong> نقطة للمستوى <strong>{% if next_tier == 'Silver' %}الفضي{% else %}الذهبي{% endif %}</strong></span>
+                        <span class="lang-en"><strong>{{ needed|floatformat:0 }}</strong> points to reach <strong>{{ next_tier }}</strong></span>
                     </span>
                 {% else %}
                     <span class="text-success">
-                        <span class="lang-ar">لقد وصلت للحد الأقصى للمستوى الذهبي! 🎉</span>
-                        <span class="lang-en">You have reached the maximum Gold Tier! 🎉</span>
+                        <span class="lang-ar">وصلت لأعلى مستوى! 🎉</span>
+                        <span class="lang-en">You reached the top tier! 🎉</span>
                     </span>
                 {% endif %}
             </div>
             <div class="tier-progress-bar-outer">
                 <div class="tier-progress-bar-inner" style="width: {{ progress }}%;"></div>
             </div>
-            <div style="font-size:11.5px; color:var(--text-muted); margin-top:8px; display:flex; justify-content:space-between;">
-                <span class="lang-ar">مجموع النقاط التي جمعتها آخر 12 شهر: <strong>{{ total_earned_12m }}</strong></span>
-                <span class="lang-en">Total points collected last 12 months: <strong>{{ total_earned_12m }}</strong></span>
-            </div>
-        </div>
-
-        <!-- STATS CARD GRID -->
-        <div class="stats-grid">
-            <!-- Points Balance Card -->
-            <div class="stat-box">
-                <h3 data-tr="stat_points_title">رصيد النقاط</h3>
-                <div class="stat-value">{{ customer.points_balance }}</div>
-                <div class="stat-subtitle" id="pointsValText"></div>
-                {% if loyverse_enabled and not points_live %}
-                <div class="stat-subtitle" style="color:#e0a85a; margin-top:4px;">
-                    <span class="lang-ar">آخر رصيد محفوظ{% if customer.points_synced_at %} ({{ customer.points_synced_at|date:"d/m H:i" }}){% endif %}، تعذّر التحديث الآن</span>
-                    <span class="lang-en">Last saved balance{% if customer.points_synced_at %} ({{ customer.points_synced_at|date:"d/m H:i" }}){% endif %}, live update unavailable</span>
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- Active Raffle Tickets Card -->
-            <div class="stat-box">
-                <h3 data-tr="stat_tickets_title">تذاكر السحب</h3>
-                <div class="stat-value">{{ tickets.count }}</div>
-                <div class="stat-subtitle" data-tr="stat_tickets_sub">تذكرة سحب نشطة هذا الشهر</div>
+            <div style="font-size:11.5px; color:var(--text-muted); margin-top:8px;">
+                <span class="lang-ar">المستوى بيتحدد من النقاط اللي جمعتها من مشترياتك آخر 12 شهر: <strong>{{ total_earned_12m }}</strong> نقطة</span>
+                <span class="lang-en">Your tier comes from the points you earned on purchases in the last 12 months: <strong>{{ total_earned_12m }}</strong></span>
             </div>
         </div>
 
@@ -603,22 +634,6 @@
             </button>
         </div>
         {% endif %}
-
-        <!-- PROMOTIONAL DRAW CARD -->
-        <div class="promo-draw-card">
-            {% if config.raffle_prize_image %}
-                <img src="{{ config.raffle_prize_image.url }}" class="promo-draw-img" alt="Prize">
-            {% else %}
-                <i class="fa-solid fa-gift text-primary" style="font-size: 50px; padding: 20px;"></i>
-            {% endif %}
-            <div style="flex:1;">
-                <h3 style="font-size:18px; font-weight:700; color:#fff; margin-bottom:6px;">سحب الجائزة الكبرى لشهر {% now "F" %} 🏆</h3>
-                <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">{{ config.raffle_prize_name }} - {{ config.raffle_prize_desc|default:"سحب شهري حماسي لعملاء الكافيه الفعالين." }}</p>
-                <div style="font-size: 14px; font-weight:600; color:var(--primary);" id="raffleTimer">العداد التنازلي: -- : -- : -- : --</div>
-            </div>
-        </div>
-
-
 
         <!-- REWARDS CATALOG: redeemed by the cashier in Loyverse -->
         {% if rewards %}
@@ -664,6 +679,31 @@
         </div>
         {% endif %}
 
+        <!-- MONTHLY DRAW -->
+        <div class="promo-draw-card">
+            {% if draw_prizes and draw_prizes.0.image %}
+                <img src="{{ draw_prizes.0.image }}" class="promo-draw-img" alt="">
+            {% else %}
+                <i class="fa-solid fa-gift text-primary" style="font-size: 50px; padding: 20px;"></i>
+            {% endif %}
+            <div style="flex:1;">
+                <h3 style="font-size:18px; font-weight:700; color:#fff; margin-bottom:6px;">
+                    <span class="lang-ar">سحب شهر {{ draw_month_name }} 🏆</span>
+                    <span class="lang-en">This month's draw 🏆</span>
+                </h3>
+                <p style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">
+                    <span class="lang-ar">كل فاتورة بتدفعها وإنت عضو = فرصة بالسحب. 3 فائزين كل شهر.</span>
+                    <span class="lang-en">Every receipt you pay as a member is one entry. 3 winners every month.</span>
+                </p>
+                {% if draw_prizes %}
+                <ul class="draw-prize-list">
+                    {% for p in draw_prizes %}<li><b>{{ p.place }}</b>: {{ p.name }}</li>{% endfor %}
+                </ul>
+                {% endif %}
+                <div style="font-size: 14px; font-weight:600; color:var(--primary);" id="raffleTimer"></div>
+            </div>
+        </div>
+
         <!-- UNUSED CLAIMED VOUCHERS -->
         {% if vouchers %}
         <div style="margin-top:40px;">
@@ -682,30 +722,56 @@
         </div>
         {% endif %}
 
-        <!-- TIMELINE VISITS & REDEMPTIONS -->
+        <!-- WHATSAPP GIFTS AND OFFERS -->
+        <div class="optin-box">
+            <label style="display:flex; gap:10px; align-items:flex-start; cursor:pointer;">
+                <input type="checkbox" id="marketingOptIn" {% if customer.marketing_opt_in %}checked{% endif %} onchange="saveMarketingOptIn(this)" style="margin-top:4px; width:18px; height:18px;">
+                <span>
+                    <span class="lang-ar"><b>بدي هدية عيد ميلادي وعروض الكافيه على الواتساب</b><br><small>بتقدر توقفها بأي وقت من هون.</small></span>
+                    <span class="lang-en"><b>Send me my birthday gift and cafe offers on WhatsApp</b><br><small>You can turn this off here any time.</small></span>
+                </span>
+            </label>
+        </div>
+
+        <!-- RECEIPTS -->
         <div style="margin-top:40px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="font-size:18px; font-weight:700; color:#fff;">سجل نشاطات وزيارات العميل</h3>
-                <a href="{% url 'accounts:customer_logout' %}" class="btn btn-secondary btn-sm">تسجيل الخروج</a>
-            </div>
-            
+            <h3 style="font-size:18px; font-weight:700; color:#fff;">
+                <span class="lang-ar">فواتيرك المسجّلة</span>
+                <span class="lang-en">Your recorded receipts</span>
+            </h3>
             <div class="timeline-list">
-                <!-- If tickets are linked -->
-                {% for ticket in tickets %}
+                {% for ticket in tickets|slice:":30" %}
                     <div class="timeline-item">
-                        <div class="timeline-date">{{ ticket.created_at|date:"M d, Y h:i A" }}</div>
-                        <div class="timeline-title">زيارة الكافيه - تم ربط الفاتورة بنجاح</div>
-                        <div class="timeline-points earned">+ {% widthratio ticket.receipt_amount 5 5 %} نقطة</div>
+                        <div class="timeline-date">{{ ticket.created_at|date:"Y/m/d H:i" }}</div>
+                        <div class="timeline-title">
+                            <span class="lang-ar">فاتورة {{ ticket.receipt_number }} · {{ ticket.receipt_amount|floatformat:2 }} د.أ</span>
+                            <span class="lang-en">Receipt {{ ticket.receipt_number }} · {{ ticket.receipt_amount|floatformat:2 }} JD</span>
+                        </div>
+                        <div class="timeline-points earned">
+                            {% if ticket.draw_status == 'WON' %}<span class="lang-ar">🏆 فازت بالسحب</span><span class="lang-en">🏆 Won the draw</span>
+                            {% elif ticket.draw_status == 'PENDING' %}<span class="lang-ar">🎟️ مشاركة بالسحب</span><span class="lang-en">🎟️ Draw entry</span>
+                            {% endif %}
+                        </div>
                     </div>
                 {% empty %}
-                    <div style="text-align:center; padding:25px; color:var(--text-muted);">لا يوجد فواتير مربوطة بعد. مسح كود العميل عند الدفع يضيف فواتيرك هنا.</div>
+                    <div style="text-align:center; padding:25px; color:var(--text-muted);">
+                        <span class="lang-ar">ما في فواتير مسجّلة لسا. اعرض باركودك على الكاشير عند الدفع وبتنضاف فواتيرك هون.</span>
+                        <span class="lang-en">No receipts yet. Show your barcode to the cashier when you pay and they will appear here.</span>
+                    </div>
                 {% endfor %}
             </div>
         </div>
 
-        <!-- Floating QR Card Action Button (FAB) -->
-        <button class="qr-fab" onclick="openQrModal()">
-            <i class="fa-solid fa-qrcode"></i>
+        <div style="text-align:center; margin:40px 0 90px;">
+            <a href="{% url 'accounts:customer_logout' %}" class="btn btn-secondary btn-sm">
+                <span class="lang-ar">تسجيل الخروج</span><span class="lang-en">Log out</span>
+            </a>
+        </div>
+
+        <!-- Floating membership card button -->
+        <button class="qr-fab" onclick="openQrModal()" aria-label="بطاقتي">
+            <i class="fa-solid fa-barcode"></i>
+            <span class="lang-ar">بطاقتي</span><span class="lang-en">My card</span>
         </button>
 
     {% else %}
@@ -764,6 +830,13 @@
                         <label class="form-label" data-tr="label_create_password">إنشاء كلمة المرور</label>
                         <input type="password" name="password" class="form-input" placeholder="••••••••" minlength="6" autocomplete="new-password" required>
                     </div>
+                    <label style="display:flex; gap:8px; align-items:flex-start; font-size:13px; color:var(--text-muted); cursor:pointer;">
+                        <input type="checkbox" name="marketing_opt_in" value="1" checked style="margin-top:3px;">
+                        <span>
+                            <span class="lang-ar">بدي هدية عيد ميلادي وعروض الكافيه على الواتساب</span>
+                            <span class="lang-en">Send me my birthday gift and cafe offers on WhatsApp</span>
+                        </span>
+                    </label>
                     <button type="submit" class="btn btn-primary" style="width:100%; margin-top:15px; padding:12px;">
                         <i class="fa-solid fa-user-plus"></i> <span data-tr="btn_register">طلب كود التحقق بالواتساب (OTP)</span>
                     </button>
@@ -1175,28 +1248,40 @@
 
 
 
-    // Raffle draw countdown timer
-    const raffleEnd = '{{ config.raffle_end_date|date:"Y-m-d H:i:s" }}';
-    if (raffleEnd) {
-        const dest = new Date(raffleEnd.replace(/-/g, "/")).getTime();
-        const timerInterval = setInterval(() => {
-            const now = new Date().getTime();
-            const diff = dest - now;
-            if (diff <= 0) {
-                clearInterval(timerInterval);
-                document.getElementById('raffleTimer').innerText = currentLang === 'ar' ? 'السحب جارٍ حالياً!' : 'Draw is in progress!';
-                return;
-            }
-            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const secs = Math.floor((diff % (1000 * 60)) / 1000);
-            
-            const isAr = currentLang === 'ar';
-            document.getElementById('raffleTimer').innerText = isAr ? 
-                `ينتهي السحب خلال: ${days} يوم ، ${hours} ساعة ، ${mins} دقيقة ، ${secs} ثانية` : 
-                `Draw ends in: ${days}d ${hours}h ${mins}m ${secs}s`;
-        }, 1000);
+    // Monthly draw countdown: the draw closes at the end of the month
+    const raffleEl = document.getElementById('raffleTimer');
+    const raffleEnd = new Date('{{ draw_ends_iso }}').getTime();
+    function tickRaffle() {
+        if (!raffleEl || isNaN(raffleEnd)) return;
+        const diff = raffleEnd - Date.now();
+        const isAr = currentLang === 'ar';
+        if (diff <= 0) {
+            raffleEl.innerText = isAr ? 'انتهى شهر السحب، والفائزين بيتعلنوا قريباً' : 'The month is over, winners will be announced soon';
+            return;
+        }
+        const days = Math.floor(diff / 86400000);
+        const hours = Math.floor((diff % 86400000) / 3600000);
+        const mins = Math.floor((diff % 3600000) / 60000);
+        raffleEl.innerText = isAr
+            ? `باقي على السحب: ${days} يوم و ${hours} ساعة و ${mins} دقيقة`
+            : `Draw closes in ${days}d ${hours}h ${mins}m`;
+    }
+    tickRaffle();
+    setInterval(tickRaffle, 30000);
+    window.addEventListener('langChanged', tickRaffle);
+
+    async function saveMarketingOptIn(box) {
+        try {
+            const fd = new FormData();
+            fd.append('opt_in', box.checked ? '1' : '0');
+            const res = await fetch('/api/customer/marketing-opt-in/', {method: 'POST', body: fd});
+            const data = await res.json();
+            if (data.status !== 'success') throw new Error();
+            showToast(currentLang === 'ar' ? (box.checked ? 'تمام، بتوصلك الهدايا والعروض' : 'وقفنا الرسائل') : (box.checked ? 'Done, you will get gifts and offers' : 'Messages turned off'), 'success');
+        } catch (e) {
+            box.checked = !box.checked;
+            showToast(currentLang === 'ar' ? 'تعذر الحفظ' : 'Could not save', 'danger');
+        }
     }
 
     window.addEventListener('DOMContentLoaded', () => {

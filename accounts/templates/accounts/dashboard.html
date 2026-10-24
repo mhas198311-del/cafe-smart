@@ -426,6 +426,9 @@
                 <button onclick="syncLoyverseLive()" class="btn btn-secondary" style="padding:9px 16px; font-size:13px; border-color: rgba(34, 197, 94, 0.4); color:#22c55e;" id="btnSyncLoyverse">
                     <i class="fa-solid fa-rotate"></i> مزامنة لويفيرس 🔄
                 </button>
+                <a href="{% url 'accounts:staff_offers' %}" class="btn btn-secondary" style="padding:9px 16px; font-size:13px;">
+                    <i class="fa-brands fa-whatsapp"></i> العروض 📣
+                </a>
                 <a href="{% url 'accounts:staff_settings' %}" class="btn btn-primary" style="padding:9px 18px; font-size:13px; font-weight:700;">
                     <i class="fa-solid fa-gears"></i> إعدادات الكافيه ⚙️
                 </a>
@@ -746,17 +749,40 @@
 
             <!-- Raffle Draws -->
             {% if staff_role == 'ADMIN' %}
-            <div class="glass-card" style="padding:22px;">
-                <h3 class="section-title"><i class="fa-solid fa-ticket"></i> سحوبات الجوائز والولاء</h3>
-                <p style="color:var(--text-muted); font-size:13px; margin:0 0 14px;">
-                    التذاكر المؤهلة للسحب الحالي: <b style="color:var(--primary);">{{ pending_tickets_count }}</b>
-                    <span style="opacity:0.75;">(تُضاف تذكرة لكل {{ config.raffle_ticket_threshold|floatformat:"-2" }} د.أ من الفاتورة، ويمكن تغيير ذلك من الإعدادات)</span>
+            <div class="glass-card" style="padding:22px;" id="drawCard">
+                <h3 class="section-title"><i class="fa-solid fa-ticket"></i> السحب الشهري</h3>
+                <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+                    <label for="drawMonth" style="font-size:13px; color:var(--text-muted);">الشهر:</label>
+                    <select id="drawMonth" class="form-select" style="max-width:210px; padding:7px 10px;" onchange="loadDraw()"></select>
+                </div>
+                <p style="color:var(--text-muted); font-size:12.5px; margin:0 0 12px; line-height:1.8;">
+                    كل فاتورة لعضو مسجّل = مشاركة وحدة، بدون حد أدنى. السحب بيختار 3 أعضاء مختلفين، وكل فائز بيوصله واتساب بجائزة مركزه.
                 </p>
+                <div id="drawSummary" style="font-size:13px; line-height:1.9; margin-bottom:12px;"></div>
+
+                <form id="drawPrizesForm" onsubmit="saveDrawPrizes(event)">
+                    {% for place in "123" %}
+                    <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                        <img id="prizeImg{{ place }}" alt="" style="width:44px; height:44px; border-radius:8px; object-fit:cover; display:none;">
+                        <div style="flex:1;">
+                            <input type="text" name="prize{{ place }}_name" id="prizeName{{ place }}" class="form-input" style="padding:8px 10px; font-size:13px;"
+                                   placeholder="{% if place == '1' %}جائزة المركز الأول{% elif place == '2' %}جائزة المركز الثاني{% else %}جائزة المركز الثالث{% endif %}">
+                        </div>
+                        <label class="btn btn-secondary btn-sm" style="padding:7px 9px; font-size:11.5px; cursor:pointer; white-space:nowrap;">
+                            <i class="fa-solid fa-image"></i> صورة
+                            <input type="file" name="prize{{ place }}_file" accept="image/*" style="display:none;" onchange="previewPrize({{ place }}, this)">
+                        </label>
+                    </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-secondary" style="width:100%; margin-bottom:10px;">حفظ جوائز هالشهر</button>
+                </form>
+
                 <div class="shuffler-box" id="shufflerContainer">
                     <div class="shuffling-pool" id="shufflingPool">غرفة السحب</div>
                 </div>
-                <button onclick="drawRaffleWinner()" class="btn btn-primary" style="width:100%; padding:12px; font-size:14px; font-weight:700;">
-                    <i class="fa-solid fa-trophy"></i> إجراء السحب وإشعار الفائز بالواتساب
+                <div id="drawWinners" style="font-size:13.5px; line-height:2; margin-bottom:10px;"></div>
+                <button onclick="drawRaffleWinner()" id="drawButton" class="btn btn-primary" style="width:100%; padding:12px; font-size:14px; font-weight:700;">
+                    <i class="fa-solid fa-trophy"></i> إجراء السحب وإشعار الفائزين بالواتساب
                 </button>
             </div>
             {% endif %}
@@ -948,10 +974,9 @@
 <div class="modal-overlay" id="winnerModal">
     <div class="modal-content glass-card" style="text-align:center;">
         <div style="font-size:45px; margin-bottom:10px;">🏆</div>
-        <h3 style="color:var(--primary); font-size:22px; margin:0 0 10px;">مبروك للفائز بسحب الجائزة!</h3>
-        <div id="winnerCustomerDetails" style="font-size:16px; color:#fff; font-weight:700; margin-bottom:8px;"></div>
-        <div id="winnerTicketNumber" style="font-size:13px; color:var(--text-muted); margin-bottom:16px;"></div>
-        <p style="font-size:13px; color:var(--text-muted);">تم إرسال إشعار التهنئة المباشر عبر الواتساب للفائز بنجاح 📱✨</p>
+        <h3 style="color:var(--primary); font-size:22px; margin:0 0 10px;">مبروك للفائزين!</h3>
+        <div id="winnerCustomerDetails" style="font-size:15px; color:#fff; line-height:2; margin-bottom:12px;"></div>
+        <p style="font-size:13px; color:var(--text-muted);">انبعتت رسالة تهنئة على الواتساب لكل فائز. إذا قالب الفائزين لسا مش موافق عليه من ميتا، اتصل فيهم بنفسك.</p>
         <button class="btn btn-primary" onclick="closeModal('winnerModal')" style="margin-top:15px; width:100%;">إغلاق النافذة</button>
     </div>
 </div>
@@ -1466,29 +1491,116 @@ async function markDashMsgRead(id) {
     } catch(e) {}
 }
 
-// Raffle Controls
+// Monthly draw
+function escapeText(value) {
+    const span = document.createElement('span');
+    span.textContent = value == null ? '' : String(value);
+    return span.innerHTML;
+}
+
+function winnersHtml(draw) {
+    return draw.winners.map(w => {
+        const prize = (draw.prizes.find(p => p.place === w.place) || {}).name || '';
+        return `🏆 <b>${escapeText(w.place_name)}</b>: ${escapeText(w.name)} <span dir="ltr">${escapeText(w.phone)}</span>`
+            + ` · فاتورة ${escapeText(w.receipt)}${prize ? ' · ' + escapeText(prize) : ''}`;
+    }).join('<br>');
+}
+
+function showDraw(draw) {
+    const s = document.getElementById('drawSummary');
+    let html = `مشاركات ${escapeText(draw.month_name)}: <b style="color:var(--primary);">${draw.entries}</b> فاتورة من <b>${draw.members}</b> عضو`;
+    if (draw.first) html += `<br>أول فاتورة: ${escapeText(draw.first.receipt)} (${escapeText(draw.first.customer)}، ${escapeText(draw.first.at)})`;
+    if (draw.last) html += `<br>آخر فاتورة: ${escapeText(draw.last.receipt)} (${escapeText(draw.last.customer)}، ${escapeText(draw.last.at)})`;
+    s.innerHTML = html;
+    draw.prizes.forEach(p => {
+        document.getElementById(`prizeName${p.place}`).value = p.name || '';
+        const img = document.getElementById(`prizeImg${p.place}`);
+        img.src = p.image || '';
+        img.style.display = p.image ? 'block' : 'none';
+    });
+    const done = !!draw.drawn_at;
+    document.getElementById('drawWinners').innerHTML = done ? `<div style="color:var(--text-muted); font-size:12px;">انسحب بتاريخ ${escapeText(draw.drawn_at)}</div>` + winnersHtml(draw) : '';
+    document.getElementById('drawButton').disabled = done;
+    document.getElementById('drawButton').style.opacity = done ? '0.5' : '1';
+    document.getElementById('shufflingPool').innerText = done ? 'تم السحب 🎉' : 'غرفة السحب';
+}
+
+async function loadDraw() {
+    const month = document.getElementById('drawMonth').value;
+    try {
+        const res = await fetch(`/api/staff/raffle/month/?month=${encodeURIComponent(month)}`);
+        const data = await res.json();
+        if (data.status === 'success') {
+            if (!month) document.getElementById('drawMonth').value = data.draw.month;
+            showDraw(data.draw);
+        }
+    } catch (e) {}
+}
+
+function previewPrize(place, input) {
+    const img = document.getElementById(`prizeImg${place}`);
+    if (input.files && input.files[0]) {
+        img.src = URL.createObjectURL(input.files[0]);
+        img.style.display = 'block';
+    }
+}
+
+async function saveDrawPrizes(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    formData.append('month', document.getElementById('drawMonth').value);
+    try {
+        const res = await fetch('/api/staff/raffle/prizes/', {method: 'POST', body: formData});
+        const data = await res.json();
+        showToast(data.message || 'تعذر الحفظ', data.status === 'success' ? 'success' : 'danger');
+        if (data.status === 'success') showDraw(data.draw);
+    } catch (err) {
+        showToast('تعذر الاتصال بالسيرفر', 'danger');
+    }
+}
+
 async function drawRaffleWinner() {
-    if (!confirm('سيتم اختيار فائز وإغلاق كل التذاكر الحالية. هل تريد المتابعة؟')) return;
+    const select = document.getElementById('drawMonth');
+    const month = select.value;
+    if (!confirm(`رح ينسحب 3 فائزين من مشاركات ${select.options[select.selectedIndex].text}، وما بتقدر تعيد السحب لهالشهر. متأكد؟`)) return;
     document.getElementById('shufflingPool').innerText = 'جاري السحب... 🎰';
     try {
+        const formData = new FormData();
+        formData.append('month', month);
         const res = await fetch('/api/staff/raffle/draw/', {
             method: 'POST',
+            body: formData,
             headers: {'X-CSRFToken':getCookie('csrftoken') || ''}
         });
         const data = await res.json();
         if (data.status === 'success') {
-            document.getElementById('shufflingPool').innerText = `الفائز: ${data.winner_name} 🎉`;
-            document.getElementById('winnerCustomerDetails').innerText = `${data.winner_name} (${data.winner_phone})`;
-            document.getElementById('winnerTicketNumber').innerText = `رقم التذكرة الفائزة: ${data.ticket_code}`;
+            showDraw(data.draw);
+            document.getElementById('winnerCustomerDetails').innerHTML = winnersHtml(data.draw);
             document.getElementById('winnerModal').style.display = 'flex';
         } else {
-            showToast(data.message || 'لا توجد تذاكر مؤهلة', 'danger');
+            showToast(data.message || 'ما في مشاركات', 'danger');
             document.getElementById('shufflingPool').innerText = 'غرفة السحب';
         }
     } catch(e) {
         showToast('خطأ أثناء إجراء السحب', 'danger');
     }
 }
+// The last 12 months, newest first, with Arabic month names
+(function fillDrawMonths() {
+    const select = document.getElementById('drawMonth');
+    if (!select) return;
+    const names = ['كانون الثاني', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران', 'تموز', 'آب', 'أيلول', 'تشرين الأول', 'تشرين الثاني', 'كانون الأول'];
+    const d = new Date();
+    for (let i = 0; i < 12; i++) {
+        const y = d.getFullYear(), m = d.getMonth();
+        const option = document.createElement('option');
+        option.value = `${y}-${String(m + 1).padStart(2, '0')}`;
+        option.textContent = `${names[m]} ${y}`;
+        select.appendChild(option);
+        d.setMonth(m - 1, 1);
+    }
+    loadDraw();
+})();
 
 function getCookie(name) {
     let cookieValue = null;

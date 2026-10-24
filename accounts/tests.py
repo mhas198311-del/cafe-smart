@@ -184,7 +184,7 @@ class AccountsTests(TestCase):
         self.assertEqual(res1.json()["results"][0]["status"], "processed")
         self.customer.refresh_from_db()
         self.assertEqual(self.customer.points_balance, 20)
-        self.assertEqual(RaffleTicket.objects.filter(customer=self.customer).count(), 4)
+        self.assertEqual(RaffleTicket.objects.filter(customer=self.customer).count(), 1)  # one receipt = one draw entry
 
         # Second submission with same receipt_number - no double crediting
         res2 = client.post(self.webhook_url(), data=payload, content_type='application/json')
@@ -192,7 +192,7 @@ class AccountsTests(TestCase):
         self.assertEqual(res2.json()["results"][0]["status"], "duplicate")
         self.customer.refresh_from_db()
         self.assertEqual(self.customer.points_balance, 20)  # Points remain 20, not 40!
-        self.assertEqual(RaffleTicket.objects.filter(customer=self.customer).count(), 4)
+        self.assertEqual(RaffleTicket.objects.filter(customer=self.customer).count(), 1)  # one receipt = one draw entry
 
     def test_loyverse_webhook_verifies_receipt_with_api(self):
         """With a token configured, the receipt is re-read from Loyverse and forged values are ignored."""
@@ -790,3 +790,114 @@ class DashboardMembersTests(TestCase):
         self.assertEqual(tiers, {"Lina": "Gold", "Omar": "Bronze"})
         self.assertContains(res, "ذهبي")
         self.assertNotContains(res, "Cafe Settings")
+
+
+class MonthlyDrawTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.config = CafeConfiguration.objects.create()
+        self.admin = StaffUser.objects.create(username="a", employee_name="Boss", role="ADMIN", password_hash="x")
+        session = self.client.session
+        session["staff_user_id"] = self.admin.id
+        session["staff_role"] = "ADMIN"
+        session.save()
+        self.members = [CustomerProfile.objects.create(
+            loyverse_customer_id=f"c{i}", phone_number=f"+96279000000{i}", password_hash="x",
+            full_name=f"M{i}", birth_date=datetime.date(1990, 1, 1)) for i in range(5)]
+
+    def ticket(self, customer, n, when=None):
+        t = RaffleTicket.objects.create(ticket_code=f"TKT-{n}", customer=customer, receipt_number=f"R-{n}", receipt_amount=3)
+        if when:
+            RaffleTicket.objects.filter(pk=t.pk).update(created_at=when)
+        return t
+
+    def test_three_different_members_win_and_month_closes(self):
+        from django.utils import timezone
+        for i in range(12):
+            self.ticket(self.members[i % 4], i)
+        old = self.ticket(self.members[4], 99, timezone.now() - datetime.timedelta(days=62))
+        self.client.post("/api/staff/raffle/prizes/", {"prize1_name": "بوكس قهوة", "prize2_name": "كيكة", "prize3_name": "مشروب"})
+        info = self.client.get("/api/staff/raffle/month/").json()["draw"]
+        self.assertEqual((info["entries"], info["members"]), (12, 4))
+        self.assertEqual(info["first"]["receipt"], "R-0")
+        with mock.patch("cafe_smart.integrations.WhatsAppClient.send_winner_notification") as send:
+            res = self.client.post("/api/staff/raffle/draw/")
+        self.assertEqual(res.status_code, 200)
+        winners = res.json()["draw"]["winners"]
+        self.assertEqual([w["place"] for w in winners], [1, 2, 3])
+        self.assertEqual(len({w["phone"] for w in winners}), 3)
+        self.assertEqual(send.call_count, 3)
+        self.assertIn("بوكس قهوة", send.call_args_list[0].args[3])
+        self.assertEqual(RaffleTicket.objects.filter(draw_status="PENDING").exclude(pk=old.pk).count(), 0)
+        old.refresh_from_db()
+        self.assertEqual(old.draw_status, "PENDING")  # other months are untouched
+        self.assertEqual(self.client.post("/api/staff/raffle/draw/").status_code, 400)  # no second draw
+
+    def test_receipt_gives_one_entry_without_minimum(self):
+        from accounts.views import _process_loyverse_receipt
+        member = self.members[0]
+        result = _process_loyverse_receipt({"receipt_number": "R-1", "customer_id": member.loyverse_customer_id, "total_money": 1.5, "points_earned": 1})
+        self.assertEqual(result["tickets_generated"], 1)
+
+    def test_loyalty_page_shows_month_prizes_and_entries(self):
+        self.client.post("/api/staff/raffle/prizes/", {"prize1_name": "بوكس قهوة"})
+        self.ticket(self.members[0], 1)
+        session = self.client.session
+        session["customer_id"] = self.members[0].id
+        session.save()
+        with mock.patch("cafe_smart.integrations.LoyverseClient.refresh_customer_points", return_value=False):
+            page = self.client.get("/loyalty/")
+        self.assertContains(page, "بوكس قهوة")
+        self.assertEqual(page.context["my_entries"], 1)
+        self.assertNotContains(page, "October")
+
+
+class BirthdayAndOfferTests(TestCase):
+    def setUp(self):
+        from django.utils import timezone
+        self.today = timezone.localdate()
+        self.config = CafeConfiguration.objects.create(birthday_messages_enabled=True)
+        self.yes = CustomerProfile.objects.create(loyverse_customer_id="c1", phone_number="+962790000001", password_hash="x",
+                                                  full_name="Lina", birth_date=self.today.replace(year=1990), marketing_opt_in=True)
+        self.no = CustomerProfile.objects.create(loyverse_customer_id="c2", phone_number="+962790000002", password_hash="x",
+                                                 full_name="Omar", birth_date=self.today.replace(year=1991))
+
+    def test_birthday_gift_goes_once_to_members_who_agreed(self):
+        from accounts.birthdays import send_birthday_messages
+        with mock.patch("cafe_smart.integrations.WhatsAppClient.send_birthday_gift", return_value=True) as send:
+            self.assertEqual(send_birthday_messages(self.today), 1)
+            self.assertEqual(send_birthday_messages(self.today), 0)
+        self.assertEqual(send.call_args.args[0], "+962790000001")
+        self.assertEqual(send.call_args.args[2], self.config.birthday_msg_bronze)
+
+    def test_daily_claim_happens_once(self):
+        from accounts.birthdays import claim_today
+        self.assertTrue(claim_today(self.config.id, self.today))
+        self.assertFalse(claim_today(self.config.id, self.today))
+
+    def test_offer_goes_only_to_members_who_agreed(self):
+        admin = StaffUser.objects.create(username="a", employee_name="Boss", role="ADMIN", password_hash="x")
+        session = self.client.session
+        session["staff_user_id"] = admin.id
+        session["staff_role"] = "ADMIN"
+        session.save()
+        self.assertContains(self.client.get("/staff/offers/"), "كل الموافقين (1)")
+
+        class Now:
+            def __init__(self, target, daemon=None, **kw):
+                self.target = target
+            def start(self):
+                self.target()
+        with mock.patch("threading.Thread", Now), \
+             mock.patch("cafe_smart.integrations.WhatsAppClient.send_offer", return_value=True) as send:
+            res = self.client.post("/api/staff/offers/send/", '{"text": "خصم 20% على البارد", "tier": ""}', content_type="application/json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual([c.args[0] for c in send.call_args_list], ["+962790000001"])
+
+    def test_member_can_turn_messages_off(self):
+        session = self.client.session
+        session["customer_id"] = self.yes.id
+        session.save()
+        self.client.post("/api/customer/marketing-opt-in/", {"opt_in": "0"})
+        self.yes.refresh_from_db()
+        self.assertFalse(self.yes.marketing_opt_in)
