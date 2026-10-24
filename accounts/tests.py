@@ -639,6 +639,21 @@ class CafeLocationTests(TestCase):
         self.config.refresh_from_db()
         self.assertEqual((self.config.latitude, self.config.longitude), (30.19625, 35.73412))
 
+    def test_iphone_short_link_reads_coordinates_from_page(self):
+        from accounts.views import coordinates_from_maps_link
+        hops = [
+            mock.Mock(status_code=302, headers={"Location": "https://maps.google.com/?q=White+Bird+Cafe,+Ma'an&ftid=0x1:0x2&entry=gps"}, text=""),
+            mock.Mock(status_code=302, headers={"Location": "https://consent.google.com/ml?continue=https://www.google.com/maps?q%3DWhite%2BBird%26ftid%3D0x1:0x2"}, text=""),
+            mock.Mock(status_code=200, headers={}, text='<meta content="https://maps.google.com/maps/api/staticmap?center=30.19625%2C35.73412&amp;zoom=16">'),
+        ]
+        with mock.patch("requests.get", side_effect=hops) as get:
+            self.assertEqual(coordinates_from_maps_link("https://maps.app.goo.gl/XT6REDn6q?g_st=ic"), (30.19625, 35.73412))
+        self.assertEqual(get.call_args[0][0], "https://www.google.com/maps?q=White+Bird&ftid=0x1:0x2")
+
+    def test_coordinates_from_page_start_up_data(self):
+        from accounts.views import _coordinates_in
+        self.assertEqual(_coordinates_in("window.APP_INITIALIZATION_STATE=[[[2105.3,35.73412,30.19625],[0,0,0]"), (30.19625, 35.73412))
+
     def test_non_google_link_is_refused(self):
         with mock.patch("requests.get") as get:
             res = self.client.post("/api/staff/config/edit/", {"maps_link": "https://evil.example.com/@1.0,2.0"})

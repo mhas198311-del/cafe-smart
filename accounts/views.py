@@ -1011,7 +1011,7 @@ def staff_config_edit(request):
     if maps_link:
         coords = coordinates_from_maps_link(maps_link)
         if not coords:
-            return JsonResponse({"status": "error", "message": "ما قدرنا نقرأ الموقع من الرابط، تأكد إنه رابط من خرائط جوجل"}, status=400)
+            return JsonResponse({"status": "error", "message": "ما قدرنا نقرأ الموقع من الرابط. امسح الرابط، واكتب خط العرض والطول بالخانات تحت (بخرائط جوجل اضغط مطولاً على مكان الكافيه وانسخ الرقمين)"}, status=400)
         config.latitude, config.longitude = coords
     try:
         if not maps_link and request.POST.get("latitude"):
@@ -1404,27 +1404,33 @@ def whatsapp_webhook(request):
                     if st.get("status") == "failed" else "")
     return JsonResponse({"status": "ok"})
 
-MAPS_HOSTS = ("maps.app.goo.gl", "goo.gl", "google.com", "maps.google.com", "www.google.com", "google.jo", "www.google.jo")
+MAPS_HOSTS = ("maps.app.goo.gl", "goo.gl", "google.com", "maps.google.com", "www.google.com", "google.jo", "www.google.jo",
+              "maps.google.jo", "consent.google.com")
 
 
 def _coordinates_in(text):
-    """Finds lat,lng in a Google Maps URL: the place pin (!3d…!4d…) first, then @lat,lng or q=lat,lng."""
+    """Finds lat,lng in a Google Maps URL or page: the place pin (!3d…!4d…) first, then @lat,lng,
+    q=lat,lng or the map centre (center=lat,lng, or [[[zoom,lng,lat] in the page's start-up data)."""
     import re
     from urllib.parse import unquote
-    text = unquote(text)
-    for pattern in (r"!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)", r"@(-?\d+\.\d+),(-?\d+\.\d+)",
-                    r"[?&](?:q|query|ll|destination)=(-?\d+\.\d+),\s*(-?\d+\.\d+)"):
+    text = unquote(text.replace("&amp;", "&"))
+    for pattern, swap in ((r"!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)", False), (r"@(-?\d+\.\d+),(-?\d+\.\d+)", False),
+                          (r"[?&](?:q|query|ll|destination|center|markers)=(-?\d+\.\d+),\s*(-?\d+\.\d+)", False),
+                          (r"\[\[\[\d+(?:\.\d+)?,(-?\d+\.\d+),(-?\d+\.\d+)\]", True)):
         match = re.search(pattern, text)
         if match:
             lat, lng = float(match.group(1)), float(match.group(2))
-            if -90 <= lat <= 90 and -180 <= lng <= 180:
+            if swap:
+                lat, lng = lng, lat
+            if -90 <= lat <= 90 and -180 <= lng <= 180 and (lat, lng) != (0.0, 0.0):
                 return lat, lng
     return None
 
 
 def coordinates_from_maps_link(link):
-    """(lat, lng) from a Google Maps link, following share short links (maps.app.goo.gl) to the full URL."""
-    from urllib.parse import urlparse
+    """(lat, lng) from a Google Maps link, following share short links (maps.app.goo.gl) to the full URL
+    and, when that has no coordinates (links shared from iPhone), reading them from the map page."""
+    from urllib.parse import urlparse, parse_qs
     import requests
     url = link
     if (urlparse(url).hostname or "").lower() not in MAPS_HOSTS:
@@ -1432,17 +1438,29 @@ def coordinates_from_maps_link(link):
     coords = _coordinates_in(url)
     if coords:
         return coords
-    for _ in range(5):
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+               "Accept-Language": "en", "Cookie": "CONSENT=YES+; SOCS=CAI"}
+    for _ in range(6):
         parsed = urlparse(url)
-        if parsed.scheme not in ("http", "https") or (parsed.hostname or "").lower() not in MAPS_HOSTS:
+        host = (parsed.hostname or "").lower()
+        if parsed.scheme not in ("http", "https") or host not in MAPS_HOSTS:
+            logger.warning(f"Maps link left Google Maps: {url[:300]}")
             return None
+        if host == "consent.google.com":
+            # Cookie wall: carry on to the page it was guarding
+            url = (parse_qs(parsed.query).get("continue") or [""])[0]
+            continue
         try:
-            res = requests.get(url, allow_redirects=False, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
-        except requests.RequestException:
+            res = requests.get(url, allow_redirects=False, timeout=8, headers=headers)
+        except requests.RequestException as e:
+            logger.warning(f"Maps link could not be opened: {e}")
             return None
         location = res.headers.get("Location")
         if not location:
-            return _coordinates_in(res.text[:200000])
+            coords = _coordinates_in(res.text[:500000])
+            if not coords:
+                logger.warning(f"No coordinates on Maps page {url[:300]} (HTTP {res.status_code})")
+            return coords
         coords = _coordinates_in(location)
         if coords:
             return coords
