@@ -63,6 +63,24 @@
     }
 }
 
+.dash-stats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 25px;
+}
+.dash-stat {
+    padding: 14px 12px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(212,175,55,0.2);
+    text-align: center;
+}
+.dash-stat b { display: block; font-size: 24px; color: var(--primary); }
+.dash-stat span { font-size: 12.5px; color: var(--text-muted); }
+#tierFilter .btn.active { border-color: var(--primary); color: var(--primary); }
+
+
 @media (max-width: 600px) {
     .dashboard-container {
         margin-top: 12px;
@@ -351,6 +369,39 @@
     color: var(--primary);
     text-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
 }
+/* Phones: every table becomes a list of cards, each cell labelled with its column name */
+@media (max-width: 700px) {
+    .dash-stats { grid-template-columns: repeat(2, 1fr); }
+    .dash-stats .dash-stat:last-child { grid-column: span 2; }
+    .override-table { min-width: 0 !important; }
+    .override-table thead { display: none; }
+    .override-table, .override-table tbody, .override-table tr, .override-table td { display: block; width: 100%; box-sizing: border-box; }
+    .override-table tr {
+        margin: 0 0 10px;
+        padding: 8px 12px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.07);
+    }
+    .override-table tr[style*="display: none"], .override-table tr[style*="display:none"] { display: none; }
+    .override-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 7px 0;
+        border-bottom: 1px dashed rgba(255,255,255,0.06);
+        text-align: start;
+    }
+    .override-table td:last-child { border-bottom: none; }
+    .override-table td[data-label]::before {
+        content: attr(data-label);
+        color: var(--text-muted);
+        font-size: 12px;
+        flex-shrink: 0;
+    }
+    .override-table td[colspan] { justify-content: center; }
+}
 {% endblock %}
 
 {% block content %}
@@ -361,7 +412,7 @@
         <div>
             <h2><i class="fa-solid fa-gauge-high" style="color:var(--primary); margin-left:8px;"></i> لوحة الإدارة والتحكم الشاملة</h2>
             <p style="color:var(--text-muted); font-size:13.5px; margin:0;">
-                مرحباً بك، <b>{{ staff_name }}</b> | الدور: <span style="color:var(--primary); font-weight:700;">{{ staff_role }}</span>
+                مرحباً بك، <b>{{ staff_name }}</b> | الدور: <span style="color:var(--primary); font-weight:700;">{% if staff_role == 'ADMIN' %}مدير{% else %}موظف{% endif %}</span>
             </p>
         </div>
         <div style="display:flex; gap:10px; align-items:center; flex-wrap: wrap;">
@@ -373,13 +424,22 @@
             </a>
             {% if staff_role == 'ADMIN' %}
                 <button onclick="syncLoyverseLive()" class="btn btn-secondary" style="padding:9px 16px; font-size:13px; border-color: rgba(34, 197, 94, 0.4); color:#22c55e;" id="btnSyncLoyverse">
-                    <i class="fa-solid fa-rotate"></i> مزامنة Loyverse 🔄
+                    <i class="fa-solid fa-rotate"></i> مزامنة لويفيرس 🔄
                 </button>
                 <a href="{% url 'accounts:staff_settings' %}" class="btn btn-primary" style="padding:9px 18px; font-size:13px; font-weight:700;">
-                    <i class="fa-solid fa-gears"></i> إعدادات الكافيه (Cafe Settings) ⚙️
+                    <i class="fa-solid fa-gears"></i> إعدادات الكافيه ⚙️
                 </a>
             {% endif %}
         </div>
+    </div>
+
+    <!-- At a glance -->
+    <div class="dash-stats">
+        <div class="dash-stat"><b>{{ stats.members }}</b><span>عضو مسجّل</span></div>
+        <div class="dash-stat"><b>{{ stats.new_members }}</b><span>عضو جديد هالشهر</span></div>
+        <div class="dash-stat"><b>{{ stats.calls_today }}</b><span>نداء طاولة اليوم</span></div>
+        <div class="dash-stat"><b>{{ stats.on_shift }}</b><span>موظف على الدوام</span></div>
+        <div class="dash-stat"><b>{{ stats.whatsapp_month }}</b><span>رسالة واتساب هالشهر</span></div>
     </div>
 
     <!-- Table calls log -->
@@ -407,6 +467,40 @@
                 <tbody id="shiftLogBody"></tbody>
             </table>
         </div>
+    </div>
+
+    <!-- Members -->
+    <div class="glass-card" style="margin-bottom:25px; padding:20px;">
+        <h3 class="section-title"><i class="fa-solid fa-users"></i> الأعضاء ({{ customers|length }})</h3>
+        <div class="items-table-search">
+            <input type="text" id="customerSearch" class="items-search-input" placeholder="🔍 ابحث بالاسم أو رقم الهاتف..." oninput="filterCustomers()">
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;" id="tierFilter">
+            <button type="button" class="btn btn-secondary btn-sm active" data-tier="" onclick="setTierFilter(this)">الكل</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-tier="Gold" onclick="setTierFilter(this)">🥇 ذهبي</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-tier="Silver" onclick="setTierFilter(this)">🥈 فضي</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-tier="Bronze" onclick="setTierFilter(this)">🥉 برونزي</button>
+        </div>
+        <div style="max-height:420px; overflow-y:auto; border-radius:12px; border:1px solid rgba(255,255,255,0.06);">
+            <table class="override-table" id="customersTable">
+                <thead><tr><th>الاسم</th><th>الهاتف</th><th>النقاط الحالية</th><th>نقاط آخر 12 شهر</th><th>المستوى</th><th>تاريخ التسجيل</th></tr></thead>
+                <tbody>
+                    {% for row in customers %}
+                    <tr class="customer-row" data-tier="{{ row.tier }}" data-search="{{ row.customer.full_name|lower }} {{ row.customer.phone_number }} {{ row.customer.phone_number|cut:'+962' }}">
+                        <td><b style="color:#fff;">{{ row.customer.full_name }}</b>{% if not row.customer.is_verified %} <span style="font-size:10.5px; color:#e6995c;">(غير مفعّل)</span>{% endif %}</td>
+                        <td><span dir="ltr">{{ row.customer.phone_number }}</span></td>
+                        <td><b style="color:var(--primary);">{{ row.customer.points_balance }}</b></td>
+                        <td>{{ row.earned_year }}</td>
+                        <td>{{ row.tier_ar }}</td>
+                        <td>{{ row.customer.created_at|date:"Y/m/d" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" style="text-align:center; color:var(--text-muted);">ما في أعضاء مسجلين لسا</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p id="customersNoMatch" style="display:none; text-align:center; color:var(--text-muted); font-size:13px; margin-top:10px;">ما في عضو بهالبحث</p>
     </div>
 
     <!-- Main Workspace Grid -->
@@ -449,8 +543,8 @@
                     <table class="override-table" id="dashboardItemsTable">
                         <thead>
                             <tr>
-                                <th>الصنف / Item</th>
-                                <th>القسم / Group</th>
+                                <th>الصنف</th>
+                                <th>المجموعة</th>
                                 <th>السعر</th>
                                 <th>الفلاتر النشطة</th>
                                 <th>التوفر</th>
@@ -462,7 +556,7 @@
                             <tr id="item-row-{{ item.id }}" class="dashboard-item-row" data-name-en="{{ item.name_en }}" data-desc-en="{{ item.description_en }}" data-name="{{ item.display_name|default:item.pos_name|lower }} {{ item.custom_section.name_ar|default:'بانتظار التوزيع'|lower }}">
                                 <td>
                                     <div style="font-weight:700; color:#fff;">{{ item.display_name|default:item.pos_name }}</div>
-                                    <div style="font-size:11px; color:var(--text-muted);">POS: {{ item.pos_name }}</div>
+                                    <div style="font-size:11px; color:var(--text-muted);">بالكاشير: {{ item.pos_name }}</div>
                                 </td>
                                 <td>
                                     {% if item.custom_section %}
@@ -517,7 +611,7 @@
                             {% empty %}
                             <tr>
                                 <td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">
-                                    لا توجد أصناف مزامنة حالياً. اضغط على زر "مزامنة Loyverse 🔄" بالأعلى لجلب كافة الأصناف.
+                                    لا توجد أصناف حالياً. اضغط على زر "مزامنة لويفيرس 🔄" بالأعلى لجلب كل الأصناف.
                                 </td>
                             </tr>
                             {% endfor %}
@@ -695,14 +789,14 @@
 
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                 <div class="form-group">
-                    <label class="form-label">السعر (JOD)</label>
+                    <label class="form-label">السعر (دينار)</label>
                     <input type="number" id="overridePrice" name="price" class="form-input" step="0.001" required>
                     <label id="overrideFollowLoyverseWrap" style="display:none; font-size:11.5px; color:var(--text-muted); margin-top:6px; cursor:pointer;">
                         <input type="checkbox" id="overrideFollowLoyverse" name="follow_loyverse_price"> إرجاع سعر لويفيرس (يتحدّث بالمزامنة القادمة)
                     </label>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">القسم التابع له (Custom Section)</label>
+                    <label class="form-label">المجموعة</label>
                     <select id="overrideCustomSection" name="custom_section_id" class="form-select">
                         <option value="">-- بانتظار التوزيع (مخفي عن الزبائن) --</option>
                         {% for sec in sections %}
@@ -839,7 +933,7 @@
                 <input type="hidden" id="sectionModalBanner" name="banner_image">
             </div>
             <div class="form-group">
-                <label class="form-label">ترتيب العرض (Order Index)</label>
+                <label class="form-label">ترتيب العرض</label>
                 <input type="number" id="sectionModalOrder" name="order_index" class="form-input" value="0">
             </div>
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
@@ -882,6 +976,40 @@ function switchCmsTab(tabKey) {
 }
 
 // Table live search
+// Each cell gets its column name, shown as a label when tables turn into cards on phones
+function labelTableCells(table) {
+    const heads = [...table.querySelectorAll('thead th')].map(th => th.textContent.trim());
+    table.querySelectorAll('tbody tr').forEach(tr => {
+        [...tr.children].forEach((td, i) => {
+            if (!td.hasAttribute('colspan') && heads[i]) td.setAttribute('data-label', heads[i]);
+        });
+    });
+}
+document.querySelectorAll('.override-table').forEach(table => {
+    labelTableCells(table);
+    const body = table.querySelector('tbody');
+    if (body) new MutationObserver(() => labelTableCells(table)).observe(body, {childList: true});
+});
+
+let customerTier = '';
+function setTierFilter(btn) {
+    document.querySelectorAll('#tierFilter .btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    customerTier = btn.getAttribute('data-tier');
+    filterCustomers();
+}
+function filterCustomers() {
+    const q = (document.getElementById('customerSearch').value || '').toLowerCase().trim();
+    let shown = 0;
+    const rows = document.querySelectorAll('#customersTable tr.customer-row');
+    rows.forEach(row => {
+        const ok = (!q || row.getAttribute('data-search').includes(q)) && (!customerTier || row.getAttribute('data-tier') === customerTier);
+        row.style.display = ok ? '' : 'none';
+        if (ok) shown++;
+    });
+    document.getElementById('customersNoMatch').style.display = rows.length && !shown ? 'block' : 'none';
+}
+
 function filterDashboardTable(query) {
     const q = (query || '').toLowerCase().trim();
     document.querySelectorAll('#dashboardItemsTable tbody tr.dashboard-item-row').forEach(row => {
@@ -1121,11 +1249,11 @@ async function syncLoyverseLive() {
             showToast(data.message, 'danger');
         }
     } catch(e) {
-        showToast('تعذر الاتصال بخوادم Loyverse', 'danger');
+        showToast('تعذر الاتصال بلويفيرس', 'danger');
     } finally {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-rotate"></i> مزامنة Loyverse 🔄';
+            btn.innerHTML = '<i class="fa-solid fa-rotate"></i> مزامنة لويفيرس 🔄';
         }
     }
 }
