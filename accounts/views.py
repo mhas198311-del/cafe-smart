@@ -446,8 +446,11 @@ def staff_dashboard_view(request):
     sections = MenuSection.objects.all().order_by('order_index')
     from accounts.models import RaffleTicket
     pending_tickets_count = RaffleTicket.objects.filter(draw_status='PENDING').count()
-    
+    stats, customers = _dashboard_stats_and_customers(config)
+
     return render(request, "accounts/dashboard.html", {
+        "stats": stats,
+        "customers": customers,
         "staff_name": request.session.get("staff_name"),
         "staff_role": request.session.get("staff_role"),
         "menu_items": items,
@@ -458,6 +461,37 @@ def staff_dashboard_view(request):
         "sections": sections,
         "pending_tickets_count": pending_tickets_count,
     })
+
+
+TIER_NAMES_AR = {"Gold": "ذهبي", "Silver": "فضي", "Bronze": "برونزي"}
+
+
+def _dashboard_stats_and_customers(config):
+    """Numbers at the top of the dashboard, and every member with their points and tier."""
+    from django.db.models import Sum, Q
+    from django.utils import timezone
+    from .models import CustomerProfile, TableCall, StaffShift, WhatsAppMessage
+    now = timezone.localtime()
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    stats = {
+        "members": CustomerProfile.objects.count(),
+        "new_members": CustomerProfile.objects.filter(created_at__gte=month_start).count(),
+        "calls_today": TableCall.objects.filter(created_at__gte=day_start).count(),
+        "on_shift": StaffShift.objects.filter(ended_at__isnull=True).count(),
+        "whatsapp_month": WhatsAppMessage.objects.filter(direction="OUT", created_at__gte=month_start).exclude(status="failed").count(),
+    }
+    year_ago = now - datetime.timedelta(days=365)
+    customers = CustomerProfile.objects.annotate(
+        earned_year=Sum("points_transactions__points",
+                        filter=Q(points_transactions__transaction_type="EARNED", points_transactions__created_at__gte=year_ago))
+    ).order_by("-created_at")
+    rows = []
+    for c in customers:
+        earned = c.earned_year or 0
+        tier = "Gold" if earned >= config.gold_tier_threshold else "Silver" if earned >= config.silver_tier_threshold else "Bronze"
+        rows.append({"customer": c, "earned_year": earned, "tier": tier, "tier_ar": TIER_NAMES_AR[tier]})
+    return stats, rows
 
 
 def staff_settings_view(request):

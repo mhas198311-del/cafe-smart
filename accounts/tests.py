@@ -768,3 +768,25 @@ class TableCallSecurityTests(TestCase):
         self.assertEqual(self.config.table_count, 12)
         self.assertEqual(self.config.hookah_staff, self.hookah)
         self.assertFalse(self.config.table_calls_wifi_only)
+
+
+class DashboardMembersTests(TestCase):
+    def test_dashboard_lists_members_with_tier_and_stats(self):
+        from accounts.models import PointsTransaction
+        config = CafeConfiguration.objects.create()
+        admin = StaffUser.objects.create(username="a", employee_name="Boss", role="ADMIN", password_hash="x")
+        session = self.client.session
+        session["staff_user_id"] = admin.id
+        session["staff_role"] = "ADMIN"
+        session.save()
+        rich = CustomerProfile.objects.create(loyverse_customer_id="c1", phone_number="+962790000001", password_hash="x",
+                                              full_name="Lina", birth_date=datetime.date(1990, 1, 1), points_balance=50)
+        CustomerProfile.objects.create(loyverse_customer_id="c2", phone_number="+962790000002", password_hash="x",
+                                       full_name="Omar", birth_date=datetime.date(1990, 1, 1))
+        PointsTransaction.objects.create(customer=rich, points=config.gold_tier_threshold, transaction_type="EARNED")
+        res = self.client.get("/staff/dashboard/")
+        self.assertEqual(res.context["stats"]["members"], 2)
+        tiers = {row["customer"].full_name: row["tier"] for row in res.context["customers"]}
+        self.assertEqual(tiers, {"Lina": "Gold", "Omar": "Bronze"})
+        self.assertContains(res, "ذهبي")
+        self.assertNotContains(res, "Cafe Settings")
