@@ -98,6 +98,8 @@
         if (!text) { showToast('اكتب نص العرض', 'danger'); return; }
         if (!count) { showToast('ما في أعضاء موافقين على العروض بهالمجموعة', 'danger'); return; }
         if (!confirm(`رح ينبعت العرض لـ ${count} عضو على الواتساب، وميتا بتحاسب على كل رسالة. متأكد؟`)) return;
+        const btn = document.querySelector('[onclick="sendOffer()"]');
+        if (btn) btn.disabled = true;
         try {
             const res = await fetch('/api/staff/offers/send/', {
                 method: 'POST',
@@ -108,6 +110,8 @@
             showToast(data.message || 'تعذر الإرسال', data.status === 'success' ? 'success' : 'danger');
         } catch (e) {
             showToast('تعذر الاتصال بالسيرفر', 'danger');
+        } finally {
+            if (btn) btn.disabled = false;
         }
     }
 </script>

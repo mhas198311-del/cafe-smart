@@ -72,15 +72,19 @@ def claim_today(config_id, today):
 
 
 class DailyJobsMiddleware:
+    CHECK_EVERY = datetime.timedelta(minutes=10)
+
     def __init__(self, get_response):
         self.get_response = get_response
-        self.checked_day = None
+        self.next_check = None
 
     def __call__(self, request):
         response = self.get_response(request)
         now = timezone.localtime()
-        if self.checked_day != now.date() and now.hour >= SEND_FROM_HOUR:
-            self.checked_day = now.date()
+        # Checked every few minutes (not once a day) so turning the gifts on later in the day still sends today's;
+        # claim_today() makes sure each day is sent only once
+        if (self.next_check is None or now >= self.next_check) and now.hour >= SEND_FROM_HOUR:
+            self.next_check = now + self.CHECK_EVERY
             try:
                 from .models import CafeConfiguration
                 config = CafeConfiguration.objects.only("id", "birthday_messages_enabled").first()

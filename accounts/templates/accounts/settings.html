@@ -1048,10 +1048,10 @@ async function triggerLoyverseSyncFromSettings() {
         const data = await res.json();
         if (data.status === 'success') {
             showToast(data.message, 'success');
-            if (statusText) statusText.innerHTML = `<span style="color:#22c55e;">${data.message}</span>`;
+            if (statusText) { statusText.innerHTML = '<span style="color:#22c55e;"></span>'; statusText.firstChild.textContent = data.message; }
         } else {
             showToast(data.message, 'danger');
-            if (statusText) statusText.innerHTML = `<span style="color:#ef4444;">${data.message}</span>`;
+            if (statusText) { statusText.innerHTML = '<span style="color:#ef4444;"></span>'; statusText.firstChild.textContent = data.message; }
         }
     } catch(err) {
         showToast('فشل الاتصال بخوادم لويفيرس', 'danger');

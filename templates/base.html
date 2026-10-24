@@ -841,8 +841,10 @@
             
             toast.innerHTML = `
                 <i class="fa-solid ${icon}" style="color: var(--${type === 'info' ? 'primary' : type})"></i>
-                <div style="flex-grow:1;">${message}</div>
+                <div style="flex-grow:1;"></div>
             `;
+            // Plain text: messages can carry names typed by staff or customers
+            toast.querySelector('div').textContent = message;
             
             container.appendChild(toast);
             
